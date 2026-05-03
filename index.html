@@ -58,7 +58,7 @@
     .badge-gray{background:#f3f4f6;color:#374151}
     .progress-bar{height:6px;background:#e5e7eb;border-radius:3px;margin-top:8px}
     .progress-fill{height:6px;border-radius:3px;transition:width 0.3s}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
     .modal{background:#fff;border-radius:12px;padding:1.5rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto}
     .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
     .modal-title{font-size:15px;font-weight:600}
@@ -117,7 +117,7 @@
   <div class="content" id="tabContent"></div>
 </div>
 
-<div id="modalOverlay" class="modal-overlay hidden" onclick="closeModalOverlay(event)">
+<div id="modalOverlay" class="modal-overlay" onclick="closeModalOverlay(event)">
   <div class="modal" id="modalBox"></div>
 </div>
 
@@ -249,7 +249,7 @@
       + '<div class="form-group"><label>Agente</label><select id="f-agente"><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div>'
       + '<div class="form-group"><label>Notas</label><textarea id="f-notas" rows="2"></textarea></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarPropiedad()">Guardar</button></div>';
-    document.getElementById('modalOverlay').classList.remove('hidden');
+    openModal();
   }
 
   function guardarPropiedad() {
@@ -291,7 +291,7 @@
       + '<div class="row"><div class="form-group"><label>Monto ($)</label><input id="ff-monto" type="number" /></div>'
       + '<div class="form-group"><label>Agente</label><select id="ff-agente"><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarFinanza()">Guardar</button></div>';
-    document.getElementById('modalOverlay').classList.remove('hidden');
+    openModal();
   }
 
   function guardarFinanza() {
@@ -330,7 +330,7 @@
       + '<div class="form-group"><label>Vencimiento</label><input id="fo-venc" type="date" /></div></div>'
       + '<div class="form-group"><label>Agente</label><select id="fo-agente"><option>Equipo</option><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarObjetivo()">Guardar</button></div>';
-    document.getElementById('modalOverlay').classList.remove('hidden');
+    openModal();
   }
 
   function guardarObjetivo() {
@@ -345,7 +345,7 @@
       + '<div style="font-size:14px;margin-bottom:1rem;font-weight:500">' + titulo + '</div>'
       + '<div class="form-group"><label>Progreso actual (de ' + meta + ' ' + unidad + ')</label><input id="upd-actual" type="number" value="' + actual + '" /></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarProgreso(\'' + id + '\')">Guardar</button></div>';
-    document.getElementById('modalOverlay').classList.remove('hidden');
+    openModal();
   }
 
   function guardarProgreso(id) {
@@ -365,7 +365,8 @@
     });
   }
 
-  function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+  function openModal() { document.getElementById('modalOverlay').style.display = 'flex'; }
+  function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; document.getElementById('modalBox').innerHTML = ''; }
   function closeModalOverlay(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
 </script>
 </body>
