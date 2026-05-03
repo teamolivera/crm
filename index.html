@@ -1,8 +1,368 @@
-Team Olivera
-CRM Inmobiliario · teamolivera.com
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Olivera CRM</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#f5f5f5;color:#1a1a1a;font-size:14px}
+    .hidden{display:none}
+    .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f2f5}
+    .login-box{background:#fff;border-radius:12px;padding:2rem;width:340px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+    .login-box h1{font-size:22px;font-weight:700;margin-bottom:4px;color:#185FA5}
+    .login-box p{font-size:13px;color:#666;margin-bottom:1.5rem}
+    .alert{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:1rem}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a}
+    .form-group textarea{resize:vertical}
+    .row{display:flex;gap:10px}
+    .row .form-group{flex:1}
+    .btn{padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-weight:500}
+    .btn:hover{background:#f5f5f5}
+    .btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+    .btn-primary:hover{background:#0C447C}
+    .btn-sm{padding:5px 10px;font-size:12px}
+    .btn-full{width:100%;padding:10px;font-size:15px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10}
+    .topbar-logo{font-size:15px;font-weight:700;color:#185FA5}
+    .topbar-logo span{color:#1a1a1a;font-weight:400}
+    .topbar-right{display:flex;align-items:center;gap:10px}
+    .avatar{width:32px;height:32px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+    .nav{display:flex;gap:4px;padding:10px 20px;background:#fff;border-bottom:1px solid #eee;overflow-x:auto}
+    .nav-btn{padding:7px 16px;border-radius:8px;border:none;background:transparent;color:#666;font-size:13px;cursor:pointer;font-weight:500;white-space:nowrap}
+    .nav-btn.active{background:#EFF6FF;color:#185FA5}
+    .content{padding:20px;max-width:1000px;margin:0 auto}
+    .grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem}
+    .metric{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #eee}
+    .metric-label{font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+    .metric-value{font-size:22px;font-weight:700}
+    .metric-value.green{color:#065f46}
+    .metric-value.red{color:#991b1b}
+    .metric-value.blue{color:#1e40af}
+    .card{background:#fff;border-radius:10px;border:1px solid #eee;padding:1.25rem;margin-bottom:1rem}
+    .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .card-title{font-size:14px;font-weight:600}
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:9px 12px;color:#888;font-weight:500;border-bottom:1px solid #eee;font-size:12px;text-transform:uppercase;letter-spacing:0.3px}
+    td{padding:9px 12px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#fafafa}
+    .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+    .badge-blue{background:#dbeafe;color:#1e40af}
+    .badge-green{background:#d1fae5;color:#065f46}
+    .badge-amber{background:#fef3c7;color:#92400e}
+    .badge-red{background:#fee2e2;color:#991b1b}
+    .badge-gray{background:#f3f4f6;color:#374151}
+    .progress-bar{height:6px;background:#e5e7eb;border-radius:3px;margin-top:8px}
+    .progress-fill{height:6px;border-radius:3px;transition:width 0.3s}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+    .modal{background:#fff;border-radius:12px;padding:1.5rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+    .modal-title{font-size:15px;font-weight:600}
+    .close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:#999;line-height:1}
+    .loading{text-align:center;padding:3rem;color:#888;font-size:13px}
+    .spinner{display:inline-block;width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#185FA5;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:8px;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .section-title{font-size:16px;font-weight:600}
+    .obj-card{background:#fff;border-radius:10px;border:1px solid #eee;padding:1.25rem;margin-bottom:0.75rem}
+    .obj-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+    .obj-actions{display:flex;gap:6px;margin-top:12px}
+    .empty{text-align:center;padding:2rem;color:#aaa;font-size:13px}
+  </style>
+</head>
+<body>
 
-Usuario
-golivera / gquintana
-Contraseña
-••••••
-Entrar
+<div id="loginWrap" class="login-wrap">
+  <div class="login-box">
+    <h1>Team Olivera</h1>
+    <p>CRM Inmobiliario · teamolivera.com</p>
+    <div id="loginError" class="alert hidden">Usuario o contraseña incorrectos</div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input id="loginUser" type="text" placeholder="golivera / gquintana" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" placeholder="••••••" autocomplete="new-password" />
+    </div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<div id="mainApp" class="hidden">
+  <div class="topbar">
+    <div class="topbar-logo">Team Olivera <span>CRM</span></div>
+    <div class="topbar-right">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555">
+        <div class="avatar" id="avatarTop">GO</div>
+        <span id="userNameTop"></span>
+      </div>
+      <button class="btn btn-sm" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showTab('dashboard',this)">Dashboard</button>
+    <button class="nav-btn" onclick="showTab('propiedades',this)">Propiedades</button>
+    <button class="nav-btn" onclick="showTab('finanzas',this)">Finanzas</button>
+    <button class="nav-btn" onclick="showTab('objetivos',this)">Objetivos</button>
+  </div>
+  <div class="content" id="tabContent"></div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay hidden" onclick="closeModalOverlay(event)">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+  var API = 'https://script.google.com/macros/s/AKfycbyO5Yp8YElbCgY9K0O2AgrXopTjCig2ZiBrEPt1YYxN1Cr5FJZWStwOUIlWZv63sYj1/exec';
+  var currentUser = null;
+
+  function api(params, callback) {
+    var url = new URL(API);
+    Object.keys(params).forEach(function(k) { url.searchParams.append(k, params[k]); });
+    fetch(url.toString())
+      .then(function(r) { return r.json(); })
+      .then(callback)
+      .catch(function(e) { console.error('API error:', e); callback(null); });
+  }
+
+  function doLogin() {
+    var u = document.getElementById('loginUser').value.trim();
+    var p = document.getElementById('loginPass').value;
+    var err = document.getElementById('loginError');
+    var btn = document.getElementById('loginBtn');
+    err.classList.add('hidden');
+    btn.textContent = 'Entrando...';
+    btn.disabled = true;
+    api({ action: 'login', user: u, pass: p }, function(res) {
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+      if (res && res.ok) {
+        currentUser = { user: u, nombre: res.nombre, rol: res.rol, initials: res.nombre.split(' ').map(function(x){return x[0]}).join('').slice(0,2) };
+        document.getElementById('loginWrap').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('avatarTop').textContent = currentUser.initials;
+        document.getElementById('userNameTop').textContent = currentUser.nombre;
+        showTab('dashboard', document.querySelector('.nav-btn'));
+      } else {
+        err.textContent = res ? 'Usuario o contraseña incorrectos' : 'Error de conexión. Intentá de nuevo.';
+        err.classList.remove('hidden');
+      }
+    });
+  }
+
+  document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+
+  function doLogout() {
+    currentUser = null;
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginWrap').classList.remove('hidden');
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+  }
+
+  function showTab(tab, btn) {
+    document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Cargando...</div>';
+    if (tab === 'dashboard') loadDashboard();
+    if (tab === 'propiedades') loadPropiedades();
+    if (tab === 'finanzas') loadFinanzas();
+    if (tab === 'objetivos') loadObjetivos();
+  }
+
+  function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
+  function pct(a, m) { return Math.min(100, Math.round(Number(a) / Number(m) * 100)) || 0; }
+  function estadoBadge(e) {
+    if (e === 'En venta') return 'badge-blue';
+    if (e === 'Vendida') return 'badge-green';
+    if (e === 'En alquiler') return 'badge-amber';
+    if (e === 'Alquilada') return 'badge-green';
+    return 'badge-gray';
+  }
+  function progColor(p) { return p >= 80 ? '#065f46' : p >= 50 ? '#185FA5' : '#92400e'; }
+
+  function loadDashboard() {
+    api({ action: 'getAll' }, function(data) {
+      if (!data) { document.getElementById('tabContent').innerHTML = '<div class="empty">Error cargando datos.</div>'; return; }
+      var props = data.propiedades, fins = data.finanzas, objs = data.objetivos;
+      var ingresos = fins.filter(function(f){return f.tipo==='Ingreso'}).reduce(function(a,f){return a+Number(f.monto)},0);
+      var gastos = fins.filter(function(f){return f.tipo==='Gasto'}).reduce(function(a,f){return a+Number(f.monto)},0);
+      var enVenta = props.filter(function(p){return p.estado==='En venta'}).length;
+      var html = '<div class="grid-metrics">'
+        + '<div class="metric"><div class="metric-label">Ingresos</div><div class="metric-value green">' + fmt(ingresos) + '</div></div>'
+        + '<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red">' + fmt(gastos) + '</div></div>'
+        + '<div class="metric"><div class="metric-label">Neto</div><div class="metric-value blue">' + fmt(ingresos - gastos) + '</div></div>'
+        + '<div class="metric"><div class="metric-label">Activas</div><div class="metric-value">' + enVenta + '</div></div>'
+        + '</div>';
+      if (objs.length) {
+        html += '<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
+        objs.forEach(function(o) {
+          var p = pct(o.actual, o.meta);
+          html += '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + o.titulo + ' <span style="color:#888;font-size:11px">(' + o.agente + ')</span></span><span style="font-weight:600">' + o.actual + '/' + o.meta + ' ' + o.unidad + '</span></div>'
+            + '<div class="progress-bar"><div class="progress-fill" style="width:' + p + '%;background:' + progColor(p) + '"></div></div></div>';
+        });
+        html += '</div>';
+      }
+      if (props.length) {
+        html += '<div class="card"><div class="card-header"><span class="card-title">Últimas propiedades</span></div><div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Estado</th><th>Precio</th></tr>';
+        props.slice(-4).reverse().forEach(function(p) {
+          html += '<tr><td>' + p.direccion + '</td><td>' + p.tipo + '</td><td><span class="badge ' + estadoBadge(p.estado) + '">' + p.estado + '</span></td><td>' + fmt(p.precio) + '</td></tr>';
+        });
+        html += '</table></div></div>';
+      }
+      document.getElementById('tabContent').innerHTML = html;
+    });
+  }
+
+  function loadPropiedades() {
+    api({ action: 'get', sheet: 'Propiedades' }, function(props) {
+      var html = '<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary btn-sm" onclick="abrirModalPropiedad()">+ Agregar</button></div>';
+      if (props && props.length) {
+        html += '<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Zona</th><th>Estado</th><th>Precio</th><th>Agente</th><th></th></tr>';
+        props.forEach(function(p) {
+          html += '<tr><td>' + p.direccion + '</td><td>' + p.tipo + '</td><td>' + p.zona + '</td><td><span class="badge ' + estadoBadge(p.estado) + '">' + p.estado + '</span></td><td>' + fmt(p.precio) + '</td><td style="color:#888">' + p.agente.split(' ').slice(-1)[0] + '</td><td><button class="btn btn-sm" onclick="eliminar(\'Propiedades\',\'' + p.id + '\')">Eliminar</button></td></tr>';
+        });
+        html += '</table></div></div>';
+      } else {
+        html += '<div class="empty">Todavía no hay propiedades. Agregá la primera.</div>';
+      }
+      document.getElementById('tabContent').innerHTML = html;
+    });
+  }
+
+  function abrirModalPropiedad() {
+    document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nueva propiedad</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      + '<div class="form-group"><label>Dirección</label><input id="f-dir" autocomplete="off" /></div>'
+      + '<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
+      + '<div class="form-group"><label>Zona</label><input id="f-zona" value="Villa Urquiza" autocomplete="off" /></div></div>'
+      + '<div class="row"><div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Vendida</option><option>Alquilada</option></select></div>'
+      + '<div class="form-group"><label>Precio (USD)</label><input id="f-precio" type="number" /></div></div>'
+      + '<div class="form-group"><label>Agente</label><select id="f-agente"><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div>'
+      + '<div class="form-group"><label>Notas</label><textarea id="f-notas" rows="2"></textarea></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarPropiedad()">Guardar</button></div>';
+    document.getElementById('modalOverlay').classList.remove('hidden');
+  }
+
+  function guardarPropiedad() {
+    var data = { id: Date.now(), direccion: document.getElementById('f-dir').value, tipo: document.getElementById('f-tipo').value, zona: document.getElementById('f-zona').value, estado: document.getElementById('f-estado').value, precio: document.getElementById('f-precio').value, agente: document.getElementById('f-agente').value, notas: document.getElementById('f-notas').value };
+    closeModal();
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Guardando...</div>';
+    api({ action: 'add', sheet: 'Propiedades', data: JSON.stringify(data) }, function() { loadPropiedades(); });
+  }
+
+  function loadFinanzas() {
+    api({ action: 'get', sheet: 'Finanzas' }, function(fins) {
+      var ingresos = fins ? fins.filter(function(f){return f.tipo==='Ingreso'}).reduce(function(a,f){return a+Number(f.monto)},0) : 0;
+      var gastos = fins ? fins.filter(function(f){return f.tipo==='Gasto'}).reduce(function(a,f){return a+Number(f.monto)},0) : 0;
+      var html = '<div class="grid-metrics">'
+        + '<div class="metric"><div class="metric-label">Ingresos</div><div class="metric-value green">' + fmt(ingresos) + '</div></div>'
+        + '<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red">' + fmt(gastos) + '</div></div>'
+        + '<div class="metric"><div class="metric-label">Neto</div><div class="metric-value blue">' + fmt(ingresos - gastos) + '</div></div>'
+        + '</div>';
+      html += '<div class="section-header"><div class="section-title">Movimientos</div><button class="btn btn-primary btn-sm" onclick="abrirModalFinanza()">+ Agregar</button></div>';
+      if (fins && fins.length) {
+        html += '<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Agente</th><th>Monto</th><th></th></tr>';
+        fins.forEach(function(f) {
+          html += '<tr><td>' + f.fecha + '</td><td><span class="badge ' + (f.tipo==='Ingreso'?'badge-green':'badge-red') + '">' + f.tipo + '</span></td><td>' + f.concepto + '</td><td style="color:#888">' + (f.agente||'').split(' ').slice(-1)[0] + '</td><td style="font-weight:600;color:' + (f.tipo==='Ingreso'?'#065f46':'#991b1b') + '">' + fmt(f.monto) + '</td><td><button class="btn btn-sm" onclick="eliminar(\'Finanzas\',\'' + f.id + '\')">Eliminar</button></td></tr>';
+        });
+        html += '</table></div></div>';
+      } else {
+        html += '<div class="empty">Todavía no hay movimientos registrados.</div>';
+      }
+      document.getElementById('tabContent').innerHTML = html;
+    });
+  }
+
+  function abrirModalFinanza() {
+    var today = new Date().toISOString().slice(0,10);
+    document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo movimiento</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      + '<div class="row"><div class="form-group"><label>Tipo</label><select id="ff-tipo"><option>Ingreso</option><option>Gasto</option></select></div>'
+      + '<div class="form-group"><label>Fecha</label><input id="ff-fecha" type="date" value="' + today + '" /></div></div>'
+      + '<div class="form-group"><label>Concepto</label><input id="ff-concepto" autocomplete="off" /></div>'
+      + '<div class="row"><div class="form-group"><label>Monto ($)</label><input id="ff-monto" type="number" /></div>'
+      + '<div class="form-group"><label>Agente</label><select id="ff-agente"><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarFinanza()">Guardar</button></div>';
+    document.getElementById('modalOverlay').classList.remove('hidden');
+  }
+
+  function guardarFinanza() {
+    var data = { id: Date.now(), fecha: document.getElementById('ff-fecha').value, tipo: document.getElementById('ff-tipo').value, concepto: document.getElementById('ff-concepto').value, monto: document.getElementById('ff-monto').value, agente: document.getElementById('ff-agente').value };
+    closeModal();
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Guardando...</div>';
+    api({ action: 'add', sheet: 'Finanzas', data: JSON.stringify(data) }, function() { loadFinanzas(); });
+  }
+
+  function loadObjetivos() {
+    api({ action: 'get', sheet: 'Objetivos' }, function(objs) {
+      var html = '<div class="section-header"><div class="section-title">Objetivos del equipo</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
+      if (objs && objs.length) {
+        objs.forEach(function(o) {
+          var p = pct(o.actual, o.meta);
+          html += '<div class="obj-card">'
+            + '<div class="obj-header"><div><div style="font-weight:600;font-size:14px">' + o.titulo + '</div><div style="font-size:12px;color:#888;margin-top:3px">' + o.agente + (o.vencimiento ? ' · Vence ' + o.vencimiento : '') + '</div></div>'
+            + '<div style="text-align:right"><div style="font-size:20px;font-weight:700">' + o.actual + ' <span style="font-size:13px;color:#888;font-weight:400">/ ' + o.meta + ' ' + o.unidad + '</span></div><div style="font-size:12px;color:#888">' + p + '% completado</div></div></div>'
+            + '<div class="progress-bar"><div class="progress-fill" style="width:' + p + '%;background:' + progColor(p) + '"></div></div>'
+            + '<div class="obj-actions"><button class="btn btn-sm" onclick="abrirActualizarProgreso(\'' + o.id + '\',\'' + o.titulo + '\',' + o.actual + ',' + o.meta + ',\'' + o.unidad + '\')">Actualizar progreso</button><button class="btn btn-sm" onclick="eliminar(\'Objetivos\',\'' + o.id + '\')">Eliminar</button></div>'
+            + '</div>';
+        });
+      } else {
+        html += '<div class="empty">Todavía no hay objetivos. Agregá el primero.</div>';
+      }
+      document.getElementById('tabContent').innerHTML = html;
+    });
+  }
+
+  function abrirModalObjetivo() {
+    document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo objetivo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      + '<div class="form-group"><label>Título</label><input id="fo-titulo" autocomplete="off" /></div>'
+      + '<div class="row"><div class="form-group"><label>Meta</label><input id="fo-meta" type="number" /></div>'
+      + '<div class="form-group"><label>Unidad</label><input id="fo-unidad" placeholder="ventas, USD..." autocomplete="off" /></div></div>'
+      + '<div class="row"><div class="form-group"><label>Progreso actual</label><input id="fo-actual" type="number" value="0" /></div>'
+      + '<div class="form-group"><label>Vencimiento</label><input id="fo-venc" type="date" /></div></div>'
+      + '<div class="form-group"><label>Agente</label><select id="fo-agente"><option>Equipo</option><option>Gonzalo Olivera</option><option>Gonzalo Quintana</option></select></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarObjetivo()">Guardar</button></div>';
+    document.getElementById('modalOverlay').classList.remove('hidden');
+  }
+
+  function guardarObjetivo() {
+    var data = { id: Date.now(), titulo: document.getElementById('fo-titulo').value, meta: document.getElementById('fo-meta').value, actual: document.getElementById('fo-actual').value, unidad: document.getElementById('fo-unidad').value, agente: document.getElementById('fo-agente').value, vencimiento: document.getElementById('fo-venc').value };
+    closeModal();
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Guardando...</div>';
+    api({ action: 'add', sheet: 'Objetivos', data: JSON.stringify(data) }, function() { loadObjetivos(); });
+  }
+
+  function abrirActualizarProgreso(id, titulo, actual, meta, unidad) {
+    document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Actualizar progreso</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      + '<div style="font-size:14px;margin-bottom:1rem;font-weight:500">' + titulo + '</div>'
+      + '<div class="form-group"><label>Progreso actual (de ' + meta + ' ' + unidad + ')</label><input id="upd-actual" type="number" value="' + actual + '" /></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarProgreso(\'' + id + '\')">Guardar</button></div>';
+    document.getElementById('modalOverlay').classList.remove('hidden');
+  }
+
+  function guardarProgreso(id) {
+    var actual = document.getElementById('upd-actual').value;
+    closeModal();
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Guardando...</div>';
+    api({ action: 'update', sheet: 'Objetivos', id: id, data: JSON.stringify({ actual: actual }) }, function() { loadObjetivos(); });
+  }
+
+  function eliminar(sheet, id) {
+    if (!confirm('¿Seguro que querés eliminar este registro?')) return;
+    document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Eliminando...</div>';
+    api({ action: 'delete', sheet: sheet, id: id }, function() {
+      if (sheet === 'Propiedades') loadPropiedades();
+      if (sheet === 'Finanzas') loadFinanzas();
+      if (sheet === 'Objetivos') loadObjetivos();
+    });
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+  function closeModalOverlay(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+</script>
+</body>
+</html>
