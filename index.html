@@ -214,8 +214,8 @@ function doLogin() {
       }
       if (user) {
         currentUser = { user: u, nombre: user.nombre, rol: user.rol, initials: user.nombre.split(' ').map(function(x){return x[0]}).join('').slice(0,2) };
-        document.getElementById('loginWrap').classList.add('hidden');
-        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('loginWrap').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
         document.getElementById('avatarTop').textContent = currentUser.initials;
         document.getElementById('userNameTop').textContent = currentUser.nombre;
         document.getElementById('userRolTop').textContent = currentUser.rol;
