@@ -194,39 +194,44 @@ function updateRow(sheet, id, data, callback) {
 // Login
 function doLogin() {
   var u = document.getElementById('loginUser').value.trim();
-  var p = document.getElementById('loginPass').value;
+  var p = document.getElementById('loginPass').value.trim();
   var err = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
   err.classList.add('hidden');
   btn.textContent = 'Entrando...';
   btn.disabled = true;
-  getSheet('Usuarios', function(e, rows) {
-    btn.textContent = 'Entrar';
-    btn.disabled = false;
-    if (e || !rows) {
+  fetch(API + '?sheet=Usuarios')
+    .then(function(r) { return r.json(); })
+    .then(function(rows) {
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+      var user = null;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].usuario === u && rows[i].password === p) {
+          user = rows[i];
+          break;
+        }
+      }
+      if (user) {
+        currentUser = { user: u, nombre: user.nombre, rol: user.rol, initials: user.nombre.split(' ').map(function(x){return x[0]}).join('').slice(0,2) };
+        document.getElementById('loginWrap').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('avatarTop').textContent = currentUser.initials;
+        document.getElementById('userNameTop').textContent = currentUser.nombre;
+        document.getElementById('userRolTop').textContent = currentUser.rol;
+        showTab('dashboard', document.querySelector('.nav-btn'));
+      } else {
+        err.textContent = 'Usuario o contraseña incorrectos';
+        err.classList.remove('hidden');
+      }
+    })
+    .catch(function() {
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
       err.textContent = 'Error de conexión. Intentá de nuevo.';
       err.classList.remove('hidden');
-      return;
-    }
-    var user = rows.find(function(r) {
-      return String(r.usuario).trim() === u && String(r.password).trim() === p;
     });
-    if (user) {
-      currentUser = { user: u, nombre: user.nombre, rol: user.rol, initials: user.nombre.split(' ').map(function(x){return x[0]}).join('').slice(0,2) };
-      document.getElementById('loginWrap').classList.add('hidden');
-      document.getElementById('mainApp').classList.remove('hidden');
-      document.getElementById('avatarTop').textContent = currentUser.initials;
-      document.getElementById('userNameTop').textContent = currentUser.nombre;
-      document.getElementById('userRolTop').textContent = currentUser.rol;
-      showTab('dashboard', document.querySelector('.nav-btn'));
-    } else {
-      err.textContent = 'Usuario o contraseña incorrectos';
-      err.classList.remove('hidden');
-    }
-  });
 }
-
-document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 
 function doLogout() {
   currentUser = null;
