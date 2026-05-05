@@ -222,7 +222,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogi
 
 function doLogout() {
   currentUser = null;
-  window.location.reload();
+  window.location.href = window.location.href;
 }
 
 function showTab(tab, btn) {
