@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3 -->
+<!-- v4 -->
 <html>
 <head>
   <meta charset="UTF-8">
@@ -177,6 +177,15 @@ function updateRow(sheet, id, data, callback) {
   .catch(function(e) { if(callback) callback(e, null); });
 }
 
+function mostrarApp() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('avatarTop').textContent = currentUser.initials;
+  document.getElementById('userNameTop').textContent = currentUser.nombre;
+  document.getElementById('userRolTop').textContent = currentUser.rol;
+  showTab('dashboard', document.querySelector('.nav-btn'));
+}
+
 function doLogin() {
   var u = document.getElementById('loginUser').value.trim();
   var p = document.getElementById('loginPass').value.trim();
@@ -199,12 +208,8 @@ function doLogin() {
       }
       if (user) {
         currentUser = { user: u, nombre: user.nombre, rol: user.rol, initials: user.nombre.split(' ').map(function(x){return x[0]}).join('').slice(0,2) };
-        document.getElementById('loginWrap').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        document.getElementById('avatarTop').textContent = currentUser.initials;
-        document.getElementById('userNameTop').textContent = currentUser.nombre;
-        document.getElementById('userRolTop').textContent = currentUser.rol;
-        showTab('dashboard', document.querySelector('.nav-btn'));
+        localStorage.setItem('crm_user', JSON.stringify(currentUser));
+        mostrarApp();
       } else {
         err.textContent = 'Usuario o contraseña incorrectos';
         err.classList.remove('hidden');
@@ -221,8 +226,26 @@ function doLogin() {
 document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 
 function doLogout() {
-  window.location.replace(window.location.pathname);
+  currentUser = null;
+  localStorage.removeItem('crm_user');
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
 }
+
+// Restaurar sesión al recargar
+(function() {
+  var saved = localStorage.getItem('crm_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      mostrarApp();
+    } catch(e) {
+      localStorage.removeItem('crm_user');
+    }
+  }
+})();
 
 function showTab(tab, btn) {
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -248,7 +271,6 @@ function progColor(p) { return p >= 80 ? '#065f46' : p >= 50 ? '#185FA5' : '#924
 function uid() { return Date.now().toString(); }
 function today() { return new Date().toISOString().slice(0,10); }
 
-// DASHBOARD
 function loadDashboard() {
   Promise.all([
     fetch(API + '?sheet=Propiedades').then(function(r){return r.json();}),
@@ -330,7 +352,6 @@ function loadDashboard() {
   });
 }
 
-// PROPIEDADES
 function loadPropiedades() {
   getSheet('Propiedades', function(e, props) {
     if (currentUser.rol !== 'Líder') {
@@ -374,7 +395,6 @@ function abrirModalPropiedad(propData) {
   var editar = propData ? true : false;
   var d = propData || {};
   document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">' + (editar ? 'Editar propiedad' : 'Nueva propiedad') + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-
     + '<div class="section-divider">Datos de la propiedad</div>'
     + '<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="' + (d.direccion||'') + '" autocomplete="off" /></div>'
     + '<div class="form-group"><label>Localidad</label><input id="f-loc" value="' + (d.localidad||'Villa Urquiza') + '" autocomplete="off" /></div></div>'
@@ -382,16 +402,13 @@ function abrirModalPropiedad(propData) {
     + '<div class="form-group"><label>Estado</label><select id="f-estado"><option' + (d.estado==='En venta'?' selected':'') + '>En venta</option><option' + (d.estado==='En alquiler'?' selected':'') + '>En alquiler</option><option' + (d.estado==='Reservada'?' selected':'') + '>Reservada</option><option' + (d.estado==='Vendida'?' selected':'') + '>Vendida</option><option' + (d.estado==='Alquilada'?' selected':'') + '>Alquilada</option></select></div></div>'
     + '<div class="row"><div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="' + (d.precio||'') + '" /></div>'
     + '<div class="form-group"><label>Valor de cierre (USD)</label><input id="f-cierre" type="number" value="' + (d.valor_cierre||'') + '" /></div></div>'
-
     + '<div class="section-divider">Datos del cliente (vendedor)</div>'
     + '<div class="form-group"><label>Nombre del cliente</label><input id="f-cliente" value="' + (d.cliente||'') + '" autocomplete="off" /></div>'
     + '<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="' + (d.telefono||'') + '" autocomplete="off" /></div>'
     + '<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="' + (d.mail||'') + '" autocomplete="off" /></div></div>'
-
     + '<div class="section-divider">Comisiones</div>'
     + '<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="f-comp" type="number" value="' + (d.comision_compradora||3) + '" /></div>'
     + '<div class="form-group"><label>Comisión vendedor (%)</label><input id="f-vend" type="number" value="' + (d.comision_vendedora||3) + '" /></div></div>'
-
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
     + '<button class="btn" onclick="closeModal()">Cancelar</button>'
     + '<button class="btn btn-primary" onclick="' + (editar ? 'guardarEdicionPropiedad(\'' + d.id + '\')' : 'guardarPropiedad()') + '">Guardar</button>'
@@ -400,22 +417,7 @@ function abrirModalPropiedad(propData) {
 }
 
 function guardarPropiedad() {
-  var data = {
-    id: uid(),
-    direccion: document.getElementById('f-dir').value,
-    localidad: document.getElementById('f-loc').value,
-    tipo: document.getElementById('f-tipo').value,
-    estado: document.getElementById('f-estado').value,
-    precio: document.getElementById('f-precio').value,
-    valor_cierre: document.getElementById('f-cierre').value,
-    cliente: document.getElementById('f-cliente').value,
-    telefono: document.getElementById('f-tel').value,
-    mail: document.getElementById('f-mail').value,
-    comision_compradora: document.getElementById('f-comp').value,
-    comision_vendedora: document.getElementById('f-vend').value,
-    agente: currentUser.nombre,
-    fecha: today()
-  };
+  var data = { id: uid(), direccion: document.getElementById('f-dir').value, localidad: document.getElementById('f-loc').value, tipo: document.getElementById('f-tipo').value, estado: document.getElementById('f-estado').value, precio: document.getElementById('f-precio').value, valor_cierre: document.getElementById('f-cierre').value, cliente: document.getElementById('f-cliente').value, telefono: document.getElementById('f-tel').value, mail: document.getElementById('f-mail').value, comision_compradora: document.getElementById('f-comp').value, comision_vendedora: document.getElementById('f-vend').value, agente: currentUser.nombre, fecha: today() };
   closeModal();
   loading();
   addRow('Propiedades', data, function() { loadPropiedades(); });
@@ -429,19 +431,7 @@ function editarPropiedad(id) {
 }
 
 function guardarEdicionPropiedad(id) {
-  var data = {
-    direccion: document.getElementById('f-dir').value,
-    localidad: document.getElementById('f-loc').value,
-    tipo: document.getElementById('f-tipo').value,
-    estado: document.getElementById('f-estado').value,
-    precio: document.getElementById('f-precio').value,
-    valor_cierre: document.getElementById('f-cierre').value,
-    cliente: document.getElementById('f-cliente').value,
-    telefono: document.getElementById('f-tel').value,
-    mail: document.getElementById('f-mail').value,
-    comision_compradora: document.getElementById('f-comp').value,
-    comision_vendedora: document.getElementById('f-vend').value
-  };
+  var data = { direccion: document.getElementById('f-dir').value, localidad: document.getElementById('f-loc').value, tipo: document.getElementById('f-tipo').value, estado: document.getElementById('f-estado').value, precio: document.getElementById('f-precio').value, valor_cierre: document.getElementById('f-cierre').value, cliente: document.getElementById('f-cliente').value, telefono: document.getElementById('f-tel').value, mail: document.getElementById('f-mail').value, comision_compradora: document.getElementById('f-comp').value, comision_vendedora: document.getElementById('f-vend').value };
   closeModal();
   loading();
   updateRow('Propiedades', id, data, function() { loadPropiedades(); });
@@ -480,18 +470,9 @@ function abrirGastosProp(propId, dir) {
 function guardarGastoProp(propId) {
   var concepto = document.getElementById('g-concepto').value;
   var detalle = document.getElementById('g-detalle').value;
-  var data = {
-    id: uid(),
-    fecha: document.getElementById('g-fecha').value,
-    propiedad_id: propId,
-    concepto: concepto + (detalle ? ' - ' + detalle : ''),
-    monto: document.getElementById('g-monto').value,
-    agente: currentUser.nombre
-  };
+  var data = { id: uid(), fecha: document.getElementById('g-fecha').value, propiedad_id: propId, concepto: concepto + (detalle ? ' - ' + detalle : ''), monto: document.getElementById('g-monto').value, agente: currentUser.nombre };
   closeModal();
-  addRow('Gastos', data, function() {
-    alert('Gasto registrado correctamente');
-  });
+  addRow('Gastos', data, function() { alert('Gasto registrado correctamente'); });
 }
 
 function abrirReserva(propId, dir, precioActual) {
@@ -505,16 +486,12 @@ function abrirReserva(propId, dir, precioActual) {
     + '<div class="form-group"><label>Nuevo estado</label><select id="r-estado"><option>Reservada</option><option>Vendida</option></select></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="guardarCierre(\'' + propId + '\')">Confirmar</button></div>';
   openModal();
-
   function actualizarPreview() {
     var cierre = Number(document.getElementById('r-cierre').value||0);
     var comp = Number(document.getElementById('r-comp').value||0);
     var vend = Number(document.getElementById('r-vend').value||0);
     var total = cierre * (comp + vend) / 100;
-    document.getElementById('r-preview').innerHTML =
-      '<strong>Comisión compradora:</strong> ' + fmt(cierre * comp / 100) + '<br>'
-      + '<strong>Comisión vendedora:</strong> ' + fmt(cierre * vend / 100) + '<br>'
-      + '<strong style="color:#065f46">Comisión total proyectada: ' + fmt(total) + '</strong>';
+    document.getElementById('r-preview').innerHTML = '<strong>Comisión compradora:</strong> ' + fmt(cierre * comp / 100) + '<br><strong>Comisión vendedora:</strong> ' + fmt(cierre * vend / 100) + '<br><strong style="color:#065f46">Comisión total proyectada: ' + fmt(total) + '</strong>';
   }
   document.getElementById('r-cierre').addEventListener('input', actualizarPreview);
   document.getElementById('r-comp').addEventListener('input', actualizarPreview);
@@ -529,26 +506,14 @@ function guardarCierre(propId) {
   var total = cierre * (comp + vend) / 100;
   var estado = document.getElementById('r-estado').value;
   var fecha = document.getElementById('r-fecha').value;
-
   closeModal();
   loading();
-
   updateRow('Propiedades', propId, { valor_cierre: cierre, estado: estado, comision_compradora: comp, comision_vendedora: vend }, function() {
-    var opData = {
-      id: uid(),
-      fecha: fecha,
-      propiedad_id: propId,
-      precio_final: cierre,
-      comision_total: total,
-      gastos_total: 0,
-      rentabilidad: total,
-      agente: currentUser.nombre
-    };
+    var opData = { id: uid(), fecha: fecha, propiedad_id: propId, precio_final: cierre, comision_total: total, gastos_total: 0, rentabilidad: total, agente: currentUser.nombre };
     addRow('Operaciones', opData, function() { loadPropiedades(); });
   });
 }
 
-// FINANZAS
 function loadFinanzas() {
   Promise.all([
     fetch(API + '?sheet=Finanzas').then(function(r){return r.json();}),
@@ -558,31 +523,25 @@ function loadFinanzas() {
     var fins = results[0] || [];
     var gastos = results[1] || [];
     var ops = results[2] || [];
-
     if (currentUser.rol !== 'Líder') {
       fins = fins.filter(function(f){return f.agente === currentUser.nombre;});
       gastos = gastos.filter(function(g){return g.agente === currentUser.nombre;});
       ops = ops.filter(function(o){return o.agente === currentUser.nombre;});
     }
-
     var gastosOficina = fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var ingresos = fins.filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp = gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
     var comisiones = ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
     var rentabilidad = comisiones - gastosProp - gastosOficina;
-
     var html = '<div class="grid-metrics">'
       + '<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value green">' + fmt(comisiones) + '</div></div>'
       + '<div class="metric"><div class="metric-label">Gastos propiedades</div><div class="metric-value red">' + fmt(gastosProp) + '</div></div>'
       + '<div class="metric"><div class="metric-label">Gastos oficina</div><div class="metric-value red">' + fmt(gastosOficina) + '</div></div>'
       + '<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value ' + (rentabilidad>=0?'green':'red') + '">' + fmt(rentabilidad) + '</div></div>'
       + '</div>';
-
     html += '<div class="charts-grid">'
       + '<div class="chart-card"><div class="chart-title">Distribución de gastos</div><canvas id="chartGastos" height="200"></canvas></div>'
       + '<div class="chart-card"><div class="chart-title">Resultado financiero</div><canvas id="chartResult" height="200"></canvas></div>'
       + '</div>';
-
     html += '<div class="section-header" style="margin-top:1rem"><div class="section-title">Movimientos de oficina</div><button class="btn btn-primary btn-sm" onclick="abrirModalFinanza()">+ Agregar</button></div>';
     if (fins.length) {
       html += '<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Agente</th><th>Monto</th><th></th></tr>';
@@ -593,7 +552,6 @@ function loadFinanzas() {
     } else {
       html += '<div class="empty">No hay movimientos de oficina.</div>';
     }
-
     html += '<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Gastos por propiedad</div></div>';
     if (gastos.length) {
       html += '<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Agente</th><th>Monto</th></tr>';
@@ -604,24 +562,15 @@ function loadFinanzas() {
     } else {
       html += '<div class="empty">No hay gastos por propiedad.</div>';
     }
-
     document.getElementById('tabContent').innerHTML = html;
-
     new Chart(document.getElementById('chartGastos'), {
       type: 'pie',
-      data: {
-        labels: ['Gastos propiedades', 'Gastos oficina'],
-        datasets: [{ data: [gastosProp, gastosOficina], backgroundColor: ['#ef4444','#f59e0b'] }]
-      },
+      data: { labels: ['Gastos propiedades', 'Gastos oficina'], datasets: [{ data: [gastosProp, gastosOficina], backgroundColor: ['#ef4444','#f59e0b'] }] },
       options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
-
     new Chart(document.getElementById('chartResult'), {
       type: 'bar',
-      data: {
-        labels: ['Facturación', 'Gastos', 'Rentabilidad'],
-        datasets: [{ data: [comisiones, gastosProp + gastosOficina, rentabilidad], backgroundColor: ['#10b981','#ef4444', rentabilidad>=0?'#3b82f6':'#ef4444'] }]
-      },
+      data: { labels: ['Facturación', 'Gastos', 'Rentabilidad'], datasets: [{ data: [comisiones, gastosProp + gastosOficina, rentabilidad], backgroundColor: ['#10b981','#ef4444', rentabilidad>=0?'#3b82f6':'#ef4444'] }] },
       options: { responsive: true, plugins: { legend: { display: false } } }
     });
   });
@@ -650,7 +599,6 @@ function eliminarFin(id) {
   deleteRow('Finanzas', id, function() { loadFinanzas(); });
 }
 
-// OBJETIVOS
 function loadObjetivos() {
   getSheet('Objetivos', function(e, objs) {
     if (currentUser.rol !== 'Líder') {
