@@ -20,11 +20,12 @@
     .form-group textarea{resize:vertical}
     .row{display:flex;gap:10px}
     .row .form-group{flex:1}
-    .btn{padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-weight:500;transition:all 0.2s}
+    .btn{padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-weight:500}
     .btn:hover{background:#f5f5f5}
     .btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
     .btn-primary:hover{background:#0C447C}
     .btn-success{background:#065f46;color:#fff;border-color:#065f46}
+    .btn-success:hover{background:#044232}
     .btn-sm{padding:5px 10px;font-size:12px}
     .btn-full{width:100%;padding:12px;font-size:15px}
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -37,7 +38,7 @@
     .nav-btn{padding:7px 16px;border-radius:8px;border:none;background:transparent;color:#666;font-size:13px;cursor:pointer;font-weight:500;white-space:nowrap}
     .nav-btn.active{background:#EFF6FF;color:#185FA5}
     .content{padding:24px;max-width:1100px;margin:0 auto}
-    .grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:1.5rem}
+    .grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:1.5rem}
     .metric{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #eee;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
     .metric-label{font-size:11px;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
     .metric-value{font-size:26px;font-weight:700}
@@ -67,7 +68,7 @@
     .progress-bar{height:8px;background:#e5e7eb;border-radius:4px;margin-top:8px}
     .progress-fill{height:8px;border-radius:4px;transition:width 0.3s}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
-    .modal{background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+    .modal{background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
     .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
     .modal-title{font-size:16px;font-weight:600}
     .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#999;line-height:1}
@@ -80,12 +81,9 @@
     .prop-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
     .prop-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
     .obj-card{background:#fff;border-radius:12px;border:1px solid #eee;padding:1.25rem;margin-bottom:0.75rem}
-    .obj-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
     .obj-actions{display:flex;gap:6px;margin-top:12px}
     .empty{text-align:center;padding:2rem;color:#aaa;font-size:13px}
-    .divider{height:1px;background:#eee;margin:1rem 0}
-    .stat-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f5f5f5}
-    .stat-row:last-child{border-bottom:none}
+    .section-divider{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:1rem 0 0.5rem;border-bottom:1px solid #eee;padding-bottom:6px}
   </style>
 </head>
 <body>
@@ -125,7 +123,7 @@
       <button class="btn btn-sm" onclick="doLogout()">Salir</button>
     </div>
   </div>
-  <div class="nav" id="mainNav">
+  <div class="nav">
     <button class="nav-btn active" onclick="showTab('dashboard',this)">Dashboard</button>
     <button class="nav-btn" onclick="showTab('propiedades',this)">Propiedades</button>
     <button class="nav-btn" onclick="showTab('finanzas',this)">Finanzas</button>
@@ -141,19 +139,6 @@
 <script>
 var API = 'https://sheetdb.io/api/v1/8al8hyqbj13qm';
 var currentUser = null;
-
-// API calls
-function sheetdb(method, sheet, data, callback) {
-  var url = API + (sheet ? '?sheet=' + sheet : '');
-  var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
-  if (data && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
-    opts.body = JSON.stringify({ data: data });
-  }
-  fetch(url, opts)
-    .then(function(r) { return r.json(); })
-    .then(function(d) { callback(null, d); })
-    .catch(function(e) { callback(e, null); });
-}
 
 function getSheet(sheet, callback) {
   fetch(API + '?sheet=' + sheet)
@@ -191,7 +176,6 @@ function updateRow(sheet, id, data, callback) {
   .catch(function(e) { if(callback) callback(e, null); });
 }
 
-// Login
 function doLogin() {
   var u = document.getElementById('loginUser').value.trim();
   var p = document.getElementById('loginPass').value.trim();
@@ -233,10 +217,12 @@ function doLogin() {
     });
 }
 
+document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+
 function doLogout() {
   currentUser = null;
-  document.getElementById('mainApp').classList.add('hidden');
-  document.getElementById('loginWrap').classList.remove('hidden');
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
 }
@@ -280,7 +266,6 @@ function loadDashboard() {
     var ops = results[3] || [];
     var gastos = results[4] || [];
 
-    // filtrar por agente si no es lider
     if (currentUser.rol !== 'Líder') {
       props = props.filter(function(p){return p.agente === currentUser.nombre;});
       fins = fins.filter(function(f){return f.agente === currentUser.nombre;});
@@ -291,11 +276,10 @@ function loadDashboard() {
     var enVenta = props.filter(function(p){return p.estado==='En venta';}).length;
     var reservadas = props.filter(function(p){return p.estado==='Reservada';}).length;
     var vendidas = props.filter(function(p){return p.estado==='Vendida';}).length;
-    var ingresos = fins.filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var egresosOficina = fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+    var gastosOficina = fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp = gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
     var comisiones = ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-    var rentabilidad = comisiones - gastosProp - egresosOficina;
+    var rentabilidad = comisiones - gastosProp - gastosOficina;
 
     var html = '<div class="grid-metrics">'
       + '<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">' + enVenta + '</div></div>'
@@ -303,32 +287,30 @@ function loadDashboard() {
       + '<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">' + vendidas + '</div></div>'
       + '<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">' + ops.length + '</div></div>'
       + '<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value green">' + fmt(comisiones) + '</div></div>'
-      + '<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">' + fmt(gastosProp + egresosOficina) + '</div></div>'
+      + '<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">' + fmt(gastosProp + gastosOficina) + '</div></div>'
       + '<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value ' + (rentabilidad >= 0 ? 'green' : 'red') + '">' + fmt(rentabilidad) + '</div></div>'
-      + '<div class="metric"><div class="metric-label">Ingresos registrados</div><div class="metric-value blue">' + fmt(ingresos) + '</div></div>'
       + '</div>';
 
-    // Graficos
     html += '<div class="charts-grid">'
       + '<div class="chart-card"><div class="chart-title">Estado de propiedades</div><canvas id="chartEstados" height="200"></canvas></div>'
       + '<div class="chart-card"><div class="chart-title">Ingresos vs Gastos</div><canvas id="chartFinanzas" height="200"></canvas></div>'
       + '</div>';
 
-    // Objetivos
     if (objs.length) {
       var objsFiltrados = currentUser.rol === 'Líder' ? objs : objs.filter(function(o){return o.agente === currentUser.nombre || o.agente === 'Equipo';});
-      html += '<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
-      objsFiltrados.forEach(function(o) {
-        var p = pct(o.actual, o.meta);
-        html += '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + o.titulo + ' <span style="color:#888;font-size:11px">(' + o.agente + ')</span></span><span style="font-weight:600">' + o.actual + '/' + o.meta + ' ' + o.unidad + '</span></div>'
-          + '<div class="progress-bar"><div class="progress-fill" style="width:' + p + '%;background:' + progColor(p) + '"></div></div></div>';
-      });
-      html += '</div>';
+      if (objsFiltrados.length) {
+        html += '<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
+        objsFiltrados.forEach(function(o) {
+          var p = pct(o.actual, o.meta);
+          html += '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + o.titulo + ' <span style="color:#888;font-size:11px">(' + o.agente + ')</span></span><span style="font-weight:600">' + o.actual + '/' + o.meta + ' ' + o.unidad + '</span></div>'
+            + '<div class="progress-bar"><div class="progress-fill" style="width:' + p + '%;background:' + progColor(p) + '"></div></div></div>';
+        });
+        html += '</div>';
+      }
     }
 
     document.getElementById('tabContent').innerHTML = html;
 
-    // Renderizar gráficos
     new Chart(document.getElementById('chartEstados'), {
       type: 'doughnut',
       data: {
@@ -342,7 +324,7 @@ function loadDashboard() {
       type: 'bar',
       data: {
         labels: ['Facturación', 'Gastos prop.', 'Gastos oficina', 'Rentabilidad'],
-        datasets: [{ data: [comisiones, gastosProp, egresosOficina, rentabilidad], backgroundColor: ['#10b981','#ef4444','#f59e0b', rentabilidad >= 0 ? '#3b82f6' : '#ef4444'] }]
+        datasets: [{ data: [comisiones, gastosProp, gastosOficina, rentabilidad], backgroundColor: ['#10b981','#ef4444','#f59e0b', rentabilidad >= 0 ? '#3b82f6' : '#ef4444'] }]
       },
       options: { responsive: true, plugins: { legend: { display: false } } }
     });
@@ -356,48 +338,116 @@ function loadPropiedades() {
   getSheet('Propiedades', function(e, props) {
     if (currentUser.rol !== 'Líder') {
       props = (props||[]).filter(function(p){return p.agente === currentUser.nombre;});
+    } else {
+      props = props || [];
     }
-    var html = '<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary btn-sm" onclick="abrirModalPropiedad()">+ Nueva propiedad</button></div>';
-    if (props && props.length) {
+    var html = '<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalPropiedad()">+ Nueva propiedad</button></div>';
+    if (props.length) {
       props.forEach(function(p) {
         html += '<div class="prop-card">'
-          + '<div class="prop-header"><div><div style="font-weight:600;font-size:15px">' + p.direccion + '</div>'
-          + '<div style="font-size:12px;color:#888;margin-top:3px">' + p.tipo + ' · ' + p.zona + ' · ' + p.agente.split(' ').slice(-1)[0] + '</div></div>'
-          + '<div style="text-align:right"><div style="font-weight:700;font-size:16px;color:#185FA5">' + fmt(p.precio) + '</div>'
-          + '<span class="badge ' + estadoBadge(p.estado) + '" style="margin-top:4px">' + p.estado + '</span></div></div>'
-          + (p.notas ? '<div style="font-size:12px;color:#666;margin-top:6px">' + p.notas + '</div>' : '')
+          + '<div class="prop-header">'
+          + '<div>'
+          + '<div style="font-weight:700;font-size:15px">' + p.direccion + '</div>'
+          + '<div style="font-size:12px;color:#888;margin-top:3px">' + (p.localidad||'') + (p.localidad&&p.tipo?' · ':'') + (p.tipo||'') + ' · ' + (p.agente||'').split(' ').slice(-1)[0] + '</div>'
+          + (p.cliente ? '<div style="font-size:12px;color:#555;margin-top:4px">👤 ' + p.cliente + (p.telefono ? ' · ' + p.telefono : '') + '</div>' : '')
+          + '</div>'
+          + '<div style="text-align:right">'
+          + '<div style="font-weight:700;font-size:16px;color:#185FA5">' + fmt(p.precio) + '</div>'
+          + (p.valor_cierre ? '<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: ' + fmt(p.valor_cierre) + '</div>' : '')
+          + '<div style="margin-top:4px"><span class="badge ' + estadoBadge(p.estado) + '">' + p.estado + '</span></div>'
+          + '</div>'
+          + '</div>'
           + '<div class="prop-actions">'
-          + '<button class="btn btn-sm btn-primary" onclick="abrirVisitas(\'' + p.id + '\',\'' + p.direccion + '\')">Visitas</button>'
-          + '<button class="btn btn-sm" onclick="abrirGastosProp(\'' + p.id + '\',\'' + p.direccion + '\')">Gastos</button>'
-          + '<button class="btn btn-sm btn-success" onclick="abrirReserva(\'' + p.id + '\',\'' + p.direccion + '\')">Reservar</button>'
+          + '<button class="btn btn-sm btn-primary" onclick="abrirGastosProp(\'' + p.id + '\',\'' + p.direccion.replace(/'/g,"\\'") + '\')">+ Gasto</button>'
+          + '<button class="btn btn-sm btn-success" onclick="abrirReserva(\'' + p.id + '\',\'' + p.direccion.replace(/'/g,"\\'") + '\',\'' + (p.precio||0) + '\')">Reservar/Vender</button>'
           + '<button class="btn btn-sm" onclick="cambiarEstado(\'' + p.id + '\')">Estado</button>'
-          + '<button class="btn btn-sm" style="color:#991b1b" onclick="eliminarProp(\'' + p.id + '\')">Eliminar</button>'
-          + '</div></div>';
+          + '<button class="btn btn-sm" onclick="editarPropiedad(\'' + p.id + '\')">Editar</button>'
+          + '<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\'' + p.id + '\')">Eliminar</button>'
+          + '</div>'
+          + '</div>';
       });
     } else {
-      html += '<div class="empty">No hay propiedades. Agregá la primera.</div>';
+      html += '<div class="empty">No hay propiedades. Agregá la primera con el botón de arriba.</div>';
     }
     document.getElementById('tabContent').innerHTML = html;
   });
 }
 
-function abrirModalPropiedad() {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nueva propiedad</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    + '<div class="form-group"><label>Dirección</label><input id="f-dir" autocomplete="off" /></div>'
-    + '<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
-    + '<div class="form-group"><label>Zona</label><input id="f-zona" value="Villa Urquiza" autocomplete="off" /></div></div>'
-    + '<div class="row"><div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div>'
-    + '<div class="form-group"><label>Precio (USD)</label><input id="f-precio" type="number" /></div></div>'
-    + '<div class="form-group"><label>Notas</label><textarea id="f-notas" rows="2"></textarea></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarPropiedad()">Guardar</button></div>';
+function abrirModalPropiedad(propData) {
+  var editar = propData ? true : false;
+  var d = propData || {};
+  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">' + (editar ? 'Editar propiedad' : 'Nueva propiedad') + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+
+    + '<div class="section-divider">Datos de la propiedad</div>'
+    + '<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="' + (d.direccion||'') + '" autocomplete="off" /></div>'
+    + '<div class="form-group"><label>Localidad</label><input id="f-loc" value="' + (d.localidad||'Villa Urquiza') + '" autocomplete="off" /></div></div>'
+    + '<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option' + (d.tipo==='Departamento'?' selected':'') + '>Departamento</option><option' + (d.tipo==='PH'?' selected':'') + '>PH</option><option' + (d.tipo==='Casa'?' selected':'') + '>Casa</option><option' + (d.tipo==='Local'?' selected':'') + '>Local</option><option' + (d.tipo==='Oficina'?' selected':'') + '>Oficina</option></select></div>'
+    + '<div class="form-group"><label>Estado</label><select id="f-estado"><option' + (d.estado==='En venta'?' selected':'') + '>En venta</option><option' + (d.estado==='En alquiler'?' selected':'') + '>En alquiler</option><option' + (d.estado==='Reservada'?' selected':'') + '>Reservada</option><option' + (d.estado==='Vendida'?' selected':'') + '>Vendida</option><option' + (d.estado==='Alquilada'?' selected':'') + '>Alquilada</option></select></div></div>'
+    + '<div class="row"><div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="' + (d.precio||'') + '" /></div>'
+    + '<div class="form-group"><label>Valor de cierre (USD)</label><input id="f-cierre" type="number" value="' + (d.valor_cierre||'') + '" /></div></div>'
+
+    + '<div class="section-divider">Datos del cliente (vendedor)</div>'
+    + '<div class="form-group"><label>Nombre del cliente</label><input id="f-cliente" value="' + (d.cliente||'') + '" autocomplete="off" /></div>'
+    + '<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="' + (d.telefono||'') + '" autocomplete="off" /></div>'
+    + '<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="' + (d.mail||'') + '" autocomplete="off" /></div></div>'
+
+    + '<div class="section-divider">Comisiones</div>'
+    + '<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="f-comp" type="number" value="' + (d.comision_compradora||3) + '" /></div>'
+    + '<div class="form-group"><label>Comisión vendedor (%)</label><input id="f-vend" type="number" value="' + (d.comision_vendedora||3) + '" /></div></div>'
+
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+    + '<button class="btn" onclick="closeModal()">Cancelar</button>'
+    + '<button class="btn btn-primary" onclick="' + (editar ? 'guardarEdicionPropiedad(\'' + d.id + '\')' : 'guardarPropiedad()') + '">Guardar</button>'
+    + '</div>';
   openModal();
 }
 
 function guardarPropiedad() {
-  var data = { id: uid(), direccion: document.getElementById('f-dir').value, tipo: document.getElementById('f-tipo').value, zona: document.getElementById('f-zona').value, estado: document.getElementById('f-estado').value, precio: document.getElementById('f-precio').value, agente: currentUser.nombre, notas: document.getElementById('f-notas').value };
+  var data = {
+    id: uid(),
+    direccion: document.getElementById('f-dir').value,
+    localidad: document.getElementById('f-loc').value,
+    tipo: document.getElementById('f-tipo').value,
+    estado: document.getElementById('f-estado').value,
+    precio: document.getElementById('f-precio').value,
+    valor_cierre: document.getElementById('f-cierre').value,
+    cliente: document.getElementById('f-cliente').value,
+    telefono: document.getElementById('f-tel').value,
+    mail: document.getElementById('f-mail').value,
+    comision_compradora: document.getElementById('f-comp').value,
+    comision_vendedora: document.getElementById('f-vend').value,
+    agente: currentUser.nombre,
+    fecha: today()
+  };
   closeModal();
   loading();
   addRow('Propiedades', data, function() { loadPropiedades(); });
+}
+
+function editarPropiedad(id) {
+  getSheet('Propiedades', function(e, props) {
+    var prop = (props||[]).find(function(p){ return p.id === id; });
+    if (prop) abrirModalPropiedad(prop);
+  });
+}
+
+function guardarEdicionPropiedad(id) {
+  var data = {
+    direccion: document.getElementById('f-dir').value,
+    localidad: document.getElementById('f-loc').value,
+    tipo: document.getElementById('f-tipo').value,
+    estado: document.getElementById('f-estado').value,
+    precio: document.getElementById('f-precio').value,
+    valor_cierre: document.getElementById('f-cierre').value,
+    cliente: document.getElementById('f-cliente').value,
+    telefono: document.getElementById('f-tel').value,
+    mail: document.getElementById('f-mail').value,
+    comision_compradora: document.getElementById('f-comp').value,
+    comision_vendedora: document.getElementById('f-vend').value
+  };
+  closeModal();
+  loading();
+  updateRow('Propiedades', id, data, function() { loadPropiedades(); });
 }
 
 function eliminarProp(id) {
@@ -420,57 +470,84 @@ function guardarEstado(id) {
   updateRow('Propiedades', id, { estado: estado }, function() { loadPropiedades(); });
 }
 
-function abrirVisitas(propId, dir) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Visitas · ' + dir + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    + '<div class="form-group"><label>Tipo</label><select id="v-tipo"><option>Visita presencial</option><option>Consulta telefónica</option><option>Consulta WhatsApp</option><option>Consulta portal</option></select></div>'
-    + '<div class="form-group"><label>Fecha</label><input id="v-fecha" type="date" value="' + today() + '" /></div>'
-    + '<div class="form-group"><label>Notas</label><textarea id="v-notas" rows="2"></textarea></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarVisita(\'' + propId + '\')">Guardar</button></div>';
-  openModal();
-}
-
-function guardarVisita(propId) {
-  var data = { id: uid(), fecha: document.getElementById('v-fecha').value, propiedad_id: propId, tipo: document.getElementById('v-tipo').value, notas: document.getElementById('v-notas').value };
-  closeModal();
-  addRow('Visitas', data, function() { alert('Visita registrada!'); });
-}
-
 function abrirGastosProp(propId, dir) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Gastos · ' + dir + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    + '<div class="form-group"><label>Concepto</label><select id="g-concepto"><option>Destaque portal</option><option>Cartel</option><option>Publicidad Meta</option><option>Fotografía</option><option>Otros</option></select></div>'
+  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo gasto · ' + dir + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    + '<div class="form-group"><label>Tipo de gasto</label><select id="g-concepto"><option>Cartel</option><option>Zonaprop</option><option>Meta</option><option>Regalo</option><option>Fotografía</option><option>Otros</option></select></div>'
     + '<div class="row"><div class="form-group"><label>Monto ($)</label><input id="g-monto" type="number" /></div>'
     + '<div class="form-group"><label>Fecha</label><input id="g-fecha" type="date" value="' + today() + '" /></div></div>'
+    + '<div class="form-group"><label>Detalle (opcional)</label><input id="g-detalle" autocomplete="off" placeholder="Descripción adicional..." /></div>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGastoProp(\'' + propId + '\')">Guardar</button></div>';
   openModal();
 }
 
 function guardarGastoProp(propId) {
-  var data = { id: uid(), fecha: document.getElementById('g-fecha').value, propiedad_id: propId, concepto: document.getElementById('g-concepto').value, monto: document.getElementById('g-monto').value, agente: currentUser.nombre };
+  var concepto = document.getElementById('g-concepto').value;
+  var detalle = document.getElementById('g-detalle').value;
+  var data = {
+    id: uid(),
+    fecha: document.getElementById('g-fecha').value,
+    propiedad_id: propId,
+    concepto: concepto + (detalle ? ' - ' + detalle : ''),
+    monto: document.getElementById('g-monto').value,
+    agente: currentUser.nombre
+  };
   closeModal();
-  addRow('Gastos', data, function() { alert('Gasto registrado!'); });
+  addRow('Gastos', data, function() {
+    alert('Gasto registrado correctamente');
+  });
 }
 
-function abrirReserva(propId, dir) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Reserva · ' + dir + '</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    + '<div class="form-group"><label>Precio de reserva (USD)</label><input id="r-precio" type="number" /></div>'
-    + '<div class="row"><div class="form-group"><label>Comisión compradora (%)</label><input id="r-comp" type="number" value="3" /></div>'
-    + '<div class="form-group"><label>Comisión vendedora (%)</label><input id="r-vend" type="number" value="3" /></div></div>'
-    + '<div class="form-group"><label>Fecha</label><input id="r-fecha" type="date" value="' + today() + '" /></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="guardarReserva(\'' + propId + '\')">Confirmar reserva</button></div>';
+function abrirReserva(propId, dir, precioActual) {
+  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Reservar / Cerrar operación</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:1rem">' + dir + '</div>'
+    + '<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="r-cierre" type="number" value="' + precioActual + '" /></div>'
+    + '<div class="form-group"><label>Fecha</label><input id="r-fecha" type="date" value="' + today() + '" /></div></div>'
+    + '<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="r-comp" type="number" value="3" /></div>'
+    + '<div class="form-group"><label>Comisión vendedor (%)</label><input id="r-vend" type="number" value="3" /></div></div>'
+    + '<div id="r-preview" style="background:#f0f9ff;border-radius:8px;padding:12px;margin:1rem 0;font-size:13px"></div>'
+    + '<div class="form-group"><label>Nuevo estado</label><select id="r-estado"><option>Reservada</option><option>Vendida</option></select></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="guardarCierre(\'' + propId + '\')">Confirmar</button></div>';
   openModal();
+
+  function actualizarPreview() {
+    var cierre = Number(document.getElementById('r-cierre').value||0);
+    var comp = Number(document.getElementById('r-comp').value||0);
+    var vend = Number(document.getElementById('r-vend').value||0);
+    var total = cierre * (comp + vend) / 100;
+    document.getElementById('r-preview').innerHTML =
+      '<strong>Comisión compradora:</strong> ' + fmt(cierre * comp / 100) + '<br>'
+      + '<strong>Comisión vendedora:</strong> ' + fmt(cierre * vend / 100) + '<br>'
+      + '<strong style="color:#065f46">Comisión total proyectada: ' + fmt(total) + '</strong>';
+  }
+  document.getElementById('r-cierre').addEventListener('input', actualizarPreview);
+  document.getElementById('r-comp').addEventListener('input', actualizarPreview);
+  document.getElementById('r-vend').addEventListener('input', actualizarPreview);
+  actualizarPreview();
 }
 
-function guardarReserva(propId) {
-  var precio = Number(document.getElementById('r-precio').value);
-  var comp = Number(document.getElementById('r-comp').value);
-  var vend = Number(document.getElementById('r-vend').value);
-  var comTotal = precio * (comp + vend) / 100;
-  var data = { id: uid(), fecha: document.getElementById('r-fecha').value, propiedad_id: propId, precio_reserva: precio, comision_compradora: comp, comision_vendedora: vend, agente: currentUser.nombre };
+function guardarCierre(propId) {
+  var cierre = Number(document.getElementById('r-cierre').value||0);
+  var comp = Number(document.getElementById('r-comp').value||0);
+  var vend = Number(document.getElementById('r-vend').value||0);
+  var total = cierre * (comp + vend) / 100;
+  var estado = document.getElementById('r-estado').value;
+  var fecha = document.getElementById('r-fecha').value;
+
   closeModal();
-  addRow('Reservas', data, function() {
-    updateRow('Propiedades', propId, { estado: 'Reservada' }, function() {
-      loadPropiedades();
-    });
+  loading();
+
+  updateRow('Propiedades', propId, { valor_cierre: cierre, estado: estado, comision_compradora: comp, comision_vendedora: vend }, function() {
+    var opData = {
+      id: uid(),
+      fecha: fecha,
+      propiedad_id: propId,
+      precio_final: cierre,
+      comision_total: total,
+      gastos_total: 0,
+      rentabilidad: total,
+      agente: currentUser.nombre
+    };
+    addRow('Operaciones', opData, function() { loadPropiedades(); });
   });
 }
 
@@ -491,8 +568,8 @@ function loadFinanzas() {
       ops = ops.filter(function(o){return o.agente === currentUser.nombre;});
     }
 
-    var ingresos = fins.filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosOficina = fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+    var ingresos = fins.filter(function(f){return f.tipo==='Ingreso';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp = gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
     var comisiones = ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
     var rentabilidad = comisiones - gastosProp - gastosOficina;
@@ -510,7 +587,6 @@ function loadFinanzas() {
       + '</div>';
 
     html += '<div class="section-header" style="margin-top:1rem"><div class="section-title">Movimientos de oficina</div><button class="btn btn-primary btn-sm" onclick="abrirModalFinanza()">+ Agregar</button></div>';
-
     if (fins.length) {
       html += '<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Agente</th><th>Monto</th><th></th></tr>';
       fins.forEach(function(f) {
@@ -518,7 +594,7 @@ function loadFinanzas() {
       });
       html += '</table></div></div>';
     } else {
-      html += '<div class="empty">No hay movimientos registrados.</div>';
+      html += '<div class="empty">No hay movimientos de oficina.</div>';
     }
 
     html += '<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Gastos por propiedad</div></div>';
@@ -529,7 +605,7 @@ function loadFinanzas() {
       });
       html += '</table></div></div>';
     } else {
-      html += '<div class="empty">No hay gastos por propiedad registrados.</div>';
+      html += '<div class="empty">No hay gastos por propiedad.</div>';
     }
 
     document.getElementById('tabContent').innerHTML = html;
@@ -555,7 +631,7 @@ function loadFinanzas() {
 }
 
 function abrirModalFinanza() {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo movimiento</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo movimiento de oficina</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     + '<div class="row"><div class="form-group"><label>Tipo</label><select id="ff-tipo"><option>Ingreso</option><option>Gasto</option></select></div>'
     + '<div class="form-group"><label>Fecha</label><input id="ff-fecha" type="date" value="' + today() + '" /></div></div>'
     + '<div class="form-group"><label>Concepto</label><input id="ff-concepto" autocomplete="off" /></div>'
@@ -582,14 +658,17 @@ function loadObjetivos() {
   getSheet('Objetivos', function(e, objs) {
     if (currentUser.rol !== 'Líder') {
       objs = (objs||[]).filter(function(o){return o.agente === currentUser.nombre || o.agente === 'Equipo';});
+    } else {
+      objs = objs || [];
     }
     var html = '<div class="section-header"><div class="section-title">Objetivos</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
-    if (objs && objs.length) {
+    if (objs.length) {
       objs.forEach(function(o) {
         var p = pct(o.actual, o.meta);
         html += '<div class="obj-card">'
-          + '<div class="obj-header"><div><div style="font-weight:600;font-size:14px">' + o.titulo + '</div>'
-          + '<div style="font-size:12px;color:#888;margin-top:3px">' + o.agente + (o.vencimiento ? ' · Vence ' + o.vencimiento : '') + ' · ' + o.periodo + '</div></div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+          + '<div><div style="font-weight:600;font-size:14px">' + o.titulo + '</div>'
+          + '<div style="font-size:12px;color:#888;margin-top:3px">' + o.agente + (o.vencimiento ? ' · Vence ' + o.vencimiento : '') + ' · ' + (o.periodo||'') + '</div></div>'
           + '<div style="text-align:right"><div style="font-size:20px;font-weight:700">' + o.actual + ' <span style="font-size:13px;color:#888;font-weight:400">/ ' + o.meta + ' ' + o.unidad + '</span></div>'
           + '<div style="font-size:12px;color:#888">' + p + '% completado</div></div></div>'
           + '<div class="progress-bar"><div class="progress-fill" style="width:' + p + '%;background:' + progColor(p) + '"></div></div>'
