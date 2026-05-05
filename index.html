@@ -221,8 +221,7 @@ function doLogin() {
 document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 
 function doLogout() {
-  currentUser = null;
-  window.location.href = window.location.href;
+  window.location.replace(window.location.pathname);
 }
 
 function showTab(tab, btn) {
