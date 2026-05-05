@@ -223,6 +223,7 @@ function doLogout() {
   currentUser = null;
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('loginWrap').style.minHeight = '100vh';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
 }
