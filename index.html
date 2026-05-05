@@ -222,12 +222,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogi
 
 function doLogout() {
   currentUser = null;
-  document.getElementById('mainApp').style.display = 'none';
-  document.getElementById('mainApp').classList.add('hidden');
-  document.getElementById('loginWrap').style.display = 'flex';
-  document.getElementById('loginWrap').style.minHeight = '100vh';
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
+  window.location.reload();
 }
 
 function showTab(tab, btn) {
