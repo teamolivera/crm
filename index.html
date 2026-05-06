@@ -380,22 +380,26 @@ function abrirModalPropiedad(d) {
   document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">'+(editar?'Editar propiedad':'Nueva propiedad')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="section-divider">Datos de la propiedad</div>'
     +'<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="'+(d.direccion||'')+'" autocomplete="off" /></div>'
-    +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||'Villa Urquiza')+'" autocomplete="off" /></div></div>'
+    +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off" /></div></div>'
     +'<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
     +'<div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div></div>'
-    +'<div class="row"><div class="form-group"><label>Valor publicación (USD)</label><input id="f-precio" type="number" value="'+(d.precio||'')+'" /></div>'
-    +'<div class="form-group"><label>Valor cierre (USD)</label><input id="f-cierre" type="number" value="'+(d.valor_cierre||'')+'" /></div></div>'
+    +'<div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="'+(d.precio||'')+'" /></div>'
     +'<div class="section-divider">Cliente (vendedor)</div>'
     +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off" /></div>'
     +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="'+(d.telefono||'')+'" autocomplete="off" /></div>'
     +'<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="'+(d.mail||'')+'" autocomplete="off" /></div></div>'
     +'<div class="section-divider">Comisiones</div>'
-    +'<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="f-comp" type="number" value="'+(d.comision_compradora||3)+'" /></div>'
+    +'<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="f-comp" type="number" value="'+(d.comision_compradora||4)+'" /></div>'
     +'<div class="form-group"><label>Comisión vendedor (%)</label><input id="f-vend" type="number" value="'+(d.comision_vendedora||3)+'" /></div></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-primary" onclick="'+(editar?'guardarEditProp(\''+d.id+'\')':'guardarProp()')+'">Guardar</button></div>';
-  if(d.tipo) setTimeout(function(){document.getElementById('f-tipo').value=d.tipo;document.getElementById('f-estado').value=d.estado;},50);
+    +'<button class="btn btn-primary" id="btn-guardar-prop">Guardar</button></div>';
+  
+  setTimeout(function(){
+    if(d.tipo) document.getElementById('f-tipo').value = d.tipo;
+    if(d.estado) document.getElementById('f-estado').value = d.estado;
+    document.getElementById('btn-guardar-prop').onclick = editar ? function(){guardarEditProp(d.id);} : guardarProp;
+  }, 50);
   openModal();
 }
 
@@ -410,9 +414,21 @@ function editarProp(id) {
 }
 
 function guardarEditProp(id) {
-  var data = {direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),valor_cierre:v('f-cierre'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend')};
-  closeModal(); loading();
-  updRow('Propiedades', id, data, function(){loadPropiedades();});
+  var data = {
+    direccion: v('f-dir'),
+    localidad: v('f-loc'),
+    tipo: v('f-tipo'),
+    estado: v('f-estado'),
+    precio: v('f-precio'),
+    cliente: v('f-cliente'),
+    telefono: v('f-tel'),
+    mail: v('f-mail'),
+    comision_compradora: v('f-comp'),
+    comision_vendedora: v('f-vend')
+  };
+  closeModal();
+  loading();
+  updRow('Propiedades', id, data, function(){ loadPropiedades(); });
 }
 
 function eliminarProp(id) { if(!confirm('¿Eliminar esta propiedad?'))return; loading(); delRow('Propiedades',id,function(){loadPropiedades();}); }
