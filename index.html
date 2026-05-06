@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v5 -->
+<!-- v6 -->
 <html>
 <head>
   <meta charset="UTF-8">
@@ -27,7 +27,6 @@
     .btn-primary:hover{background:#0C447C}
     .btn-success{background:#065f46;color:#fff;border-color:#065f46}
     .btn-success:hover{background:#044232}
-    .btn-warning{background:#92400e;color:#fff;border-color:#92400e}
     .btn-sm{padding:5px 10px;font-size:12px}
     .btn-full{width:100%;padding:12px;font-size:15px}
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -92,8 +91,6 @@
     .agente-chip{padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;font-weight:500;color:#666}
     .agente-chip.active{background:#185FA5;color:#fff;border-color:#185FA5}
     .dev-card{background:#fff;border-radius:12px;border:2px solid #dbeafe;padding:1.25rem;margin-bottom:0.75rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
-    .unidad-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
-    .unidad-row:last-child{border-bottom:none}
   </style>
 </head>
 <body>
@@ -126,7 +123,7 @@
       <button class="btn btn-sm" onclick="doLogout()">Salir</button>
     </div>
   </div>
-  <div class="nav" id="mainNav">
+  <div class="nav">
     <button class="nav-btn active" onclick="showTab('dashboard',this)">Dashboard</button>
     <button class="nav-btn" onclick="showTab('propiedades',this)">Propiedades</button>
     <button class="nav-btn" onclick="showTab('desarrollos',this)">Desarrollos</button>
@@ -147,10 +144,10 @@ var currentUser = null;
 var allAgentes = [];
 
 function getSheet(sheet, cb) {
-  fetch(API + '?sheet=' + sheet).then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});
+  fetch(API+'?sheet='+sheet).then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});
 }
 function addRow(sheet, data, cb) {
-  fetch(API + '?sheet=' + sheet, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[data]})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});
+  fetch(API+'?sheet='+sheet,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[data]})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});
 }
 function delRow(sheet, id, cb) {
   fetch(API+'/id/'+id+'?sheet='+sheet,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});
@@ -165,9 +162,7 @@ function mostrarApp() {
   document.getElementById('avatarTop').textContent = currentUser.initials;
   document.getElementById('userNameTop').textContent = currentUser.nombre;
   document.getElementById('userRolTop').textContent = currentUser.rol;
-  if (currentUser.rol === 'Líder') {
-    document.getElementById('btnEquipo').style.display = 'block';
-  }
+  if (currentUser.rol === 'Líder') document.getElementById('btnEquipo').style.display = 'block';
   cargarAgentes();
   showTab('dashboard', document.querySelector('.nav-btn'));
 }
@@ -186,15 +181,13 @@ function doLogin() {
   err.classList.add('hidden');
   btn.textContent = 'Entrando...';
   btn.disabled = true;
-  fetch(API + '?sheet=Usuarios').then(function(r){return r.json();}).then(function(rows) {
+  fetch(API+'?sheet=Usuarios').then(function(r){return r.json();}).then(function(rows) {
     btn.textContent = 'Entrar';
     btn.disabled = false;
     var user = null;
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i].usuario === u && rows[i].password === p) { user = rows[i]; break; }
-    }
+    for (var i=0;i<rows.length;i++) { if(rows[i].usuario===u&&rows[i].password===p){user=rows[i];break;} }
     if (user) {
-      currentUser = { user: u, nombre: user.nombre, rol: user.rol, initials: user.nombre.split(' ').map(function(x){return x[0];}).join('').slice(0,2) };
+      currentUser = {user:u,nombre:user.nombre,rol:user.rol,initials:user.nombre.split(' ').map(function(x){return x[0];}).join('').slice(0,2)};
       localStorage.setItem('crm_user', JSON.stringify(currentUser));
       mostrarApp();
     } else {
@@ -209,7 +202,7 @@ function doLogin() {
   });
 }
 
-document.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+document.addEventListener('keydown', function(e) { if(e.key==='Enter') doLogin(); });
 
 function doLogout() {
   currentUser = null;
@@ -223,40 +216,40 @@ function doLogout() {
 
 (function() {
   var saved = localStorage.getItem('crm_user');
-  if (saved) {
-    try { currentUser = JSON.parse(saved); mostrarApp(); } catch(e) { localStorage.removeItem('crm_user'); }
-  }
+  if (saved) { try { currentUser = JSON.parse(saved); mostrarApp(); } catch(e) { localStorage.removeItem('crm_user'); } }
 })();
 
 function showTab(tab, btn) {
   document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
-  if (btn) btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   loading();
-  if (tab==='dashboard') loadDashboard();
-  else if (tab==='propiedades') loadPropiedades();
-  else if (tab==='desarrollos') loadDesarrollos();
-  else if (tab==='finanzas') loadFinanzas();
-  else if (tab==='objetivos') loadObjetivos();
-  else if (tab==='equipo') loadEquipo();
+  if(tab==='dashboard') loadDashboard();
+  else if(tab==='propiedades') loadPropiedades();
+  else if(tab==='desarrollos') loadDesarrollos();
+  else if(tab==='finanzas') loadFinanzas();
+  else if(tab==='objetivos') loadObjetivos();
+  else if(tab==='equipo') loadEquipo();
 }
 
-function fmt(n,moneda) { return (moneda==='ARS'?'$':'USD ')+Number(n||0).toLocaleString('es-AR'); }
-function fmtAuto(n,moneda) { return moneda==='ARS' ? '$'+Number(n||0).toLocaleString('es-AR') : 'USD '+Number(n||0).toLocaleString('es-AR'); }
-function pct(a,m) { return Math.min(100,Math.round(Number(a||0)/Number(m||1)*100))||0; }
-function estadoBadge(e) {
-  if(e==='En venta') return 'badge-blue';
+function v(id){return document.getElementById(id)?document.getElementById(id).value:'';}
+function esc(s){return (s||'').replace(/'/g,"\\'");}
+function uid(){return Date.now().toString();}
+function today(){return new Date().toISOString().slice(0,10);}
+function loading(){document.getElementById('tabContent').innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';}
+function pct(a,m){return Math.min(100,Math.round(Number(a||0)/Number(m||1)*100))||0;}
+function progColor(p){return p>=80?'#065f46':p>=50?'#185FA5':'#92400e';}
+function estadoBadge(e){
+  if(e==='En venta'||e==='Activa') return 'badge-blue';
   if(e==='Vendida') return 'badge-green';
   if(e==='Reservada') return 'badge-amber';
   if(e==='En alquiler') return 'badge-purple';
   if(e==='Alquilada') return 'badge-green';
-  if(e==='Activa') return 'badge-blue';
   if(e==='Cancelada') return 'badge-red';
   return 'badge-gray';
 }
-function progColor(p) { return p>=80?'#065f46':p>=50?'#185FA5':'#92400e'; }
-function uid() { return Date.now().toString(); }
-function today() { return new Date().toISOString().slice(0,10); }
-function loading() { document.getElementById('tabContent').innerHTML = '<div class="loading"><span class="spinner"></span>Cargando...</div>'; }
+function openModal(){document.getElementById('modalOverlay').style.display='flex';}
+function closeModal(){document.getElementById('modalOverlay').style.display='none';document.getElementById('modalBox').innerHTML='';}
+function closeModalOverlay(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 
 // ==================== DASHBOARD ====================
 function loadDashboard(filtroAgente) {
@@ -269,71 +262,70 @@ function loadDashboard(filtroAgente) {
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
     fetch(API+'?sheet=Reservas').then(function(r){return r.json();})
   ]).then(function(results) {
-    var props = results[0]||[], fins = results[1]||[], objs = results[2]||[], ops = results[3]||[], gastos = results[4]||[], reservas = results[5]||[];
+    var props=results[0]||[],fins=results[1]||[],objs=results[2]||[],ops=results[3]||[],gastos=results[4]||[],reservas=results[5]||[];
+    props=props.filter(function(p){return p.agente===agente;});
+    fins=fins.filter(function(f){return f.agente===agente;});
+    gastos=gastos.filter(function(g){return g.agente===agente;});
+    ops=ops.filter(function(o){return o.agente===agente;});
+    reservas=reservas.filter(function(r){return r.agente===agente;});
 
-    props = props.filter(function(p){return p.agente===agente;});
-    fins = fins.filter(function(f){return f.agente===agente;});
-    gastos = gastos.filter(function(g){return g.agente===agente;});
-    ops = ops.filter(function(o){return o.agente===agente;});
-    reservas = reservas.filter(function(r){return r.agente===agente;});
+    var enVenta=props.filter(function(p){return p.estado==='En venta';}).length;
+    var reservadas=props.filter(function(p){return p.estado==='Reservada';}).length;
+    var vendidas=props.filter(function(p){return p.estado==='Vendida';}).length;
+    var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+    var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var comisiones=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var rentabilidad=comisiones-gastosProp-gastosOficina;
+    var comReservas=reservas.reduce(function(a,r){return a+Number(r.precio_reserva||0)*(Number(r.comision_compradora||0)+Number(r.comision_vendedora||0))/100;},0);
+    var comStock=props.filter(function(p){return p.estado==='En venta';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
 
-    var enVenta = props.filter(function(p){return p.estado==='En venta';}).length;
-    var reservadas = props.filter(function(p){return p.estado==='Reservada';}).length;
-    var vendidas = props.filter(function(p){return p.estado==='Vendida';}).length;
-    var gastosOficina = fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var gastosProp = gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
-    var comisiones = ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-    var rentabilidad = comisiones - gastosProp - gastosOficina;
-    var comProyectadasReservas = reservas.reduce(function(a,r){return a+Number(r.precio_reserva||0)*(Number(r.comision_compradora||0)+Number(r.comision_vendedora||0))/100;},0);
-    var comProyectadasStock = props.filter(function(p){return p.estado==='En venta';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
-
-    var html = '';
-    if (currentUser.rol==='Líder') {
-      html += '<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Ver datos de:</span>';
-      allAgentes.forEach(function(a) {
-        html += '<div class="agente-chip' + (a===agente?' active':'') + '" onclick="loadDashboard(\'' + a + '\')">' + a.split(' ')[0] + '</div>';
+    var html='';
+    if(currentUser.rol==='Líder'){
+      html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Ver datos de:</span>';
+      allAgentes.forEach(function(a){
+        html+='<div class="agente-chip'+(a===agente?' active':'')+'" onclick="loadDashboard(\''+esc(a)+'\')">'+a.split(' ')[0]+'</div>';
       });
-      html += '</div>';
+      html+='</div>';
     }
 
-    html += '<div class="grid-metrics">'
-      + '<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+enVenta+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value green">USD '+Number(comisiones).toLocaleString('es-AR')+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+Number(gastosProp+gastosOficina).toLocaleString('es-AR')+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+Number(rentabilidad).toLocaleString('es-AR')+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Com. proyectada reservas</div><div class="metric-value amber">USD '+Number(comProyectadasReservas).toLocaleString('es-AR')+'</div></div>'
-      + '<div class="metric"><div class="metric-label">Com. proyectada stock</div><div class="metric-value blue">USD '+Number(comProyectadasStock).toLocaleString('es-AR')+'</div></div>'
-      + '</div>';
+    html+='<div class="grid-metrics">'
+      +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+enVenta+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value green">USD '+Number(comisiones).toLocaleString('es-AR')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+Number(gastosProp+gastosOficina).toLocaleString('es-AR')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+Number(rentabilidad).toLocaleString('es-AR')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. proyectada reservas</div><div class="metric-value amber">USD '+Number(comReservas).toLocaleString('es-AR')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. proyectada stock</div><div class="metric-value blue">USD '+Number(comStock).toLocaleString('es-AR')+'</div></div>'
+      +'</div>';
 
-    html += '<div class="charts-grid">'
-      + '<div class="chart-card"><div class="chart-title">Estado de propiedades</div><canvas id="chartEstados" height="200"></canvas></div>'
-      + '<div class="chart-card"><div class="chart-title">Resultado financiero</div><canvas id="chartFinanzas" height="200"></canvas></div>'
-      + '</div>';
+    html+='<div class="charts-grid">'
+      +'<div class="chart-card"><div class="chart-title">Estado de propiedades</div><canvas id="chartEstados" height="200"></canvas></div>'
+      +'<div class="chart-card"><div class="chart-title">Resultado financiero</div><canvas id="chartFinanzas" height="200"></canvas></div>'
+      +'</div>';
 
-    var objsFiltrados = objs.filter(function(o){return o.agente===agente||o.agente==='Equipo';});
-    if (objsFiltrados.length) {
-      html += '<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
-      objsFiltrados.forEach(function(o) {
-        var p = pct(o.actual, o.meta);
-        html += '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+o.titulo+' <span style="color:#888;font-size:11px">('+o.agente+')</span></span><span style="font-weight:600">'+o.actual+'/'+o.meta+' '+o.unidad+'</span></div>'
+    var objsFiltrados=objs.filter(function(o){return o.agente===agente||o.agente==='Equipo';});
+    if(objsFiltrados.length){
+      html+='<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
+      objsFiltrados.forEach(function(o){
+        var p=pct(o.actual,o.meta);
+        html+='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+o.titulo+' <span style="color:#888;font-size:11px">('+o.agente+')</span></span><span style="font-weight:600">'+o.actual+'/'+o.meta+' '+o.unidad+'</span></div>'
           +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div></div>';
       });
-      html += '</div>';
+      html+='</div>';
     }
 
-    document.getElementById('tabContent').innerHTML = html;
+    document.getElementById('tabContent').innerHTML=html;
 
-    new Chart(document.getElementById('chartEstados'), {
+    new Chart(document.getElementById('chartEstados'),{
       type:'doughnut',
       data:{labels:['En venta','Reservadas','Vendidas'],datasets:[{data:[enVenta,reservadas,vendidas],backgroundColor:['#3b82f6','#f59e0b','#10b981']}]},
       options:{responsive:true,plugins:{legend:{position:'bottom'}}}
     });
-    new Chart(document.getElementById('chartFinanzas'), {
+    new Chart(document.getElementById('chartFinanzas'),{
       type:'bar',
-      data:{labels:['Facturación','Gastos','Rentabilidad','Com.Reservas','Com.Stock'],datasets:[{data:[comisiones,gastosProp+gastosOficina,rentabilidad,comProyectadasReservas,comProyectadasStock],backgroundColor:['#10b981','#ef4444',rentabilidad>=0?'#3b82f6':'#ef4444','#f59e0b','#8b5cf6']}]},
+      data:{labels:['Facturación','Gastos','Rentabilidad','Com.Reservas','Com.Stock'],datasets:[{data:[comisiones,gastosProp+gastosOficina,rentabilidad,comReservas,comStock],backgroundColor:['#10b981','#ef4444',rentabilidad>=0?'#3b82f6':'#ef4444','#f59e0b','#8b5cf6']}]},
       options:{responsive:true,plugins:{legend:{display:false}}}
     });
   });
@@ -342,14 +334,14 @@ function loadDashboard(filtroAgente) {
 // ==================== PROPIEDADES ====================
 function loadPropiedades() {
   getSheet('Propiedades', function(e, props) {
-    props = (props||[]).filter(function(p){return p.agente===currentUser.nombre;});
-    var html = '<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalPropiedad()">+ Nueva propiedad</button></div>';
-    if (props.length) {
-      props.forEach(function(p) {
-        html += '<div class="prop-card">'
+    props=(props||[]).filter(function(p){return p.agente===currentUser.nombre;});
+    var html='<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalPropiedad()">+ Nueva propiedad</button></div>';
+    if(props.length){
+      props.forEach(function(p){
+        html+='<div class="prop-card">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:700;font-size:15px">'+p.direccion+'</div>'
-          +'<div style="font-size:12px;color:#888;margin-top:3px">'+(p.localidad||'')+(p.tipo?' · '+p.tipo:'')+'</div>'
+          +'<div style="font-size:12px;color:#888;margin-top:3px">'+(p.localidad||p.zona||'')+(p.tipo?' · '+p.tipo:'')+'</div>'
           +(p.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+p.cliente+(p.telefono?' · '+p.telefono:'')+'</div>':'')
           +'</div>'
           +'<div style="text-align:right">'
@@ -359,25 +351,23 @@ function loadPropiedades() {
           +'</div></div>'
           +'<div class="prop-actions">'
           +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
-          +'<button class="btn btn-sm btn-success" onclick="abrirReserva(\''+p.id+'\',\''+esc(p.direccion)+'\',\''+( p.precio||0)+'\')">Reservar/Vender</button>'
+          +'<button class="btn btn-sm btn-success" onclick="abrirReserva(\''+p.id+'\',\''+esc(p.direccion)+'\',\''+Number(p.precio||0)+'\',\''+Number(p.comision_compradora||4)+'\',\''+Number(p.comision_vendedora||3)+'\')">Reservar/Vender</button>'
           +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\')">Estado</button>'
           +'<button class="btn btn-sm" onclick="editarProp(\''+p.id+'\')">Editar</button>'
           +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\')">Eliminar</button>'
           +'</div></div>';
       });
     } else {
-      html += '<div class="empty">No hay propiedades. Agregá la primera.</div>';
+      html+='<div class="empty">No hay propiedades. Agregá la primera.</div>';
     }
-    document.getElementById('tabContent').innerHTML = html;
+    document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-function esc(s) { return (s||'').replace(/'/g,"\\'"); }
-
 function abrirModalPropiedad(d) {
-  d = d || {};
-  var editar = !!d.id;
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">'+(editar?'Editar propiedad':'Nueva propiedad')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+  d=d||{};
+  var editar=!!d.id;
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(editar?'Editar propiedad':'Nueva propiedad')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="section-divider">Datos de la propiedad</div>'
     +'<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="'+(d.direccion||'')+'" autocomplete="off" /></div>'
     +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off" /></div></div>'
@@ -394,55 +384,40 @@ function abrirModalPropiedad(d) {
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
     +'<button class="btn btn-primary" id="btn-guardar-prop">Guardar</button></div>';
-  
   setTimeout(function(){
-    if(d.tipo) document.getElementById('f-tipo').value = d.tipo;
-    if(d.estado) document.getElementById('f-estado').value = d.estado;
-    document.getElementById('btn-guardar-prop').onclick = editar ? function(){guardarEditProp(d.id);} : guardarProp;
-  }, 50);
+    if(d.tipo) document.getElementById('f-tipo').value=d.tipo;
+    if(d.estado) document.getElementById('f-estado').value=d.estado;
+    document.getElementById('btn-guardar-prop').onclick=editar?function(){guardarEditProp(d.id);}:guardarProp;
+  },50);
   openModal();
 }
 
 function guardarProp() {
-  var data = {id:uid(),direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),valor_cierre:v('f-cierre'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend'),agente:currentUser.nombre,fecha:today()};
-  closeModal(); loading();
-  addRow('Propiedades', data, function(){loadPropiedades();});
+  var data={id:uid(),direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend'),agente:currentUser.nombre,fecha:today()};
+  closeModal();loading();addRow('Propiedades',data,function(){loadPropiedades();});
 }
 
 function editarProp(id) {
-  getSheet('Propiedades', function(e,props){ var p=(props||[]).find(function(x){return x.id===id;}); if(p) abrirModalPropiedad(p); });
+  getSheet('Propiedades',function(e,props){var p=(props||[]).find(function(x){return x.id===id;});if(p)abrirModalPropiedad(p);});
 }
 
 function guardarEditProp(id) {
-  var data = {
-    direccion: v('f-dir'),
-    localidad: v('f-loc'),
-    tipo: v('f-tipo'),
-    estado: v('f-estado'),
-    precio: v('f-precio'),
-    cliente: v('f-cliente'),
-    telefono: v('f-tel'),
-    mail: v('f-mail'),
-    comision_compradora: v('f-comp'),
-    comision_vendedora: v('f-vend')
-  };
-  closeModal();
-  loading();
-  updRow('Propiedades', id, data, function(){ loadPropiedades(); });
+  var data={direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend')};
+  closeModal();loading();updRow('Propiedades',id,data,function(){loadPropiedades();});
 }
 
-function eliminarProp(id) { if(!confirm('¿Eliminar esta propiedad?'))return; loading(); delRow('Propiedades',id,function(){loadPropiedades();}); }
+function eliminarProp(id){if(!confirm('¿Eliminar esta propiedad?'))return;loading();delRow('Propiedades',id,function(){loadPropiedades();});}
 
-function cambiarEstado(id) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Cambiar estado</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+function cambiarEstado(id){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar estado</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Nuevo estado</label><select id="nuevo-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarEstado(id) { var e=v('nuevo-estado'); closeModal(); loading(); updRow('Propiedades',id,{estado:e},function(){loadPropiedades();}); }
+function guardarEstado(id){var e=v('nuevo-estado');closeModal();loading();updRow('Propiedades',id,{estado:e},function(){loadPropiedades();});}
 
-function abrirGastos(propId, dir) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo gasto · '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+function abrirGastos(propId,dir){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo gasto · '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Tipo</label><select id="g-tipo"><option>Cartel</option><option>Zonaprop</option><option>Meta</option><option>Regalo</option><option>Fotografía</option><option>Otros</option></select></div>'
     +'<div class="row"><div class="form-group"><label>Moneda</label><select id="g-moneda"><option value="USD">USD</option><option value="ARS">Pesos $</option></select></div>'
     +'<div class="form-group"><label>Monto</label><input id="g-monto" type="number" /></div></div>'
@@ -451,34 +426,35 @@ function abrirGastos(propId, dir) {
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGasto(\''+propId+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarGasto(propId) {
-  var data = {id:uid(),fecha:v('g-fecha'),propiedad_id:propId,concepto:v('g-tipo')+(v('g-detalle')?' - '+v('g-detalle'):''),monto:v('g-monto'),moneda:v('g-moneda'),agente:currentUser.nombre};
-  closeModal(); addRow('Gastos',data,function(){alert('Gasto registrado!');});
+function guardarGasto(propId){
+  var data={id:uid(),fecha:v('g-fecha'),propiedad_id:propId,concepto:v('g-tipo')+(v('g-detalle')?' - '+v('g-detalle'):''),monto:v('g-monto'),moneda:v('g-moneda'),agente:currentUser.nombre};
+  closeModal();addRow('Gastos',data,function(){alert('Gasto registrado!');});
 }
 
-function abrirReserva(propId, dir, precio) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Reservar / Vender</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+function abrirReserva(propId,dir,precio,compPct,vendPct){
+  compPct=Number(compPct||4);vendPct=Number(vendPct||3);
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Reservar / Vender</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div style="font-size:13px;color:#666;margin-bottom:1rem">'+dir+'</div>'
     +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="r-cierre" type="number" value="'+precio+'" /></div>'
     +'<div class="form-group"><label>Fecha</label><input id="r-fecha" type="date" value="'+today()+'" /></div></div>'
-    +'<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="r-comp" type="number" value="3" /></div>'
-    +'<div class="form-group"><label>Comisión vendedor (%)</label><input id="r-vend" type="number" value="3" /></div></div>'
+    +'<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="r-comp" type="number" value="'+compPct+'" /></div>'
+    +'<div class="form-group"><label>Comisión vendedor (%)</label><input id="r-vend" type="number" value="'+vendPct+'" /></div></div>'
     +'<div id="r-preview" style="background:#f0f9ff;border-radius:8px;padding:12px;margin:1rem 0;font-size:13px"></div>'
     +'<div class="form-group"><label>Estado</label><select id="r-estado"><option>Reservada</option><option>Vendida</option></select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="guardarCierre(\''+propId+'\')">Confirmar</button></div>';
   openModal();
-  function upd() {
+  function upd(){
     var c=Number(v('r-cierre')||0),co=Number(v('r-comp')||0),ve=Number(v('r-vend')||0),t=c*(co+ve)/100;
-    document.getElementById('r-preview').innerHTML='<strong>Com. compradora:</strong> USD '+c*co/100|0+'<br><strong>Com. vendedora:</strong> USD '+c*ve/100|0+'<br><strong style="color:#065f46">Total proyectado: USD '+t.toLocaleString('es-AR')+'</strong>';
+    document.getElementById('r-preview').innerHTML='<strong>Com. comprador ('+co+'%):</strong> USD '+Math.round(c*co/100).toLocaleString('es-AR')+'<br><strong>Com. vendedor ('+ve+'%):</strong> USD '+Math.round(c*ve/100).toLocaleString('es-AR')+'<br><strong style="color:#065f46">Total proyectado: USD '+Math.round(t).toLocaleString('es-AR')+'</strong>';
   }
   document.getElementById('r-cierre').addEventListener('input',upd);
   document.getElementById('r-comp').addEventListener('input',upd);
   document.getElementById('r-vend').addEventListener('input',upd);
   upd();
 }
-function guardarCierre(propId) {
+function guardarCierre(propId){
   var c=Number(v('r-cierre')||0),co=Number(v('r-comp')||0),ve=Number(v('r-vend')||0),t=c*(co+ve)/100,estado=v('r-estado'),fecha=v('r-fecha');
-  closeModal(); loading();
+  closeModal();loading();
   updRow('Propiedades',propId,{valor_cierre:c,estado:estado,comision_compradora:co,comision_vendedora:ve},function(){
     addRow('Operaciones',{id:uid(),fecha:fecha,propiedad_id:propId,precio_final:c,comision_total:t,gastos_total:0,rentabilidad:t,agente:currentUser.nombre},function(){
       addRow('Reservas',{id:uid(),fecha:fecha,propiedad_id:propId,precio_reserva:c,comision_compradora:co,comision_vendedora:ve,agente:currentUser.nombre},function(){loadPropiedades();});
@@ -487,49 +463,58 @@ function guardarCierre(propId) {
 }
 
 // ==================== DESARROLLOS ====================
-function loadDesarrollos() {
-  getSheet('Desarrollos', function(e, devs) {
-    devs = (devs||[]).filter(function(d){return d.agente===currentUser.nombre||currentUser.rol==='Líder';});
-    var html = '<div class="section-header"><div class="section-title">Desarrollos</div><button class="btn btn-primary" onclick="abrirModalDesarrollo()">+ Nuevo desarrollo</button></div>';
-    if (devs.length) {
-      devs.forEach(function(d) {
-        html += '<div class="dev-card">'
+function loadDesarrollos(){
+  getSheet('Desarrollos',function(e,devs){
+    devs=(devs||[]).filter(function(d){return d.agente===currentUser.nombre||currentUser.rol==='Líder';});
+    var html='<div class="section-header"><div class="section-title">Desarrollos</div><button class="btn btn-primary" onclick="abrirModalDesarrollo()">+ Nuevo desarrollo</button></div>';
+    if(devs.length){
+      devs.forEach(function(d){
+        html+='<div class="dev-card">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:700;font-size:15px">'+d.nombre+'</div>'
           +'<div style="font-size:12px;color:#888;margin-top:3px">'+d.direccion+(d.localidad?' · '+d.localidad:'')+'</div>'
-          +'<div style="font-size:12px;color:#555;margin-top:3px">Agente: '+d.agente+'</div></div>'
+          +(d.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+d.cliente+(d.telefono?' · '+d.telefono:'')+'</div>':'')
+          +'<div style="font-size:12px;color:#185FA5;margin-top:4px">Com: '+Number(d.comision_compradora||4)+'% comprador + '+Number(d.comision_vendedora||3)+'% vendedor</div>'
+          +'</div>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-          +'<button class="btn btn-sm btn-primary" onclick="verUnidades(\''+d.id+'\',\''+esc(d.nombre)+'\')">Ver unidades</button>'
+          +'<button class="btn btn-sm btn-primary" onclick="verUnidades(\''+d.id+'\',\''+esc(d.nombre)+'\','+Number(d.comision_compradora||4)+','+Number(d.comision_vendedora||3)+')">Ver unidades</button>'
           +'<button class="btn btn-sm" onclick="abrirGastosDev(\''+d.id+'\',\''+esc(d.nombre)+'\')">+ Gasto</button>'
           +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarDev(\''+d.id+'\')">Eliminar</button>'
-          +'</div></div>'
-          +'</div>';
+          +'</div></div></div>';
       });
     } else {
-      html += '<div class="empty">No hay desarrollos. Agregá el primero.</div>';
+      html+='<div class="empty">No hay desarrollos. Agregá el primero.</div>';
     }
-    document.getElementById('tabContent').innerHTML = html;
+    document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-function abrirModalDesarrollo() {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nuevo desarrollo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+function abrirModalDesarrollo(){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo desarrollo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="section-divider">Datos del desarrollo</div>'
     +'<div class="form-group"><label>Nombre del desarrollo</label><input id="dev-nombre" autocomplete="off" placeholder="Ej: Edificio Urquiza Tower" /></div>'
     +'<div class="row"><div class="form-group"><label>Dirección</label><input id="dev-dir" autocomplete="off" /></div>'
     +'<div class="form-group"><label>Localidad</label><input id="dev-loc" value="Villa Urquiza" autocomplete="off" /></div></div>'
-    +'<div class="form-group"><label>Descripción (opcional)</label><textarea id="dev-desc" rows="2"></textarea></div>'
+    +'<div class="section-divider">Cliente (desarrollador)</div>'
+    +'<div class="form-group"><label>Nombre</label><input id="dev-cliente" autocomplete="off" /></div>'
+    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="dev-tel" autocomplete="off" /></div>'
+    +'<div class="form-group"><label>Mail</label><input id="dev-mail" type="email" autocomplete="off" /></div></div>'
+    +'<div class="section-divider">Comisiones (aplican a todas las unidades)</div>'
+    +'<div class="row"><div class="form-group"><label>Comisión comprador (%)</label><input id="dev-comp" type="number" value="4" /></div>'
+    +'<div class="form-group"><label>Comisión vendedor (%)</label><input id="dev-vend" type="number" value="3" /></div></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarDesarrollo()">Guardar</button></div>';
   openModal();
 }
-function guardarDesarrollo() {
-  var data = {id:uid(),nombre:v('dev-nombre'),direccion:v('dev-dir'),localidad:v('dev-loc'),descripcion:v('dev-desc'),agente:currentUser.nombre,fecha:today()};
-  closeModal(); loading();
-  addRow('Desarrollos',data,function(){loadDesarrollos();});
-}
-function eliminarDev(id) { if(!confirm('¿Eliminar este desarrollo?'))return; loading(); delRow('Desarrollos',id,function(){loadDesarrollos();}); }
 
-function abrirGastosDev(devId, nombre) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Gasto · '+nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+function guardarDesarrollo(){
+  var data={id:uid(),nombre:v('dev-nombre'),direccion:v('dev-dir'),localidad:v('dev-loc'),cliente:v('dev-cliente'),telefono:v('dev-tel'),mail:v('dev-mail'),comision_compradora:v('dev-comp'),comision_vendedora:v('dev-vend'),agente:currentUser.nombre,fecha:today()};
+  closeModal();loading();addRow('Desarrollos',data,function(){loadDesarrollos();});
+}
+
+function eliminarDev(id){if(!confirm('¿Eliminar este desarrollo?'))return;loading();delRow('Desarrollos',id,function(){loadDesarrollos();});}
+
+function abrirGastosDev(devId,nombre){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto · '+nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Concepto</label><input id="gd-concepto" autocomplete="off" /></div>'
     +'<div class="row"><div class="form-group"><label>Moneda</label><select id="gd-moneda"><option value="USD">USD</option><option value="ARS">Pesos $</option></select></div>'
     +'<div class="form-group"><label>Monto</label><input id="gd-monto" type="number" /></div></div>'
@@ -537,78 +522,97 @@ function abrirGastosDev(devId, nombre) {
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGastoDev(\''+devId+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarGastoDev(devId) {
-  var data = {id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:v('gd-moneda'),agente:currentUser.nombre};
-  closeModal(); addRow('Gastos',data,function(){alert('Gasto registrado!');});
+function guardarGastoDev(devId){
+  var data={id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:v('gd-moneda'),agente:currentUser.nombre};
+  closeModal();addRow('Gastos',data,function(){alert('Gasto registrado!');});
 }
 
-function verUnidades(devId, devNombre) {
-  getSheet('Unidades', function(e, unidades) {
-    unidades = (unidades||[]).filter(function(u){return u.desarrollo_id===devId;});
-    var totalComProyectada = unidades.reduce(function(a,u){return a+Number(u.comision||0);},0);
-    var vendidas = unidades.filter(function(u){return u.condicion==='Vendida';}).length;
-    var html = '<div class="section-header">'
-      +'<div><div class="section-title">'+devNombre+'</div><div style="font-size:12px;color:#888;margin-top:4px">'+unidades.length+' unidades · '+vendidas+' vendidas · Com. proyectada total: USD '+totalComProyectada.toLocaleString('es-AR')+'</div></div>'
+function verUnidades(devId,devNombre,compPct,vendPct){
+  compPct=Number(compPct||4);vendPct=Number(vendPct||3);
+  getSheet('Unidades',function(e,unidades){
+    unidades=(unidades||[]).filter(function(u){return u.desarrollo_id===devId;});
+    var totalCom=unidades.reduce(function(a,u){return a+Number(u.comision||0);},0);
+    var vendidas=unidades.filter(function(u){return u.condicion==='Vendida';}).length;
+    var reservadas=unidades.filter(function(u){return u.condicion==='Reservada';}).length;
+    var activas=unidades.filter(function(u){return u.condicion==='Activa';}).length;
+
+    var html='<div class="section-header">'
+      +'<div><div class="section-title">'+devNombre+'</div>'
+      +'<div style="font-size:12px;color:#888;margin-top:4px">'+unidades.length+' unidades · '+activas+' activas · '+reservadas+' reservadas · '+vendidas+' vendidas</div>'
+      +'<div style="font-size:13px;color:#065f46;font-weight:600;margin-top:4px">Com. proyectada total: USD '+Math.round(totalCom).toLocaleString('es-AR')+'</div>'
+      +'</div>'
       +'<div style="display:flex;gap:8px">'
       +'<button class="btn btn-sm" onclick="loadDesarrollos()">← Volver</button>'
-      +'<button class="btn btn-sm btn-primary" onclick="abrirModalUnidad(\''+devId+'\',\''+esc(devNombre)+'\')">+ Nueva unidad</button>'
+      +'<button class="btn btn-sm btn-primary" onclick="abrirModalUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">+ Nueva unidad</button>'
       +'</div></div>';
 
-    if (unidades.length) {
-      html += '<div class="card" style="padding:0"><div class="table-wrap"><table>'
+    if(unidades.length){
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table>'
         +'<tr><th>Unidad</th><th>Precio</th><th>Com. proyectada</th><th>Agente</th><th>Condición</th><th></th></tr>';
-      unidades.forEach(function(u) {
-        html += '<tr>'
+      unidades.forEach(function(u){
+        html+='<tr>'
           +'<td style="font-weight:600">'+u.nombre+'</td>'
           +'<td>USD '+Number(u.precio||0).toLocaleString('es-AR')+'</td>'
-          +'<td style="color:#065f46;font-weight:600">USD '+Number(u.comision||0).toLocaleString('es-AR')+'</td>'
+          +'<td style="color:#065f46;font-weight:600">USD '+Math.round(Number(u.comision||0)).toLocaleString('es-AR')+'</td>'
           +'<td style="color:#888">'+(u.agente||'').split(' ').slice(-1)[0]+'</td>'
           +'<td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td>'
           +'<td style="display:flex;gap:4px">'
-          +'<button class="btn btn-sm" onclick="cambiarCondicionUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\')">Estado</button>'
-          +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\')">×</button>'
+          +'<button class="btn btn-sm" onclick="cambiarCondicionUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Estado</button>'
+          +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">×</button>'
           +'</td></tr>';
       });
-      html += '</table></div></div>';
+      html+='</table></div></div>';
     } else {
-      html += '<div class="empty">No hay unidades. Agregá la primera.</div>';
+      html+='<div class="empty">No hay unidades. Agregá la primera.</div>';
     }
-    document.getElementById('tabContent').innerHTML = html;
+    document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-function abrirModalUnidad(devId, devNombre) {
-  var agentesOpts = allAgentes.map(function(a){return '<option>'+a+'</option>';}).join('');
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Nueva unidad · '+devNombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="row"><div class="form-group"><label>Nombre/Número</label><input id="u-nombre" autocomplete="off" placeholder="Ej: 1A, PB2, Torre 1 Piso 3" /></div>'
+function abrirModalUnidad(devId,devNombre,compPct,vendPct){
+  compPct=Number(compPct||4);vendPct=Number(vendPct||3);
+  var agentesOpts=allAgentes.map(function(a){return '<option>'+a+'</option>';}).join('');
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nueva unidad · '+devNombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="row"><div class="form-group"><label>Nombre/Número</label><input id="u-nombre" autocomplete="off" placeholder="Ej: 1A, PB2" /></div>'
     +'<div class="form-group"><label>Condición</label><select id="u-cond"><option>Activa</option><option>Reservada</option><option>Vendida</option><option>Cancelada</option></select></div></div>'
-    +'<div class="row"><div class="form-group"><label>Precio (USD)</label><input id="u-precio" type="number" /></div>'
-    +'<div class="form-group"><label>Comisión proyectada (USD)</label><input id="u-comision" type="number" /></div></div>'
+    +'<div class="form-group"><label>Precio de venta (USD)</label><input id="u-precio" type="number" oninput="calcComUnidad('+compPct+','+vendPct+')" /></div>'
+    +'<div id="u-preview" style="background:#f0f9ff;border-radius:8px;padding:12px;margin:0.5rem 0;font-size:13px;display:none"></div>'
+    +'<div class="form-group"><label>Comisión proyectada (USD)</label><input id="u-comision" type="number" /></div>'
     +'<div class="form-group"><label>Agente asignado</label><select id="u-agente">'+agentesOpts+'</select></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUnidad(\''+devId+'\',\''+esc(devNombre)+'\')">Guardar</button></div>';
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Guardar</button></div>';
   openModal();
 }
-function guardarUnidad(devId, devNombre) {
-  var data = {id:uid(),desarrollo_id:devId,nombre:v('u-nombre'),precio:v('u-precio'),comision:v('u-comision'),condicion:v('u-cond'),agente:v('u-agente'),fecha:today()};
-  closeModal(); loading();
-  addRow('Unidades',data,function(){verUnidades(devId,devNombre);});
+
+function calcComUnidad(compPct,vendPct){
+  var precio=Number(document.getElementById('u-precio').value||0);
+  var comp=precio*compPct/100,vend=precio*vendPct/100,total=comp+vend;
+  document.getElementById('u-comision').value=Math.round(total);
+  var preview=document.getElementById('u-preview');
+  preview.style.display='block';
+  preview.innerHTML='<strong>Com. comprador ('+compPct+'%):</strong> USD '+Math.round(comp).toLocaleString('es-AR')+'<br><strong>Com. vendedor ('+vendPct+'%):</strong> USD '+Math.round(vend).toLocaleString('es-AR')+'<br><strong style="color:#065f46">Total proyectado: USD '+Math.round(total).toLocaleString('es-AR')+'</strong>';
 }
-function cambiarCondicionUnidad(id, devId, devNombre) {
-  document.getElementById('modalBox').innerHTML = '<div class="modal-header"><span class="modal-title">Cambiar condición</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+
+function guardarUnidad(devId,devNombre,compPct,vendPct){
+  var data={id:uid(),desarrollo_id:devId,nombre:v('u-nombre'),precio:v('u-precio'),comision:v('u-comision'),condicion:v('u-cond'),agente:v('u-agente'),fecha:today()};
+  closeModal();loading();addRow('Unidades',data,function(){verUnidades(devId,devNombre,compPct,vendPct);});
+}
+
+function cambiarCondicionUnidad(id,devId,devNombre,compPct,vendPct){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar condición</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Nueva condición</label><select id="u-cond-new"><option>Activa</option><option>Reservada</option><option>Vendida</option><option>Cancelada</option></select></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarCondUnidad(\''+id+'\',\''+devId+'\',\''+esc(devNombre)+'\')">Guardar</button></div>';
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarCondUnidad(\''+id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Guardar</button></div>';
   openModal();
 }
-function guardarCondUnidad(id, devId, devNombre) { var c=v('u-cond-new'); closeModal(); loading(); updRow('Unidades',id,{condicion:c},function(){verUnidades(devId,devNombre);}); }
-function eliminarUnidad(id, devId, devNombre) { if(!confirm('¿Eliminar esta unidad?'))return; loading(); delRow('Unidades',id,function(){verUnidades(devId,devNombre);}); }
+function guardarCondUnidad(id,devId,devNombre,compPct,vendPct){var c=v('u-cond-new');closeModal();loading();updRow('Unidades',id,{condicion:c},function(){verUnidades(devId,devNombre,compPct,vendPct);});}
+function eliminarUnidad(id,devId,devNombre,compPct,vendPct){if(!confirm('¿Eliminar esta unidad?'))return;loading();delRow('Unidades',id,function(){verUnidades(devId,devNombre,compPct,vendPct);});}
 
 // ==================== FINANZAS ====================
-function loadFinanzas() {
+function loadFinanzas(){
   Promise.all([
     fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
     fetch(API+'?sheet=Operaciones').then(function(r){return r.json();})
-  ]).then(function(results) {
+  ]).then(function(results){
     var fins=(results[0]||[]).filter(function(f){return f.agente===currentUser.nombre;});
     var gastos=(results[1]||[]).filter(function(g){return g.agente===currentUser.nombre;});
     var ops=(results[2]||[]).filter(function(o){return o.agente===currentUser.nombre;});
@@ -648,7 +652,7 @@ function loadFinanzas() {
   });
 }
 
-function abrirModalFinanza() {
+function abrirModalFinanza(){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo movimiento</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="row"><div class="form-group"><label>Tipo</label><select id="ff-tipo"><option>Ingreso</option><option>Gasto</option></select></div>'
     +'<div class="form-group"><label>Fecha</label><input id="ff-fecha" type="date" value="'+today()+'" /></div></div>'
@@ -657,14 +661,14 @@ function abrirModalFinanza() {
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarFinanza()">Guardar</button></div>';
   openModal();
 }
-function guardarFinanza() {
+function guardarFinanza(){
   var data={id:uid(),fecha:v('ff-fecha'),tipo:v('ff-tipo'),concepto:v('ff-concepto'),monto:v('ff-monto'),agente:currentUser.nombre};
-  closeModal(); loading(); addRow('Finanzas',data,function(){loadFinanzas();});
+  closeModal();loading();addRow('Finanzas',data,function(){loadFinanzas();});
 }
 
 // ==================== OBJETIVOS ====================
-function loadObjetivos() {
-  getSheet('Objetivos', function(e, objs) {
+function loadObjetivos(){
+  getSheet('Objetivos',function(e,objs){
     objs=(objs||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
     var html='<div class="section-header"><div class="section-title">Objetivos</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
     if(objs.length){
@@ -686,8 +690,8 @@ function loadObjetivos() {
   });
 }
 
-function abrirModalObjetivo() {
-  var agentesOpts = currentUser.rol==='Líder' ? '<option>Equipo</option>'+allAgentes.map(function(a){return '<option>'+a+'</option>';}).join('') : '<option>'+currentUser.nombre+'</option>';
+function abrirModalObjetivo(){
+  var agentesOpts=currentUser.rol==='Líder'?'<option>Equipo</option>'+allAgentes.map(function(a){return '<option>'+a+'</option>';}).join(''):'<option>'+currentUser.nombre+'</option>';
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo objetivo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Título</label><input id="fo-titulo" autocomplete="off" /></div>'
     +'<div class="row"><div class="form-group"><label>Meta</label><input id="fo-meta" type="number" /></div>'
@@ -698,46 +702,44 @@ function abrirModalObjetivo() {
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarObjetivo()">Guardar</button></div>';
   openModal();
 }
-function guardarObjetivo() {
+function guardarObjetivo(){
   var data={id:uid(),titulo:v('fo-titulo'),meta:v('fo-meta'),actual:0,unidad:v('fo-unidad'),periodo:v('fo-periodo'),agente:v('fo-agente'),vencimiento:v('fo-venc')};
-  closeModal(); loading(); addRow('Objetivos',data,function(){loadObjetivos();});
+  closeModal();loading();addRow('Objetivos',data,function(){loadObjetivos();});
 }
-function actualizarProgreso(id,titulo,actual,meta,unidad) {
+function actualizarProgreso(id,titulo,actual,meta,unidad){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Actualizar progreso</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div style="font-size:14px;margin-bottom:1rem;font-weight:500">'+titulo+'</div>'
     +'<div class="form-group"><label>Progreso actual (de '+meta+' '+unidad+')</label><input id="upd-actual" type="number" value="'+actual+'" /></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarProgreso(\''+id+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarProgreso(id) { var a=v('upd-actual'); closeModal(); loading(); updRow('Objetivos',id,{actual:a},function(){loadObjetivos();}); }
+function guardarProgreso(id){var a=v('upd-actual');closeModal();loading();updRow('Objetivos',id,{actual:a},function(){loadObjetivos();});}
 
 // ==================== PANEL EQUIPO ====================
-function loadEquipo() {
+function loadEquipo(){
   if(currentUser.rol!=='Líder'){document.getElementById('tabContent').innerHTML='<div class="empty">Acceso restringido.</div>';return;}
-  var vistaActual = 'consolidado';
-  var agenteActual = allAgentes[0]||'';
+  var vistaActual='consolidado';
+  var agenteActual=allAgentes[0]||'';
 
-  function render(vista, agente) {
-    vistaActual = vista;
-    if(agente) agenteActual = agente;
-
+  function render(vista,agente){
+    vistaActual=vista;
+    if(agente) agenteActual=agente;
     Promise.all([
       fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
       fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
       fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
       fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
       fetch(API+'?sheet=Reservas').then(function(r){return r.json();})
-    ]).then(function(results) {
-      var allProps=results[0]||[], allOps=results[1]||[], allGastos=results[2]||[], allFins=results[3]||[], allReservas=results[4]||[];
+    ]).then(function(results){
+      var allProps=results[0]||[],allOps=results[1]||[],allGastos=results[2]||[],allFins=results[3]||[],allReservas=results[4]||[];
 
       var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>';
       html+='<div class="tabs-secondary">'
-        +'<div class="tab-sec'+(vistaActual==='consolidado'?' active':'')+'" onclick="loadEquipo()">Vista consolidada</div>'
-        +'<div class="tab-sec'+(vistaActual==='individual'?' active':'')+'" onclick="renderIndividual()">Vista individual</div>'
+        +'<div class="tab-sec'+(vistaActual==='consolidado'?' active':'')+'" onclick="renderEquipo(\'consolidado\')">Vista consolidada</div>'
+        +'<div class="tab-sec'+(vistaActual==='individual'?' active':'')+'" onclick="renderEquipo(\'individual\')">Vista individual</div>'
         +'</div>';
 
       if(vistaActual==='consolidado'){
-        html+='<div style="margin-bottom:1rem;font-size:13px;color:#888">Datos de todo el equipo combinados</div>';
         allAgentes.forEach(function(agNombre){
           var props=allProps.filter(function(p){return p.agente===agNombre;});
           var ops=allOps.filter(function(o){return o.agente===agNombre;});
@@ -758,21 +760,20 @@ function loadEquipo() {
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+reservadas+'</div></div>'
             +'<div class="metric"><div class="metric-label">Facturación</div><div class="metric-value green" style="font-size:16px">USD '+Number(comisiones).toLocaleString('es-AR')+'</div></div>'
             +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:16px">USD '+Number(gastosTotal).toLocaleString('es-AR')+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. reservas</div><div class="metric-value amber" style="font-size:16px">USD '+Number(comReservas).toLocaleString('es-AR')+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. stock</div><div class="metric-value blue" style="font-size:16px">USD '+Number(comStock).toLocaleString('es-AR')+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Com. reservas</div><div class="metric-value amber" style="font-size:16px">USD '+Math.round(comReservas).toLocaleString('es-AR')+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Com. stock</div><div class="metric-value blue" style="font-size:16px">USD '+Math.round(comStock).toLocaleString('es-AR')+'</div></div>'
             +'</div></div>';
         });
       } else {
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){
-          html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="renderIndividual(\''+a+'\')">'+a.split(' ')[0]+'</div>';
+          html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="renderEquipo(\'individual\',\''+esc(a)+'\')">'+a.split(' ')[0]+'</div>';
         });
         html+='</div>';
 
         var props=allProps.filter(function(p){return p.agente===agenteActual;});
         var ops=allOps.filter(function(o){return o.agente===agenteActual;});
         var gastos=allGastos.filter(function(g){return g.agente===agenteActual;});
-        var fins=allFins.filter(function(f){return f.agente===agenteActual;});
 
         html+='<div class="grid-metrics">'
           +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+props.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
@@ -787,7 +788,7 @@ function loadEquipo() {
         if(props.length){
           html+='<div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Estado</th><th>Precio</th></tr>';
           props.forEach(function(p){
-            html+='<tr><td>'+p.direccion+'</td><td>'+p.tipo+'</td><td><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></td><td>USD '+Number(p.precio||0).toLocaleString('es-AR')+'</td></tr>';
+            html+='<tr><td>'+p.direccion+'</td><td>'+(p.tipo||'')+'</td><td><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></td><td>USD '+Number(p.precio||0).toLocaleString('es-AR')+'</td></tr>';
           });
           html+='</table></div>';
         } else { html+='<div class="empty">Sin propiedades.</div>'; }
@@ -796,19 +797,13 @@ function loadEquipo() {
 
       document.getElementById('tabContent').innerHTML=html;
 
-      window.renderIndividual = function(agente) { render('individual', agente||agenteActual); };
+      window.renderEquipo=function(vista,agente){render(vista,agente||agenteActual);};
     });
   }
 
-  render('consolidado', agenteActual);
-  window.renderIndividual = function(agente) { render('individual', agente||agenteActual); };
+  render('consolidado',agenteActual);
+  window.renderEquipo=function(vista,agente){render(vista,agente||agenteActual);};
 }
-
-function v(id){return document.getElementById(id)?document.getElementById(id).value:'';}
-function loading(){document.getElementById('tabContent').innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';}
-function openModal(){document.getElementById('modalOverlay').style.display='flex';}
-function closeModal(){document.getElementById('modalOverlay').style.display='none';document.getElementById('modalBox').innerHTML='';}
-function closeModalOverlay(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 </script>
 </body>
 </html>
