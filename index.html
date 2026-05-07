@@ -498,7 +498,7 @@ function loadDashboard(filtroAgente){
     var busqMes=Math.ceil(busqTotales/mesesRestantes);
     var stockNecesario=Math.ceil(opsQueFaltan/0.12);
     var cuatriNombre=cuatri===1?'1er cuatrimestre (ene-abr)':cuatri===2?'2do cuatrimestre (may-ago)':'3er cuatrimestre (sep-dic)';
-    var nombreCorto=agente.split(' ')[0];
+    var nombreCorto=agente;
 
     // ---- CUENTA CORRIENTE (solo para agentes) ----
     var esAgenteDash=currentUser.rol!=='Líder';
@@ -564,24 +564,16 @@ function loadDashboard(filtroAgente){
       +dcard('📊','Rentabilidad neta','USD '+fmt(Math.round(rentabilidadAno)),facturacionBrutaAno>0?rentPctAno+'% sobre bruta':'',rentabilidadAno>=0?'#059669':TO_RED)
       +'</div>';
 
-    // Sección: Captaciones y operaciones (siempre visible)
-    var enVentaConUnis=enVenta; // ya incluye unidades activas
-    var captacionesActuales=enVentaConUnis;
+    // Sección: Stock + Captaciones (unificadas)
+    var captacionesActuales=enVenta; // props + unidades en venta
     var captNecesarias=opsTotalesNecesarias>0?Math.max(0,stockNecesario-captacionesActuales):null;
     html+='<div style="font-size:11px;font-weight:700;color:'+TO_BLACK+';text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
-      +'<div style="width:3px;height:14px;background:'+TO_RED+';border-radius:2px"></div>Captaciones y operaciones</div>'
+      +'<div style="width:3px;height:14px;background:'+TO_BLUE+';border-radius:2px"></div>Stock y captaciones</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem">'
-      +dcard('🎯','Ops. realizadas / necesarias',opsAno.length+(opsTotalesNecesarias>0?' / '+opsTotalesNecesarias:''),opsTotalesNecesarias>0?'Faltan: '+opsQueFaltan:'Sin objetivo cargado',TO_BLACK)
-      +dcard('🏠','Captaciones actuales',''+captacionesActuales,'Props + unidades en venta',TO_BLUE)
+      +dcard('🏠','Captaciones en venta',''+captacionesActuales,'Props + unidades activas',TO_BLUE)
       +(captNecesarias!==null?dcard('📋','Captaciones necesarias',''+captNecesarias,'Stock total necesario: '+stockNecesario,TO_RED):'')
+      +dcard('🎯','Ops. realizadas / necesarias',opsAno.length+(opsTotalesNecesarias>0?' / '+opsTotalesNecesarias:''),opsTotalesNecesarias>0?'Faltan: '+opsQueFaltan:'Sin objetivo cargado',TO_BLACK)
       +dcard('🔍','Búsquedas a captar',opsTotalesNecesarias>0?''+busqTotales:'-',opsTotalesNecesarias>0?'≈ '+busqMes+' / mes':'Sin objetivo cargado','#7c3aed')
-      +'</div>';
-
-    // Sección: Stock
-    html+='<div style="font-size:11px;font-weight:700;color:'+TO_BLACK+';text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
-      +'<div style="width:3px;height:14px;background:'+TO_BLUE+';border-radius:2px"></div>Stock actual</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem">'
-      +dcard('🔵','En venta / Activas',''+enVenta,'',TO_BLUE)
       +dcard('🟡','Reservadas',''+reservadas,'','#d97706')
       +dcard('🟢','Vendidas este año',''+opsAno.length,'','#059669')
       +dcard('📋','Com. proy. stock','USD '+fmt(Math.round(comStock)),'',TO_BLUE)
@@ -636,7 +628,7 @@ function loadDashboard(filtroAgente){
     }
 
     // Widget cuenta corriente al final (solo agentes)
-    if(esAgenteDash&&ccSaldo!==0)html+=ccWidgetHtml;
+    if(esAgenteDash)html+=ccWidgetHtml;
 
     document.getElementById('tabContent').innerHTML=html;
     // Mini chart facturación por mes
