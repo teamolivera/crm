@@ -268,7 +268,8 @@ function loadDashboard(filtroAgente){
     fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
     fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})
   ]).then(function(res){
-    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],ops=res[4]||[],allGastosDash=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[],allDevsDash=res[8]||[];
+    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],allOpsDash=res[4]||[],allGastosDash=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[],allDevsDash=res[8]||[];
+    var ops=allOpsDash.filter(function(o){return o.agente===agente;});
     var gastos=allGastosDash.filter(function(g){return g.agente===agente;});
 
     var props=allProps.filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
@@ -289,7 +290,9 @@ function loadDashboard(filtroAgente){
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
 
-    // Facturación: neto_team_leader si es líder viendo sus datos, sino neto_agente
+    // Facturación bruta = comision_total de operaciones cerradas
+    var facturacionBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    // Facturación neta
     var facturacion=ops.reduce(function(a,o){
       if(esLider&&agente===currentUser.nombre)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
       return a+Number(o.neto_agente||o.comision_total||0);
@@ -311,18 +314,13 @@ function loadDashboard(filtroAgente){
 
       // Widget del team (siempre visible para el líder)
       if(agente===currentUser.nombre){
-        // Acumuladores bloque 1: Team + TL (todos)
+        // Bloque 1: Team + TL — stock proyectado
         var ttlPrBruta=0,ttlPrNeta=0,ttlResBruta=0,ttlResNeta=0;
-        // Acumuladores bloque 2: solo agentes (sin TL)
+        // Bloque 2: Solo agentes — stock proyectado
         var agPrBruta=0,agPrNeta=0,agResBruta=0,agResNeta=0;
-        // Gastos del TL sobre agentes (tabla Gastos de los agentes)
-        var gastosAgentes=allAgentes.filter(function(a){return a!==currentUser.nombre;})
-          .reduce(function(total,ag){
-            return total+(gastos.filter?0:0); // se calcula abajo
-          },0);
-        // Calcular gastos reales de agentes desde allGastosDash (necesitamos pasarlos)
-        // Usamos gastos ya filtrados — los gastos del líder ya están en gastosProp
-        // Para rentabilidad del team usamos gastos de agentes desde allGastosDash si disponible
+        // Bloque 3: Operaciones cerradas
+        var opsTtlBruta=0,opsTtlNeta=0; // Team+TL
+        var opsAgBruta=0,opsAgNeta=0;   // Solo agentes
         var gastosTeamUSD=0;
 
         allAgentes.forEach(function(ag){
@@ -333,10 +331,20 @@ function loadDashboard(filtroAgente){
           var agUnis=allUnis.filter(function(u){return agDevIds2.indexOf(u.desarrollo_id)>=0;});
           var agTodas=agProps.concat(agBusqs);
 
-          // Para rentabilidad: acumular gastos de agentes (no del lider)
+          // Gastos de agentes
           if(!esLiderAg){
             gastosTeamUSD+=allGastosDash.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
           }
+          // Operaciones cerradas
+          var agOps=allOpsDash.filter(function(o){return o.agente===ag;});
+          agOps.forEach(function(o){
+            var bruta=Number(o.comision_total||0);
+            var neta=esLiderAg
+              ?Number(o.neto_team_leader||0)
+              :Number(o.comision_team_leader||0)-Number(o.martillero||0);
+            opsTtlBruta+=bruta; opsTtlNeta+=neta;
+            if(!esLiderAg){opsAgBruta+=bruta; opsAgNeta+=neta;}
+          });
 
           function calcStock(items,getPrecio,isActiva){
             items.forEach(function(item){
@@ -376,27 +384,43 @@ function loadDashboard(filtroAgente){
           );
         });
 
-        var rentTeam=agPrNeta-gastosTeamUSD;
+        var rentTeam=opsAgNeta-gastosTeamUSD;
+        var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
+        var sep='<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px">';
 
         html+='<div class="team-widget">'
           +'<div class="team-widget-title">Team Olivera</div>'
-          // Bloque 1: Team + TL
-          +'<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:4px">Team + Team Leader · Stock activo</div>'
+
+          // Bloque 1: Team + TL — Stock proyectado
+          +'<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:4px">Team + Team Leader · Stock proyectado</div>'
           +'<div class="team-metrics" style="margin-bottom:1rem">'
-          +'<div class="team-metric"><div class="team-metric-label">Bruta</div><div class="team-metric-value">USD '+fmt(Math.round(ttlPrBruta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Bruta activo</div><div class="team-metric-value">USD '+fmt(Math.round(ttlPrBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Neta para mí</div><div class="team-metric-value">USD '+fmt(Math.round(ttlPrNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Bruta reservas</div><div class="team-metric-value">USD '+fmt(Math.round(ttlResBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Neta reservas</div><div class="team-metric-value">USD '+fmt(Math.round(ttlResNeta))+'</div></div>'
           +'</div>'
-          // Bloque 2: solo Team
-          +'<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px">Solo Team · Lo que me generan los agentes</div>'
+
+          // Bloque 2: Operaciones cerradas
+          +sep+'Operaciones cerradas</div>'
+          +'<div class="team-metrics" style="margin-bottom:1rem">'
+          +'<div class="team-metric"><div class="team-metric-label">Team+TL · Bruta</div><div class="team-metric-value">USD '+fmt(Math.round(opsTtlBruta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Team+TL · Neta para mí</div><div class="team-metric-value">USD '+fmt(Math.round(opsTtlNeta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Solo Team · Bruta</div><div class="team-metric-value">USD '+fmt(Math.round(opsAgBruta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Solo Team · Neta para mí</div><div class="team-metric-value">USD '+fmt(Math.round(opsAgNeta))+'</div></div>'
+          +'</div>'
+
+          // Bloque 3: Solo Team
+          +sep+'Solo Team</div>'
           +'<div class="team-metrics">'
           +'<div class="team-metric"><div class="team-metric-label">Bruta stock</div><div class="team-metric-value">USD '+fmt(Math.round(agPrBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Neta para mí</div><div class="team-metric-value">USD '+fmt(Math.round(agPrNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Bruta reservas</div><div class="team-metric-value">USD '+fmt(Math.round(agResBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Neta reservas</div><div class="team-metric-value">USD '+fmt(Math.round(agResNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Gastos s/ agentes</div><div class="team-metric-value" style="color:#fca5a5">USD '+fmt(Math.round(gastosTeamUSD))+'</div></div>'
-          +'<div class="team-metric"><div class="team-metric-label">Rentabilidad team</div><div class="team-metric-value" style="color:'+(rentTeam>=0?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Rentabilidad</div>'
+          +'<div class="team-metric-value" style="color:'+(rentTeam>=0?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
+          +(opsAgBruta>0?'<div style="font-size:11px;opacity:0.75;margin-top:3px">'+rentTeamPct+'% sobre bruta</div>':'')
+          +'</div>'
           +'</div></div>';
       }
     }
@@ -408,7 +432,7 @@ function loadDashboard(filtroAgente){
       +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
       +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+fmt(Math.round(gastosProp+gastosOficina))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidad))+'</div>'+(facturacion>0?'<div style="font-size:12px;color:#888;margin-top:4px">'+Math.round(rentabilidad/facturacion*100)+'% sobre ingresos</div>':'')+'</div>'
+      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidad))+'</div>'+(facturacionBruta>0?'<div style="font-size:12px;color:#888;margin-top:4px">'+Math.round(rentabilidad/facturacionBruta*100)+'% sobre bruta</div>':'')+'</div>'
       +'<div class="metric"><div class="metric-label">Com. proy. reservas</div><div class="metric-value amber">USD '+fmt(Math.round(comReservas))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Com. proy. stock</div><div class="metric-value blue">USD '+fmt(Math.round(comStock))+'</div></div>'
       +'</div>';
