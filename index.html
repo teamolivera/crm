@@ -322,32 +322,36 @@ function loadDashboard(filtroAgente){
 
           agTodas.filter(function(p){return p.estado==='En venta';}).forEach(function(p){
             var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
-            var pctTL=esLiderAg?100:getDistrib(p.referido).tl;
-            var martillero=comBruta*0.8*0.04;
+            var pctTL=esLiderAg?80:getDistrib(p.referido).tl;
+            var parteTL=comBruta*pctTL/100;
+            var martillero=parteTL*0.04;
             teamComPrBruta+=comBruta*pctTL/100;
-            teamComPrNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
+            teamComPrNeta+=parteTL-martillero;
           });
           agUnis.filter(function(u){return u.condicion==='Activa';}).forEach(function(u){
             var comBruta=Number(u.comision||0);
-            var pctTL=esLiderAg?100:getDistrib(u.referido).tl;
-            var martillero=comBruta*0.8*0.04;
+            var pctTL=esLiderAg?80:getDistrib(u.referido).tl;
+            var parteTL=comBruta*pctTL/100;
+            var martillero=parteTL*0.04;
             teamComPrBruta+=comBruta*pctTL/100;
-            teamComPrNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
+            teamComPrNeta+=parteTL-martillero;
           });
           // Reservadas
           agTodas.filter(function(p){return p.estado==='Reservada';}).forEach(function(p){
             var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
-            var pctTL=esLiderAg?100:getDistrib(p.referido).tl;
-            var martillero=comBruta*0.8*0.04;
+            var pctTL=esLiderAg?80:getDistrib(p.referido).tl;
+            var parteTL=comBruta*pctTL/100;
+            var martillero=parteTL*0.04;
             teamComResBruta+=comBruta*pctTL/100;
-            teamComResNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
+            teamComResNeta+=parteTL-martillero;
           });
           agUnis.filter(function(u){return u.condicion==='Reservada';}).forEach(function(u){
             var comBruta=Number(u.comision||0);
-            var pctTL=esLiderAg?100:getDistrib(u.referido).tl;
-            var martillero=comBruta*0.8*0.04;
+            var pctTL=esLiderAg?80:getDistrib(u.referido).tl;
+            var parteTL=comBruta*pctTL/100;
+            var martillero=parteTL*0.04;
             teamComResBruta+=comBruta*pctTL/100;
-            teamComResNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
+            teamComResNeta+=parteTL-martillero;
           });
         });
 
@@ -538,8 +542,9 @@ function verFichaProp(id,sheet){
       +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
       +'<button class="btn" onclick="closeModal()">Cerrar</button>'
-      +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\','+JSON.stringify(p)+')">Editar</button>'
+      +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\',window._editProp)">Editar</button>'
       +'</div>';
+    window._editProp=p;
     openModal();
   });
 }
