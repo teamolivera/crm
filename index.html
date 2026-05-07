@@ -388,7 +388,7 @@ function loadDashboard(filtroAgente){
         var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
         var sep='<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px">';
 
-        html+='<div class="team-widget">'
+        html+='<div class="team-widget" style="cursor:pointer" onclick="abrirPanelTeam()">'
           +'<div class="team-widget-title">Team Olivera</div>'
 
           // Bloque 1: Team + TL — Stock proyectado
@@ -418,39 +418,141 @@ function loadDashboard(filtroAgente){
           +'<div class="team-metric"><div class="team-metric-label">Neta reservas</div><div class="team-metric-value">USD '+fmt(Math.round(agResNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Gastos s/ agentes</div><div class="team-metric-value" style="color:#fca5a5">USD '+fmt(Math.round(gastosTeamUSD))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Rentabilidad</div>'
-          +'<div class="team-metric-value" style="color:'+(rentTeam>=0?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
-          +(opsAgBruta>0?'<div style="font-size:11px;opacity:0.75;margin-top:3px">'+rentTeamPct+'% sobre bruta</div>':'')
+          +'<div class="team-metric-value" style="color:'+(rentTeamPct>=50?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
+          +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=50?'#6ee7b7':'#fca5a5')+'">'+rentTeamPct+'%</div>':'')
           +'</div>'
           +'</div></div>';
       }
     }
 
-    html+='<div class="grid-metrics">'
+    // ---- AÑO CALENDARIO ----
+    var anoActual=new Date().getFullYear();
+    var opsAno=ops.filter(function(o){return o.fecha&&o.fecha.startsWith(String(anoActual));});
+    var facturacionBrutaAno=opsAno.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var facturacionNetaAno=opsAno.reduce(function(a,o){
+      if(esLider&&agente===currentUser.nombre)return a+Number(o.neto_team_leader||o.neto_agente||0);
+      return a+Number(o.neto_agente||0);
+    },0);
+    var gastosAno=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var gastosOficinaAno=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+    var totalGastos=gastosAno+gastosOficinaAno;
+    var rentabilidadAno=facturacionNetaAno-totalGastos;
+    var rentPctAno=facturacionBrutaAno>0?Math.round(rentabilidadAno/facturacionBrutaAno*100):0;
+
+    // Ticket promedio: ops del año o estimado por stock
+    var ticketPromedio=opsAno.length>0
+      ?Math.round(facturacionBrutaAno/opsAno.length)
+      :(function(){
+          var coms=todasProps.filter(function(p){return p.estado==='En venta';})
+            .map(function(p){return Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;})
+            .concat(unis.filter(function(u){return u.condicion==='Activa';}).map(function(u){return Number(u.comision||0);}));
+          return coms.length>0?Math.round(coms.reduce(function(a,v){return a+v;},0)/coms.length):0;
+        })();
+
+    // ---- OBJETIVO ANUAL ----
+    var objAnual=objs.find(function(o){return (o.agente===agente||o.agente===currentUser.nombre)&&o.periodo==='Anual'&&o.unidad==='USD';});
+    var metaAnual=objAnual?Number(objAnual.meta||0):0;
+    var progAnual=metaAnual>0?Math.min(100,Math.round(facturacionBrutaAno/metaAnual*100)):0;
+
+    // Cuatrimestre actual
+    var mesActual=new Date().getMonth()+1;
+    var cuatri=mesActual<=4?1:mesActual<=8?2:3;
+    var pctCuatri=cuatri===1?0.25:cuatri===2?0.35:0.40;
+    var metaCuatri=Math.round(metaAnual*pctCuatri);
+    var opsEnCuatri=opsAno.filter(function(o){
+      var m=parseInt((o.fecha||'').split('-')[1]||0);
+      if(cuatri===1)return m>=1&&m<=4;
+      if(cuatri===2)return m>=5&&m<=8;
+      return m>=9&&m<=12;
+    });
+    var brutaCuatri=opsEnCuatri.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var progCuatri=metaCuatri>0?Math.min(100,Math.round(brutaCuatri/metaCuatri*100)):0;
+
+    // ---- PROYECCIÓN ----
+    var faltaBruta=Math.max(0,metaAnual-facturacionBrutaAno);
+    var hoy=new Date();
+    var finAno=new Date(anoActual,11,31);
+    var mesesRestantes=Math.max(0.5,((finAno-hoy)/(1000*60*60*24*30.5)));
+    var opsQueFaltan=ticketPromedio>0?faltaBruta/ticketPromedio:0;
+    var stockNecesario=opsQueFaltan>0?(opsQueFaltan/mesesRestantes)/0.12:0;
+    var propsMes=Math.ceil(stockNecesario);
+    var busqMes=Math.ceil(opsQueFaltan/5/mesesRestantes);
+    var propsTotales=Math.ceil(opsQueFaltan*4/5);
+    var busqTotales=Math.ceil(opsQueFaltan/5);
+    var cuatriNombre=cuatri===1?'1er cuatrimestre (ene-abr)':cuatri===2?'2do cuatrimestre (may-ago)':'3er cuatrimestre (sep-dic)';
+    var nombreCorto=agente.split(' ')[0];
+
+    // ---- RENDER ----
+    // Título
+    html+='<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1.5rem">'
+      +'<div><div style="font-size:24px;font-weight:800;color:#1a1a1a">Mi negocio</div>'
+      +'<div style="font-size:13px;color:#888;margin-top:2px">'+nombreCorto+' · '+anoActual+'</div></div>'
+      +(metaAnual>0?'<div style="text-align:right"><div style="font-size:28px;font-weight:800;color:'+(progAnual>=100?'#065f46':progAnual>=60?'#185FA5':'#92400e')+'">'+progAnual+'%</div><div style="font-size:12px;color:#888">del objetivo anual</div></div>':'')
+      +'</div>';
+
+    // Bloque 1: Resumen del año
+    html+='<div class="section-divider" style="margin-top:0">Resumen del año</div>'
+      +'<div class="grid-metrics">'
+      +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+opsAno.length+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Ticket promedio</div><div class="metric-value">'+( ticketPromedio>0?'USD '+fmt(ticketPromedio):'-')+'</div>'+(opsAno.length===0&&ticketPromedio>0?'<div style="font-size:11px;color:#aaa;margin-top:3px">Estimado por stock</div>':'')+'</div>'
+      +'<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value blue">USD '+fmt(Math.round(facturacionBrutaAno))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacionNetaAno))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+fmt(Math.round(totalGastos))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidadAno>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidadAno))+'</div>'
+      +(facturacionBrutaAno>0?'<div style="font-size:12px;color:#888;margin-top:4px">'+rentPctAno+'% sobre bruta</div>':'')+'</div>'
+      +'</div>';
+
+    // Bloque 2: Stock actual
+    html+='<div class="section-divider">Stock actual</div>'
+      +'<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">En venta / Activas</div><div class="metric-value blue">'+enVenta+'</div></div>'
       +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+fmt(Math.round(gastosProp+gastosOficina))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidad))+'</div>'+(facturacionBruta>0?'<div style="font-size:12px;color:#888;margin-top:4px">'+Math.round(rentabilidad/facturacionBruta*100)+'% sobre bruta</div>':'')+'</div>'
-      +'<div class="metric"><div class="metric-label">Com. proy. reservas</div><div class="metric-value amber">USD '+fmt(Math.round(comReservas))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Vendidas este año</div><div class="metric-value green">'+opsAno.length+'</div></div>'
       +'<div class="metric"><div class="metric-label">Com. proy. stock</div><div class="metric-value blue">USD '+fmt(Math.round(comStock))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. proy. reservas</div><div class="metric-value amber">USD '+fmt(Math.round(comReservas))+'</div></div>'
       +'</div>';
 
-    html+='<div class="charts-grid">'
-      +'<div class="chart-card"><div class="chart-title">Estado de propiedades y unidades</div><canvas id="chartEstados" height="200"></canvas></div>'
-      +'<div class="chart-card"><div class="chart-title">Resultado financiero</div><canvas id="chartFinanzas" height="200"></canvas></div>'
-      +'</div>';
-
-    var objsFilt=objs.filter(function(o){return o.agente===agente||o.agente==='Equipo';});
-    if(objsFilt.length){
-      html+='<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
-      objsFilt.forEach(function(o){var p=pct(o.actual,o.meta);html+='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+o.titulo+'</span><span style="font-weight:600">'+o.actual+'/'+o.meta+' '+o.unidad+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div></div>';});
-      html+='</div>';
+    // Bloque 3: Objetivo
+    if(metaAnual>0){
+      html+='<div class="section-divider">Objetivo anual</div>'
+        +'<div class="card">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">'
+        +'<div><div style="font-size:15px;font-weight:700">Meta: USD '+fmt(metaAnual)+'</div>'
+        +'<div style="font-size:12px;color:#888;margin-top:3px">'+cuatriNombre+' · Meta cuatrimestre: USD '+fmt(metaCuatri)+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:13px;color:#888">Cuatrimestre</div><div style="font-size:20px;font-weight:800;color:'+progColor(progCuatri)+'">'+progCuatri+'%</div></div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:#888;margin-bottom:4px">Anual — USD '+fmt(Math.round(facturacionBrutaAno))+' / USD '+fmt(metaAnual)+'</div>'
+        +'<div class="progress-bar" style="height:12px;margin-bottom:1rem"><div class="progress-fill" style="width:'+progAnual+'%;background:'+progColor(progAnual)+'"></div></div>'
+        +'<div style="font-size:12px;color:#888;margin-bottom:4px">'+cuatriNombre+' — USD '+fmt(Math.round(brutaCuatri))+' / USD '+fmt(metaCuatri)+'</div>'
+        +'<div class="progress-bar" style="height:10px;margin-bottom:1.25rem"><div class="progress-fill" style="width:'+progCuatri+'%;background:'+progColor(progCuatri)+'"></div></div>'
+        +(faltaBruta>0
+          ?'<div style="background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e5e7eb">'
+          +'<div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📋 Para cumplir el objetivo</div>'
+          +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Falta generar</div><div style="font-size:16px;font-weight:700;color:#991b1b">USD '+fmt(Math.round(faltaBruta))+'</div></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Ops. que faltan</div><div style="font-size:16px;font-weight:700">'+Math.ceil(opsQueFaltan)+'</div></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Propiedades a captar</div><div style="font-size:18px;font-weight:700;color:#185FA5">'+propsTotales+'</div><div style="font-size:11px;color:#888">≈ '+propsMes+' / mes</div></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Búsquedas a captar</div><div style="font-size:18px;font-weight:700;color:#5b21b6">'+busqTotales+'</div><div style="font-size:11px;color:#888">≈ '+busqMes+' / mes</div></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Stock activo necesario</div><div style="font-size:18px;font-weight:700;color:#0f766e">'+Math.ceil(stockNecesario)+'</div><div style="font-size:11px;color:#888">rotación 12% / mes</div></div>'
+          +'<div style="background:#fff;border-radius:8px;padding:10px;border:1px solid #eee"><div style="font-size:11px;color:#888">Meses restantes</div><div style="font-size:18px;font-weight:700">'+Math.ceil(mesesRestantes)+'</div></div>'
+          +'</div></div>'
+          :'<div style="text-align:center;padding:1rem;color:#065f46;font-weight:700;font-size:16px">🎉 ¡Objetivo cumplido!</div>'
+        )+'</div>';
+    }else{
+      html+='<div class="section-divider">Objetivo anual</div>'
+        +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:1.25rem;margin-bottom:1rem;font-size:13px;color:#92400e">'
+        +'💡 No hay objetivo anual cargado. Agregá uno en <strong>Objetivos</strong> con período <strong>Anual</strong> y unidad <strong>USD</strong>.</div>';
     }
+
     document.getElementById('tabContent').innerHTML=html;
-    new Chart(document.getElementById('chartEstados'),{type:'doughnut',data:{labels:['En venta','Reservadas','Vendidas'],datasets:[{data:[enVenta,reservadas,vendidas],backgroundColor:['#3b82f6','#f59e0b','#10b981']}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
-    new Chart(document.getElementById('chartFinanzas'),{type:'bar',data:{labels:['Facturación','Gastos','Rentabilidad','Com.Res.','Com.Stock'],datasets:[{data:[facturacion,gastosProp+gastosOficina,rentabilidad,comReservas,comStock],backgroundColor:['#10b981','#ef4444',rentabilidad>=0?'#3b82f6':'#ef4444','#f59e0b','#8b5cf6']}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+    // Mini chart facturación por mes
+    try{
+      var meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      var dataMeses=meses.map(function(m,i){return opsAno.filter(function(o){return parseInt((o.fecha||'').split('-')[1]||0)===i+1;}).reduce(function(a,o){return a+Number(o.comision_total||0);},0);});
+      if(document.getElementById('chartMini')){
+        new Chart(document.getElementById('chartMini'),{type:'bar',data:{labels:meses,datasets:[{data:dataMeses,backgroundColor:'rgba(24,95,165,0.7)',borderRadius:3}]},options:{responsive:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8}}},y:{ticks:{font:{size:8},callback:function(v){return v>0?'$'+Math.round(v/1000)+'k':'';}}}}}});
+      }
+    }catch(e){}
   });
 }
 
@@ -1178,7 +1280,15 @@ function loadEquipo(){
           +'<div class="metric"><div class="metric-label">Uds. vendidas</div><div class="metric-value green">'+unis.filter(function(u){return u.condicion==='Vendida';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Com. gen. desarro.</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(uComGen))+'</div></div>'
           +'<div class="metric"><div class="metric-label">Com. proy. desarro.</div><div class="metric-value amber" style="font-size:14px">USD '+fmt(Math.round(uComProy))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(netoTL))+'</div></div>'
+          +(function(){
+            var gAg=allGastos.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+            var agBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+            var rentAgNeta=netoTL-gAg;
+            var rentAgPct=agBruta>0?Math.round(rentAgNeta/agBruta*100):null;
+            var rc=rentAgPct===null?'#888':rentAgPct>=50?'#065f46':'#991b1b';
+            return '<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(netoTL))+'</div></div>'
+              +'<div class="metric"><div class="metric-label">Rentabilidad</div><div class="metric-value" style="font-size:18px;color:'+rc+'">'+(rentAgPct!==null?rentAgPct+'%':'—')+'</div></div>';
+          })()
           +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:14px">USD '+fmt(Math.round(gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)))+'</div></div>'
           +'</div>';
         html+='<div class="card"><div class="card-header"><span class="card-title">Propiedades y búsquedas</span></div>';
@@ -1240,6 +1350,87 @@ function loadEquipo(){
   }
   render('consolidado','');
   window._eq=function(vista,ag){render(vista,ag);};
+}
+
+// ============================================================
+// PANEL TEAM — click en widget
+// ============================================================
+function abrirPanelTeam(){
+  Promise.all([
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
+  ]).then(function(res){
+    var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allDevs=res[4]||[],allUnis=res[5]||[];
+    var anoActual=new Date().getFullYear();
+    var agentes=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+
+    var html='<div class="modal-header"><span class="modal-title">Team Olivera · Detalle por agente</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    html+='<div class="table-wrap"><table>'
+      +'<tr>'
+      +'<th>Agente</th>'
+      +'<th>Captaciones</th>'
+      +'<th>Reservas activas</th>'
+      +'<th>Com. proy. reservas</th>'
+      +'<th>Ops. '+anoActual+'</th>'
+      +'<th>Fact. bruta</th>'
+      +'<th>Rent. neta</th>'
+      +'</tr>';
+
+    agentes.forEach(function(ag){
+      var agProps=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
+      var agBusqs=allBusq.filter(function(b){return b.agente===ag;});
+      var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
+      var agUnis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
+      var agOps=allOps.filter(function(o){return o.agente===ag&&o.fecha&&o.fecha.startsWith(String(anoActual));});
+      var agGastos=allGastos.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+
+      // Captaciones: propiedades sueltas (sin búsquedas)
+      var captaciones=agProps.length+agUnis.length;
+
+      // Reservas activas: props reservadas + búsquedas reservadas + unidades reservadas
+      var propsReservadas=agProps.filter(function(p){return p.estado==='Reservada';}).length;
+      var busqReservadas=agBusqs.filter(function(b){return b.estado==='Reservada';}).length;
+      var unisReservadas=agUnis.filter(function(u){return u.condicion==='Reservada';}).length;
+      var totalReservas=propsReservadas+busqReservadas+unisReservadas;
+
+      // Comisión proyectada reservas: props + búsquedas + unidades reservadas
+      var comPrReservas=agProps.filter(function(p){return p.estado==='Reservada';})
+        .reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0)
+        +agBusqs.filter(function(b){return b.estado==='Reservada';})
+        .reduce(function(a,b){return a+Number(b.precio||0)*(Number(b.comision_compradora||0)+Number(b.comision_vendedora||0))/100;},0)
+        +agUnis.filter(function(u){return u.condicion==='Reservada';})
+        .reduce(function(a,u){return a+Number(u.comision||0);},0);
+
+      // Facturación bruta año
+      var brutaAno=agOps.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+
+      // Neta para mí (TL) de operaciones cerradas
+      var netaTL=agOps.reduce(function(a,o){return a+Number(o.comision_team_leader||0)-Number(o.martillero||0);},0);
+
+      // Rentabilidad = (neta TL - gastos) / bruta * 100
+      var rentNeta=netaTL-agGastos;
+      var rentPct=brutaAno>0?Math.round(rentNeta/brutaAno*100):null;
+      var rentColor=rentPct===null?'#888':rentPct>=50?'#065f46':'#991b1b';
+
+      html+='<tr>'
+        +'<td style="font-weight:600">'+ag.split(' ').slice(0,2).join(' ')+'</td>'
+        +'<td style="text-align:center">'+captaciones+'</td>'
+        +'<td style="text-align:center">'+totalReservas+'</td>'
+        +'<td style="color:#92400e;font-weight:600">USD '+fmt(Math.round(comPrReservas))+'</td>'
+        +'<td style="text-align:center">'+agOps.length+'</td>'
+        +'<td style="font-weight:600;color:#185FA5">USD '+fmt(Math.round(brutaAno))+'</td>'
+        +'<td style="font-weight:700;color:'+rentColor+'">'+(rentPct!==null?rentPct+'%':'—')+'</td>'
+        +'</tr>';
+    });
+
+    html+='</table></div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
 }
 </script>
 </body>
