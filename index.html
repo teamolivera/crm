@@ -265,9 +265,10 @@ function loadDashboard(filtroAgente){
     fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
     fetch(API+'?sheet=Reservas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})
   ]).then(function(res){
-    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],ops=res[4]||[],gastos=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[];
+    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],ops=res[4]||[],gastos=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[],allDevsDash=res[8]||[];
 
     var props=allProps.filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
     var busqs=allBusq.filter(function(b){return b.agente===agente;});
@@ -275,7 +276,8 @@ function loadDashboard(filtroAgente){
     gastos=gastos.filter(function(g){return g.agente===agente;});
     ops=ops.filter(function(o){return o.agente===agente;});
     reservas=reservas.filter(function(r){return r.agente===agente;});
-    var unis=allUnis.filter(function(u){return u.agente===agente;});
+    var devIds=allDevsDash.filter(function(d){return d.agente===agente;}).map(function(d){return d.id;});
+    var unis=allUnis.filter(function(u){return devIds.indexOf(u.desarrollo_id)>=0;});
 
     // Combinar props sueltas + búsquedas para stock
     var todasProps=props.concat(busqs);
@@ -313,7 +315,8 @@ function loadDashboard(filtroAgente){
         teamAgentes.forEach(function(ag){
           var agProps=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
           var agBusqs=allBusq.filter(function(b){return b.agente===ag;});
-          var agUnis=allUnis.filter(function(u){return u.agente===ag;});
+          var agDevIds2=allDevsDash.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
+          var agUnis=allUnis.filter(function(u){return agDevIds2.indexOf(u.desarrollo_id)>=0;});
           var agRes=reservas.filter(function(r){return r.agente===ag;});
           var agTodas=agProps.concat(agBusqs);
 
@@ -716,7 +719,8 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 function loadDesarrollos(){
   Promise.all([
     fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})
   ]).then(function(res){
     var devs=(res[0]||[]).filter(function(d){return d.agente===currentUser.nombre||currentUser.rol==='Líder';});
     var allUnis=res[1]||[];
@@ -754,7 +758,8 @@ function loadDesarrollos(){
 }
 
 function verFichaDesarrollo(devId){
-  Promise.all([fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),fetch(API+'?sheet=Unidades').then(function(r){return r.json();})]).then(function(res){
+  Promise.all([fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})]).then(function(res){
     var dev=(res[0]||[]).find(function(d){return d.id===devId;});if(!dev)return;
     var unis=(res[1]||[]).filter(function(u){return u.desarrollo_id===devId;});
     var act=unis.filter(function(u){return u.condicion==='Activa';});
@@ -1028,6 +1033,7 @@ function loadEquipo(){
       fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
       fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
       fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
       fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();})
     ]).then(function(res){
       var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allFins=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
@@ -1048,7 +1054,8 @@ function loadEquipo(){
           var gastos=allGastos.filter(function(g){return g.agente===ag;});
           var fins=allFins.filter(function(f){return f.agente===ag;});
           var devs=allDevs.filter(function(d){return d.agente===ag;});
-          var unis=allUnis.filter(function(u){return u.agente===ag;});
+          var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
+          var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
           var pventa=todasProps.filter(function(p){return p.estado==='En venta';}).length;
           var preserv=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
           var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length;
@@ -1093,7 +1100,8 @@ function loadEquipo(){
         var ops=allOps.filter(function(o){return o.agente===ag;});
         var gastos=allGastos.filter(function(g){return g.agente===ag;});
         var devs=allDevs.filter(function(d){return d.agente===ag;});
-        var unis=allUnis.filter(function(u){return u.agente===ag;});
+        var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
+        var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
         var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var netoTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
