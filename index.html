@@ -501,7 +501,7 @@ function loadDashboard(filtroAgente){
     var nombreCorto=agente;
 
     // ---- CUENTA CORRIENTE (solo para agentes) ----
-    var esAgenteDash=currentUser.rol!=='Líder';
+    var esAgenteDash=agente!==currentUser.nombre||currentUser.rol!=='Líder';
     var ccSaldo=0;
     var ccWidgetHtml='';
     if(esAgenteDash){
