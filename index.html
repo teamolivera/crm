@@ -264,8 +264,8 @@ function loadDashboard(filtroAgente){
 
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
-    // CAMBIO 2: facturación = neto_gonzalo
-    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_gonzalo||o.comision_total||0);},0);
+    // CAMBIO 2: facturación = neto_agente
+    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
     var rentabilidad=facturacion-gastosProp-gastosOficina;
 
     // Com proyectada: solo propiedades NO vendidas + unidades activas/reservadas
@@ -493,10 +493,10 @@ function confirmarCierre(origen,id){
   closeModal();loading();
 
   var opData={id:uid(),fecha:fecha,precio_final:c,comision_total:Math.round(comTotal),
-    parte_gonzalo:Math.round(parteG),parte_oficina:Math.round(parteO),
+    comision_agente:Math.round(parteG),parte_oficina:Math.round(parteO),
     martillero:Math.round(martillero),
     iva_comprador:ivaC,iva_vendedor:ivaV,iva_oficina:ivaO,iva_total:ivaTotal,
-    neto_gonzalo:Math.round(netoG),agente:currentUser.nombre};
+    neto_agente:Math.round(netoG),agente:currentUser.nombre};
 
   if(origen==='prop'){
     opData.propiedad_id=id;
@@ -750,8 +750,8 @@ function loadFinanzas(){
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosPropUSD=gastos.filter(function(g){return(g.moneda||'USD')!=='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
     var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
-    // CAMBIO 2: facturación = neto_gonzalo
-    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_gonzalo||o.comision_total||0);},0);
+    // CAMBIO 2: facturación = neto_agente
+    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
     var rentabilidad=facturacion-gastosPropUSD-gastosOficina;
     var html='<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
@@ -766,10 +766,10 @@ function loadFinanzas(){
       ops.forEach(function(o){
         html+='<tr><td>'+o.fecha+'</td>'
           +'<td>USD '+fmt(Math.round(Number(o.comision_total||0)))+'</td>'
-          +'<td>USD '+fmt(Math.round(Number(o.parte_gonzalo||0)))+'</td>'
+          +'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>'
           +'<td style="color:#991b1b">− USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
           +'<td style="color:#991b1b">− USD '+fmt(Math.round(Number(o.iva_total||0)))+'</td>'
-          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(o.neto_gonzalo||0)))+'</td></tr>';
+          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(o.neto_agente||0)))+'</td></tr>';
       });
       html+='</table></div></div>';
     }else{html+='<div class="empty">No hay operaciones cerradas.</div>';}
@@ -921,7 +921,7 @@ function loadEquipo(){
           var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
           var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
           var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-          var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_gonzalo||o.comision_total||0);},0);
+          var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
           var gastosT=gastos.filter(function(g){return(g.moneda||'USD')!=='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0)
             +fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
           html+='<div class="card">'
@@ -965,7 +965,7 @@ function loadEquipo(){
         var unis=allUnis.filter(function(u){return u.agente===ag;});
         var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_gonzalo||o.comision_total||0);},0);
+        var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
         html+='<div class="grid-metrics">'
           +'<div class="metric"><div class="metric-label">Props. en venta</div><div class="metric-value blue">'+props.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Props. reservadas</div><div class="metric-value amber">'+props.filter(function(p){return p.estado==='Reservada';}).length+'</div></div>'
