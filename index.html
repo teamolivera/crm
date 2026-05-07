@@ -484,12 +484,18 @@ function loadDashboard(filtroAgente){
     var hoy=new Date();
     var finAno=new Date(anoActual,11,31);
     var mesesRestantes=Math.max(0.5,((finAno-hoy)/(1000*60*60*24*30.5)));
-    var opsQueFaltan=ticketPromedio>0?faltaBruta/ticketPromedio:0;
-    var stockNecesario=opsQueFaltan>0?(opsQueFaltan/mesesRestantes)/0.12:0;
-    var propsMes=Math.ceil(stockNecesario);
-    var busqMes=Math.ceil(opsQueFaltan/5/mesesRestantes);
+    // Operaciones totales necesarias en el año
+    var opsTotalesNecesarias=ticketPromedio>0?Math.ceil(metaAnual/ticketPromedio):0;
+    // Operaciones que faltan = total necesarias - ya realizadas
+    var opsQueFaltan=Math.max(0,opsTotalesNecesarias-opsAno.length);
+    // Captaciones necesarias = ops que faltan / rotación 12% — descontando las que ya están en venta
+    var enVentaSolo=todasProps.filter(function(p){return p.estado==='En venta';}).length;
+    var captacionesNecesarias=Math.max(0,Math.ceil(opsQueFaltan/0.12)-enVentaSolo);
     var propsTotales=Math.ceil(opsQueFaltan*4/5);
     var busqTotales=Math.ceil(opsQueFaltan/5);
+    var propsMes=Math.ceil(propsTotales/mesesRestantes);
+    var busqMes=Math.ceil(busqTotales/mesesRestantes);
+    var stockNecesario=Math.ceil(opsQueFaltan/0.12);
     var cuatriNombre=cuatri===1?'1er cuatrimestre (ene-abr)':cuatri===2?'2do cuatrimestre (may-ago)':'3er cuatrimestre (sep-dic)';
     var nombreCorto=agente.split(' ')[0];
 
@@ -528,20 +534,21 @@ function loadDashboard(filtroAgente){
     // Sección: Año en curso
     html+='<div style="font-size:11px;font-weight:700;color:'+TO_BLACK+';text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
       +'<div style="width:3px;height:14px;background:'+TO_RED+';border-radius:2px"></div>Resumen del año</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:1.5rem">'
-      +dcard('🏠','Operaciones',''+opsAno.length,'',TO_BLACK)
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem">'
+      +dcard('🏠','Operaciones',''+opsAno.length+(opsTotalesNecesarias>0?' / '+opsTotalesNecesarias:''),opsTotalesNecesarias>0?opsQueFaltan+' pendientes':'',TO_BLACK)
       +dcard('🏷️','Ticket promedio',ticketPromedio>0?'USD '+fmt(ticketPromedio):'-',opsAno.length===0&&ticketPromedio>0?'Estimado por stock':'',TO_BLUE)
       +dcard('💰','Comisión promedio',comisionPromedio>0?'USD '+fmt(comisionPromedio):'-',opsAno.length===0&&comisionPromedio>0?'Estimado por stock':'',TO_BLUE)
       +dcard('📈','Fact. bruta','USD '+fmt(Math.round(facturacionBrutaAno)),'',TO_BLUE)
       +dcard('✅','Fact. neta','USD '+fmt(Math.round(facturacionNetaAno)),'','#059669')
       +dcard('💸','Gastos totales','USD '+fmt(Math.round(totalGastos)),'',TO_RED)
       +dcard('📊','Rentabilidad neta','USD '+fmt(Math.round(rentabilidadAno)),facturacionBrutaAno>0?rentPctAno+'% sobre bruta':'',rentabilidadAno>=0?'#059669':TO_RED)
+      +(opsTotalesNecesarias>0?dcard('🎯','Captaciones necesarias',''+captacionesNecesarias,'En venta actuales: '+enVentaSolo+' · Stock total necesario: '+stockNecesario,TO_RED):'')
       +'</div>';
 
     // Sección: Stock
     html+='<div style="font-size:11px;font-weight:700;color:'+TO_BLACK+';text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
       +'<div style="width:3px;height:14px;background:'+TO_BLUE+';border-radius:2px"></div>Stock actual</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:1.5rem">'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem">'
       +dcard('🔵','En venta / Activas',''+enVenta,'',TO_BLUE)
       +dcard('🟡','Reservadas',''+reservadas,'','#d97706')
       +dcard('🟢','Vendidas este año',''+opsAno.length,'','#059669')
