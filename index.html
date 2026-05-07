@@ -571,9 +571,6 @@ function loadDashboard(filtroAgente){
       +'<div style="width:3px;height:14px;background:'+TO_BLUE+';border-radius:2px"></div>Stock y captaciones</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem">'
       +dcard('🏠','Captaciones en venta',''+captacionesActuales,'Props + unidades activas',TO_BLUE)
-      +(captNecesarias!==null?dcard('📋','Captaciones necesarias',''+captNecesarias,'Stock total necesario: '+stockNecesario,TO_RED):'')
-      +dcard('🎯','Ops. realizadas / necesarias',opsAno.length+(opsTotalesNecesarias>0?' / '+opsTotalesNecesarias:''),opsTotalesNecesarias>0?'Faltan: '+opsQueFaltan:'Sin objetivo cargado',TO_BLACK)
-      +dcard('🔍','Búsquedas a captar',opsTotalesNecesarias>0?''+busqTotales:'-',opsTotalesNecesarias>0?'≈ '+busqMes+' / mes':'Sin objetivo cargado','#7c3aed')
       +dcard('🟡','Reservadas',''+reservadas,'','#d97706')
       +dcard('🟢','Vendidas este año',''+opsAno.length,'','#059669')
       +dcard('📋','Com. proy. stock','USD '+fmt(Math.round(comStock)),'',TO_BLUE)
@@ -615,7 +612,7 @@ function loadDashboard(filtroAgente){
           '<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #eee;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Ops. que faltan</div><div style="font-size:24px;font-weight:900;color:'+TO_BLACK+'">'+Math.ceil(opsQueFaltan)+'</div></div>',
           '<div style="background:'+TO_BLUE+'10;border-radius:10px;padding:12px;border:1px solid '+TO_BLUE+'30;text-align:center"><div style="font-size:10px;color:'+TO_BLUE+';text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;font-weight:700">🏠 Props. a captar</div><div style="font-size:24px;font-weight:900;color:'+TO_BLUE+'">'+propsTotales+'</div><div style="font-size:11px;color:'+TO_BLUE+'80">≈ '+propsMes+' / mes</div></div>',
           '<div style="background:#7c3aed10;border-radius:10px;padding:12px;border:1px solid #7c3aed30;text-align:center"><div style="font-size:10px;color:#7c3aed;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;font-weight:700">🔍 Búsquedas</div><div style="font-size:24px;font-weight:900;color:#7c3aed">'+busqTotales+'</div><div style="font-size:11px;color:#7c3aed80">≈ '+busqMes+' / mes</div></div>',
-          '<div style="background:#0f766e10;border-radius:10px;padding:12px;border:1px solid #0f766e30;text-align:center"><div style="font-size:10px;color:#0f766e;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;font-weight:700">📦 Stock necesario</div><div style="font-size:24px;font-weight:900;color:#0f766e">'+Math.ceil(stockNecesario)+'</div><div style="font-size:11px;color:#0f766e80">rotación 12%/mes</div></div>',
+
           '<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #eee;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Meses restantes</div><div style="font-size:24px;font-weight:900;color:'+TO_BLACK+'">'+Math.ceil(mesesRestantes)+'</div></div>'
           ].join('')
           +'</div></div>'
