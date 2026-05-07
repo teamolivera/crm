@@ -485,8 +485,8 @@ function loadDashboard(filtroAgente){
     var hoy=new Date();
     var finAno=new Date(anoActual,11,31);
     var mesesRestantes=Math.max(0.5,((finAno-hoy)/(1000*60*60*24*30.5)));
-    // Operaciones totales necesarias en el año
-    var opsTotalesNecesarias=ticketPromedio>0?Math.ceil(metaAnual/ticketPromedio):0;
+    // Operaciones totales necesarias en el año = meta / comisión promedio
+    var opsTotalesNecesarias=comisionPromedio>0?Math.ceil(metaAnual/comisionPromedio):0;
     // Operaciones que faltan = total necesarias - ya realizadas
     var opsQueFaltan=Math.max(0,opsTotalesNecesarias-opsAno.length);
     // Captaciones necesarias = ops que faltan / rotación 12% — descontando las que ya están en venta
