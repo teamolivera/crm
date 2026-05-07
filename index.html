@@ -439,8 +439,19 @@ function loadDashboard(filtroAgente){
     var rentabilidadAno=facturacionNetaAno-totalGastos;
     var rentPctAno=facturacionBrutaAno>0?Math.round(rentabilidadAno/facturacionBrutaAno*100):0;
 
-    // Ticket promedio: ops del año o estimado por stock
+    // Ticket promedio: precio_final promedio de ops cerradas del año
+    // Si no hay ops, se estima por precio promedio del stock en venta
     var ticketPromedio=opsAno.length>0
+      ?Math.round(opsAno.reduce(function(a,o){return a+Number(o.precio_final||0);},0)/opsAno.length)
+      :(function(){
+          var precios=todasProps.filter(function(p){return p.estado==='En venta';})
+            .map(function(p){return Number(p.precio||0);})
+            .concat(unis.filter(function(u){return u.condicion==='Activa';}).map(function(u){return Number(u.precio||0);}));
+          return precios.length>0?Math.round(precios.reduce(function(a,v){return a+v;},0)/precios.length):0;
+        })();
+    // Comisión promedio: comision_total promedio de ops cerradas del año
+    // Si no hay ops, se estima por comisión promedio del stock en venta
+    var comisionPromedio=opsAno.length>0
       ?Math.round(facturacionBrutaAno/opsAno.length)
       :(function(){
           var coms=todasProps.filter(function(p){return p.estado==='En venta';})
@@ -495,6 +506,7 @@ function loadDashboard(filtroAgente){
       +'<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+opsAno.length+'</div></div>'
       +'<div class="metric"><div class="metric-label">Ticket promedio</div><div class="metric-value">'+( ticketPromedio>0?'USD '+fmt(ticketPromedio):'-')+'</div>'+(opsAno.length===0&&ticketPromedio>0?'<div style="font-size:11px;color:#aaa;margin-top:3px">Estimado por stock</div>':'')+'</div>'
+      +'<div class="metric"><div class="metric-label">Comisión promedio</div><div class="metric-value green">'+( comisionPromedio>0?'USD '+fmt(comisionPromedio):'-')+'</div>'+(opsAno.length===0&&comisionPromedio>0?'<div style="font-size:11px;color:#aaa;margin-top:3px">Estimado por stock</div>':'')+'</div>'
       +'<div class="metric"><div class="metric-label">Facturación bruta</div><div class="metric-value blue">USD '+fmt(Math.round(facturacionBrutaAno))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacionNetaAno))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Gastos totales</div><div class="metric-value red">USD '+fmt(Math.round(totalGastos))+'</div></div>'
