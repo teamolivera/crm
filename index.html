@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v8 -->
+<!-- v9 -->
 <html>
 <head>
   <meta charset="UTF-8">
@@ -27,8 +27,6 @@
     .btn-primary:hover{background:#0C447C}
     .btn-success{background:#065f46;color:#fff;border-color:#065f46}
     .btn-success:hover{background:#044232}
-    .btn-danger{background:#991b1b;color:#fff;border-color:#991b1b}
-    .btn-danger:hover{background:#7f1d1d}
     .btn-sm{padding:5px 10px;font-size:12px}
     .btn-full{width:100%;padding:12px;font-size:15px}
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -68,10 +66,11 @@
     .badge-red{background:#fee2e2;color:#991b1b}
     .badge-purple{background:#ede9fe;color:#5b21b6}
     .badge-gray{background:#f3f4f6;color:#374151}
+    .badge-teal{background:#ccfbf1;color:#0f766e}
     .progress-bar{height:8px;background:#e5e7eb;border-radius:4px;margin-top:8px}
     .progress-fill{height:8px;border-radius:4px;transition:width 0.3s}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
-    .modal{background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+    .modal{background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
     .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
     .modal-title{font-size:16px;font-weight:600}
     .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#999;line-height:1}
@@ -94,7 +93,7 @@
     .agente-chip.active{background:#185FA5;color:#fff;border-color:#185FA5}
     .dev-card{background:#fff;border-radius:12px;border:2px solid #dbeafe;padding:1.25rem;margin-bottom:0.75rem;box-shadow:0 1px 4px rgba(0,0,0,0.04);cursor:pointer;transition:box-shadow 0.15s,border-color 0.15s}
     .dev-card:hover{box-shadow:0 4px 16px rgba(24,95,165,0.15);border-color:#185FA5}
-    .prop-link{cursor:pointer;color:#185FA5;font-weight:700;font-size:15px;text-decoration:none}
+    .prop-link{cursor:pointer;color:#185FA5;font-weight:700;font-size:15px}
     .prop-link:hover{text-decoration:underline}
     .ficha-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
     .ficha-row:last-child{border-bottom:none}
@@ -106,6 +105,14 @@
     .distrib-total{display:flex;justify-content:space-between;padding:8px 0 0;font-size:15px;font-weight:700;border-top:2px solid #bbf7d0;margin-top:6px;color:#065f46}
     .cc-section{background:#fff;border-radius:12px;border:1px solid #eee;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
     .cc-section-title{font-size:14px;font-weight:600;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+    .team-widget{background:linear-gradient(135deg,#185FA5,#0C447C);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;color:#fff}
+    .team-widget-title{font-size:14px;font-weight:600;opacity:0.85;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.5px}
+    .team-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+    .team-metric{background:rgba(255,255,255,0.12);border-radius:10px;padding:12px 16px}
+    .team-metric-label{font-size:10px;opacity:0.75;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+    .team-metric-value{font-size:18px;font-weight:700}
+    .referido-tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:#ccfbf1;color:#0f766e;margin-left:6px}
+    .no-referido-tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:#f3f4f6;color:#374151;margin-left:6px}
   </style>
 </head>
 <body>
@@ -114,11 +121,11 @@
   <div class="login-box">
     <h1>Team Olivera</h1>
     <p>CRM Inmobiliario · teamolivera.com</p>
-    <div id="loginError" class="alert hidden">Usuario o contraseña incorrectos</div>
+    <div id="loginError" class="alert hidden"></div>
     <form autocomplete="off" onsubmit="return false">
       <input type="text" style="display:none"/><input type="password" style="display:none"/>
-      <div class="form-group"><label>Usuario</label><input id="loginUser" type="text" placeholder="golivera / gquintana" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/></div>
-      <div class="form-group"><label>Contraseña</label><input id="loginPass" type="password" placeholder="••••••" autocomplete="new-password"/></div>
+      <div class="form-group"><label>Usuario</label><input id="loginUser" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/></div>
+      <div class="form-group"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="new-password"/></div>
       <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Entrar</button>
     </form>
   </div>
@@ -128,8 +135,8 @@
   <div class="topbar">
     <div class="topbar-logo">Team Olivera <span>CRM</span></div>
     <div class="topbar-right">
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555">
-        <div class="avatar" id="avatarTop">GO</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="avatar" id="avatarTop"></div>
         <div>
           <div style="font-weight:600;font-size:13px" id="userNameTop"></div>
           <div class="rol-badge" id="userRolTop"></div>
@@ -141,6 +148,7 @@
   <div class="nav">
     <button class="nav-btn active" onclick="showTab('dashboard',this)">Dashboard</button>
     <button class="nav-btn" onclick="showTab('propiedades',this)">Propiedades</button>
+    <button class="nav-btn" onclick="showTab('busquedas',this)">Búsquedas</button>
     <button class="nav-btn" onclick="showTab('desarrollos',this)">Desarrollos</button>
     <button class="nav-btn" onclick="showTab('finanzas',this)">Finanzas</button>
     <button class="nav-btn" onclick="showTab('objetivos',this)">Objetivos</button>
@@ -183,6 +191,14 @@ function estadoBadge(e){
 function openModal(){document.getElementById('modalOverlay').style.display='flex';}
 function closeModal(){document.getElementById('modalOverlay').style.display='none';document.getElementById('modalBox').innerHTML='';}
 function closeModalOverlay(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+// Distribución según referido (para operaciones de agentes)
+function getDistrib(referido){
+  // referido: si = Gonzalo refirió → TL 45%, Agente 35%
+  // no referido → Agente 45%, TL 35%
+  if(referido==='si')return{agente:35,tl:45,oficina:20};
+  return{agente:45,tl:35,oficina:20};
+}
 
 function mostrarApp(){
   document.getElementById('loginWrap').style.display='none';
@@ -228,6 +244,7 @@ function showTab(tab,btn){
   loading();
   if(tab==='dashboard')loadDashboard();
   else if(tab==='propiedades')loadPropiedades();
+  else if(tab==='busquedas')loadBusquedas();
   else if(tab==='desarrollos')loadDesarrollos();
   else if(tab==='finanzas')loadFinanzas();
   else if(tab==='objetivos')loadObjetivos();
@@ -239,8 +256,10 @@ function showTab(tab,btn){
 // ============================================================
 function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
+  var esLider=currentUser.rol==='Líder';
   Promise.all([
     fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}),
     fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
@@ -248,38 +267,98 @@ function loadDashboard(filtroAgente){
     fetch(API+'?sheet=Reservas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
   ]).then(function(res){
-    var allProps=res[0]||[],fins=res[1]||[],objs=res[2]||[],ops=res[3]||[],gastos=res[4]||[],reservas=res[5]||[],allUnis=res[6]||[];
+    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],ops=res[4]||[],gastos=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[];
 
-    // CAMBIO 1: propiedades sueltas = sin desarrollo_id
     var props=allProps.filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
+    var busqs=allBusq.filter(function(b){return b.agente===agente;});
     fins=fins.filter(function(f){return f.agente===agente;});
     gastos=gastos.filter(function(g){return g.agente===agente;});
     ops=ops.filter(function(o){return o.agente===agente;});
     reservas=reservas.filter(function(r){return r.agente===agente;});
     var unis=allUnis.filter(function(u){return u.agente===agente;});
 
-    var enVenta=props.filter(function(p){return p.estado==='En venta';}).length+unis.filter(function(u){return u.condicion==='Activa';}).length;
-    var reservadas=props.filter(function(p){return p.estado==='Reservada';}).length+unis.filter(function(u){return u.condicion==='Reservada';}).length;
-    var vendidas=props.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
+    // Combinar props sueltas + búsquedas para stock
+    var todasProps=props.concat(busqs);
+    var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length+unis.filter(function(u){return u.condicion==='Activa';}).length;
+    var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length+unis.filter(function(u){return u.condicion==='Reservada';}).length;
+    var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
 
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
-    // CAMBIO 2: facturación = neto_agente
-    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
+
+    // Facturación: neto_team_leader si es líder viendo sus datos, sino neto_agente
+    var facturacion=ops.reduce(function(a,o){
+      if(esLider&&agente===currentUser.nombre)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
+      return a+Number(o.neto_agente||o.comision_total||0);
+    },0);
     var rentabilidad=facturacion-gastosProp-gastosOficina;
 
-    // Com proyectada: solo propiedades NO vendidas + unidades activas/reservadas
+    // Com proyectada propia
     var comReservas=reservas.reduce(function(a,r){return a+Number(r.precio_reserva||0)*(Number(r.comision_compradora||0)+Number(r.comision_vendedora||0))/100;},0)
       +unis.filter(function(u){return u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-    var comStock=props.filter(function(p){return p.estado==='En venta';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0)
+    var comStock=todasProps.filter(function(p){return p.estado==='En venta';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0)
       +unis.filter(function(u){return u.condicion==='Activa';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
 
     var html='';
-    if(currentUser.rol==='Líder'){
+
+    if(esLider){
       html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Ver datos de:</span>';
       allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agente?' active':'')+'" onclick="loadDashboard(\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
       html+='</div>';
+
+      // Widget del team (siempre visible para el líder)
+      if(agente===currentUser.nombre){
+        var teamAgentes=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+        var teamComPrBruta=0,teamComPrNeta=0,teamComResBruta=0,teamComResNeta=0;
+        teamAgentes.forEach(function(ag){
+          var agProps=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
+          var agBusqs=allBusq.filter(function(b){return b.agente===ag;});
+          var agUnis=allUnis.filter(function(u){return u.agente===ag;});
+          var agRes=reservas.filter(function(r){return r.agente===ag;});
+          var agTodas=agProps.concat(agBusqs);
+
+          agTodas.filter(function(p){return p.estado==='En venta';}).forEach(function(p){
+            var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
+            var d=getDistrib(p.referido);
+            var martillero=comBruta*0.8*0.04;
+            teamComPrBruta+=comBruta*d.tl/100;
+            teamComPrNeta+=comBruta*d.tl/100-martillero;
+          });
+          agUnis.filter(function(u){return u.condicion==='Activa';}).forEach(function(u){
+            var comBruta=Number(u.comision||0);
+            var d=getDistrib(u.referido);
+            var martillero=comBruta*0.8*0.04;
+            teamComPrBruta+=comBruta*d.tl/100;
+            teamComPrNeta+=comBruta*d.tl/100-martillero;
+          });
+          // Reservadas
+          agTodas.filter(function(p){return p.estado==='Reservada';}).forEach(function(p){
+            var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
+            var d=getDistrib(p.referido);
+            var martillero=comBruta*0.8*0.04;
+            teamComResBruta+=comBruta*d.tl/100;
+            teamComResNeta+=comBruta*d.tl/100-martillero;
+          });
+          agUnis.filter(function(u){return u.condicion==='Reservada';}).forEach(function(u){
+            var comBruta=Number(u.comision||0);
+            var d=getDistrib(u.referido);
+            var martillero=comBruta*0.8*0.04;
+            teamComResBruta+=comBruta*d.tl/100;
+            teamComResNeta+=comBruta*d.tl/100-martillero;
+          });
+        });
+
+        html+='<div class="team-widget">'
+          +'<div class="team-widget-title">📊 Mi Team · Comisiones proyectadas para mí</div>'
+          +'<div class="team-metrics">'
+          +'<div class="team-metric"><div class="team-metric-label">Com. proy. total (bruta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComPrBruta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Com. proy. total (neta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComPrNeta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Com. reservas (bruta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComResBruta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Com. reservas (neta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComResNeta))+'</div></div>'
+          +'</div></div>';
+      }
     }
+
     html+='<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">En venta / Activas</div><div class="metric-value blue">'+enVenta+'</div></div>'
       +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
@@ -291,14 +370,16 @@ function loadDashboard(filtroAgente){
       +'<div class="metric"><div class="metric-label">Com. proy. reservas</div><div class="metric-value amber">USD '+fmt(Math.round(comReservas))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Com. proy. stock</div><div class="metric-value blue">USD '+fmt(Math.round(comStock))+'</div></div>'
       +'</div>';
+
     html+='<div class="charts-grid">'
       +'<div class="chart-card"><div class="chart-title">Estado de propiedades y unidades</div><canvas id="chartEstados" height="200"></canvas></div>'
       +'<div class="chart-card"><div class="chart-title">Resultado financiero</div><canvas id="chartFinanzas" height="200"></canvas></div>'
       +'</div>';
+
     var objsFilt=objs.filter(function(o){return o.agente===agente||o.agente==='Equipo';});
     if(objsFilt.length){
       html+='<div class="card"><div class="card-header"><span class="card-title">Objetivos en curso</span></div>';
-      objsFilt.forEach(function(o){var p=pct(o.actual,o.meta);html+='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+o.titulo+' <span style="color:#888;font-size:11px">('+o.agente+')</span></span><span style="font-weight:600">'+o.actual+'/'+o.meta+' '+o.unidad+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div></div>';});
+      objsFilt.forEach(function(o){var p=pct(o.actual,o.meta);html+='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+o.titulo+'</span><span style="font-weight:600">'+o.actual+'/'+o.meta+' '+o.unidad+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div></div>';});
       html+='</div>';
     }
     document.getElementById('tabContent').innerHTML=html;
@@ -308,49 +389,163 @@ function loadDashboard(filtroAgente){
 }
 
 // ============================================================
+// HELPER: formulario de propiedad/búsqueda reutilizable
+// ============================================================
+function htmlFormProp(d,sheet,mostrarReferido){
+  d=d||{};
+  var referidoHtml='';
+  if(mostrarReferido){
+    referidoHtml='<div class="form-group"><label>¿Referida por Gonzalo?</label>'
+      +'<select id="f-referido">'
+      +'<option value="no">No</option>'
+      +'<option value="si">Sí — referida por el Team Leader</option>'
+      +'</select></div>';
+  }
+  return '<div class="section-divider">Datos de la propiedad</div>'
+    +'<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="'+(d.direccion||'')+'" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
+    +'<div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div></div>'
+    +'<div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="'+(d.precio||'')+'"/></div>'
+    +referidoHtml
+    +'<div class="section-divider">Cliente (vendedor)</div>'
+    +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="'+(d.telefono||'')+'" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="'+(d.mail||'')+'" autocomplete="off"/></div></div>'
+    +'<div class="section-divider">Comisiones</div>'
+    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="f-comp" type="number" value="'+(d.comision_compradora||4)+'"/></div>'
+    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="f-vend" type="number" value="'+(d.comision_vendedora||3)+'"/></div></div>';
+}
+
+function setFormPropValues(d){
+  if(d.tipo)document.getElementById('f-tipo').value=d.tipo;
+  if(d.estado)document.getElementById('f-estado').value=d.estado;
+  var refEl=document.getElementById('f-referido');
+  if(refEl&&d.referido)refEl.value=d.referido;
+}
+
+function getPropData(extra){
+  var base={direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend')};
+  var refEl=document.getElementById('f-referido');
+  if(refEl)base.referido=refEl.value;
+  return Object.assign(base,extra||{});
+}
+
+// ============================================================
 // PROPIEDADES
 // ============================================================
 function loadPropiedades(){
   getSheet('Propiedades',function(e,props){
-    // CAMBIO 1: solo propiedades sin desarrollo_id
     props=(props||[]).filter(function(p){return p.agente===currentUser.nombre&&!p.desarrollo_id;});
-    var html='<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalPropiedad()">+ Nueva propiedad</button></div>';
+    var esAgente=currentUser.rol!=='Líder';
+    var html='<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalProp(\'Propiedades\')">+ Nueva propiedad</button></div>';
     if(props.length){
-      props.forEach(function(p){
-        html+='<div class="prop-card">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-          +'<div><div class="prop-link" onclick="verFichaProp(\''+p.id+'\')">'+p.direccion+'</div>'
-          +'<div style="font-size:12px;color:#888;margin-top:3px">'+(p.localidad||p.zona||'')+(p.tipo?' · '+p.tipo:'')+'</div>'
-          +(p.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+p.cliente+(p.telefono?' · '+p.telefono:'')+'</div>':'')
-          +'</div>'
-          +'<div style="text-align:right"><div style="font-weight:700;font-size:16px;color:#185FA5">USD '+fmt(p.precio)+'</div>'
-          +(p.valor_cierre?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.valor_cierre)+'</div>':'')
-          +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
-          +'</div></div>'
-          +'<div class="prop-actions">'
-          +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
-          +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+')">Reservar/Vender</button>'
-          +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\')">Estado</button>'
-          +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\')">Eliminar</button>'
-          +'</div></div>';
-      });
+      props.forEach(function(p){html+=propCardHtml(p,'Propiedades',esAgente);});
     }else{html+='<div class="empty">No hay propiedades. Agregá la primera.</div>';}
     document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-function verFichaProp(id){
-  getSheet('Propiedades',function(e,props){
+function propCardHtml(p,sheet,mostrarReferido){
+  var refTag=mostrarReferido?(p.referido==='si'?'<span class="referido-tag">✓ Referida</span>':'<span class="no-referido-tag">Sin referido</span>'):'';
+  return '<div class="prop-card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+    +'<div><div class="prop-link" onclick="verFichaProp(\''+p.id+'\',\''+sheet+'\')">'+p.direccion+'</div>'
+    +'<div style="font-size:12px;color:#888;margin-top:3px">'+(p.localidad||p.zona||'')+(p.tipo?' · '+p.tipo:'')+refTag+'</div>'
+    +(p.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+p.cliente+(p.telefono?' · '+p.telefono:'')+'</div>':'')
+    +'</div>'
+    +'<div style="text-align:right"><div style="font-weight:700;font-size:16px;color:#185FA5">USD '+fmt(p.precio)+'</div>'
+    +(p.valor_cierre?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.valor_cierre)+'</div>':'')
+    +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
+    +'</div></div>'
+    +'<div class="prop-actions">'
+    +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
+    +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+（p.referido||'no')+'\')">Reservar/Vender</button>'
+    +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')">Estado</button>'
+    +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\',\''+sheet+'\')">Eliminar</button>'
+    +'</div></div>';
+}
+
+// Fix: full-width parenthesis bug workaround
+function propCardHtml(p,sheet,mostrarReferido){
+  var referido=p.referido||'no';
+  var refTag='';
+  if(mostrarReferido){refTag=referido==='si'?'<span class="referido-tag">✓ Referida</span>':'<span class="no-referido-tag">Sin referido</span>';}
+  return '<div class="prop-card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+    +'<div><div class="prop-link" onclick="verFichaProp(\''+p.id+'\',\''+sheet+'\')">'+p.direccion+'</div>'
+    +'<div style="font-size:12px;color:#888;margin-top:3px">'+(p.localidad||p.zona||'')+(p.tipo?' · '+p.tipo:'')+refTag+'</div>'
+    +(p.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+p.cliente+(p.telefono?' · '+p.telefono:'')+'</div>':'')
+    +'</div>'
+    +'<div style="text-align:right"><div style="font-weight:700;font-size:16px;color:#185FA5">USD '+fmt(p.precio)+'</div>'
+    +(p.valor_cierre?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.valor_cierre)+'</div>':'')
+    +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
+    +'</div></div>'
+    +'<div class="prop-actions">'
+    +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
+    +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+referido+'\')">Reservar/Vender</button>'
+    +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')">Estado</button>'
+    +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\',\''+sheet+'\')">Eliminar</button>'
+    +'</div></div>';
+}
+
+function abrirModalProp(sheet,d){
+  d=d||{};var editar=!!d.id;
+  var esAgente=currentUser.rol!=='Líder';
+  // Mostrar campo referido solo para agentes (no para el líder en sus propias propiedades)
+  var mostrarRef=esAgente;
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(editar?'Editar':'Nueva')+' '+(sheet==='Busquedas'?'búsqueda':'propiedad')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +htmlFormProp(d,sheet,mostrarRef)
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" id="btn-gp">Guardar</button></div>';
+  setTimeout(function(){
+    setFormPropValues(d);
+    document.getElementById('btn-gp').onclick=editar
+      ?function(){guardarEditProp(d.id,sheet);}
+      :function(){guardarNuevaProp(sheet);};
+  },50);
+  openModal();
+}
+
+function guardarNuevaProp(sheet){
+  var data=getPropData({id:uid(),agente:currentUser.nombre,fecha:today()});
+  closeModal();loading();
+  addRow(sheet,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+}
+function guardarEditProp(id,sheet){
+  var data=getPropData({});
+  closeModal();loading();
+  updRow(sheet,id,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+}
+function eliminarProp(id,sheet){
+  if(!confirm('¿Eliminar?'))return;loading();
+  delRow(sheet,id,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+}
+function cambiarEstado(id,sheet){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar estado</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Nuevo estado</label><select id="nuevo-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\',\''+sheet+'\')">Guardar</button></div>';
+  openModal();
+}
+function guardarEstado(id,sheet){var e=v('nuevo-estado');closeModal();loading();updRow(sheet,id,{estado:e},function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});}
+
+function verFichaProp(id,sheet){
+  getSheet(sheet,function(e,props){
     var p=(props||[]).find(function(x){return x.id===id;});if(!p)return;
-    document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Ficha de propiedad</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-      +'<div style="margin-bottom:1rem"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
-      +'<div class="section-divider">Datos de la propiedad</div>'
+    var referido=p.referido||'no';
+    var esAgente=currentUser.rol!=='Líder';
+    document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Ficha</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      +'<div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span>'
+      +(esAgente?(referido==='si'?'<span class="referido-tag">✓ Referida por TL</span>':'<span class="no-referido-tag">Sin referido</span>'):'')
+      +'</div>'
+      +'<div class="section-divider">Propiedad</div>'
       +'<div class="ficha-row"><span class="ficha-label">Dirección</span><span class="ficha-value">'+p.direccion+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Localidad</span><span class="ficha-value">'+(p.localidad||p.zona||'-')+'</span></div>'
+      +'<div class="ficha-row"><span class="ficha-label">Localidad</span><span class="ficha-value">'+(p.localidad||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Tipo</span><span class="ficha-value">'+(p.tipo||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Valor publicación</span><span class="ficha-value" style="color:#185FA5">USD '+fmt(p.precio)+'</span></div>'
-      +(p.valor_cierre?'<div class="ficha-row"><span class="ficha-label">Valor de cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.valor_cierre)+'</span></div>':'')
-      +'<div class="section-divider">Cliente (vendedor)</div>'
+      +(p.valor_cierre?'<div class="ficha-row"><span class="ficha-label">Valor cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.valor_cierre)+'</span></div>':'')
+      +'<div class="section-divider">Cliente</div>'
       +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
@@ -360,54 +555,11 @@ function verFichaProp(id){
       +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
       +'<button class="btn" onclick="closeModal()">Cerrar</button>'
-      +'<button class="btn btn-primary" onclick="closeModal();abrirModalPropiedad('+JSON.stringify(p)+')">Editar</button>'
+      +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\','+JSON.stringify(p)+')">Editar</button>'
       +'</div>';
     openModal();
   });
 }
-
-function abrirModalPropiedad(d){
-  d=d||{};var editar=!!d.id;
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(editar?'Editar propiedad':'Nueva propiedad')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="section-divider">Datos de la propiedad</div>'
-    +'<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="'+(d.direccion||'')+'" autocomplete="off"/></div>'
-    +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off"/></div></div>'
-    +'<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
-    +'<div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div></div>'
-    +'<div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="'+(d.precio||'')+'"/></div>'
-    +'<div class="section-divider">Cliente (vendedor)</div>'
-    +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="'+(d.telefono||'')+'" autocomplete="off"/></div>'
-    +'<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="'+(d.mail||'')+'" autocomplete="off"/></div></div>'
-    +'<div class="section-divider">Comisiones</div>'
-    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="f-comp" type="number" value="'+(d.comision_compradora||4)+'"/></div>'
-    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="f-vend" type="number" value="'+(d.comision_vendedora||3)+'"/></div></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
-    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-primary" id="btn-gp">Guardar</button></div>';
-  setTimeout(function(){
-    if(d.tipo)document.getElementById('f-tipo').value=d.tipo;
-    if(d.estado)document.getElementById('f-estado').value=d.estado;
-    document.getElementById('btn-gp').onclick=editar?function(){guardarEditProp(d.id);}:guardarProp;
-  },50);
-  openModal();
-}
-function guardarProp(){
-  var data={id:uid(),direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend'),agente:currentUser.nombre,fecha:today()};
-  closeModal();loading();addRow('Propiedades',data,function(){loadPropiedades();});
-}
-function guardarEditProp(id){
-  var data={direccion:v('f-dir'),localidad:v('f-loc'),tipo:v('f-tipo'),estado:v('f-estado'),precio:v('f-precio'),cliente:v('f-cliente'),telefono:v('f-tel'),mail:v('f-mail'),comision_compradora:v('f-comp'),comision_vendedora:v('f-vend')};
-  closeModal();loading();updRow('Propiedades',id,data,function(){loadPropiedades();});
-}
-function eliminarProp(id){if(!confirm('¿Eliminar esta propiedad?'))return;loading();delRow('Propiedades',id,function(){loadPropiedades();});}
-function cambiarEstado(id){
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar estado</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="form-group"><label>Nuevo estado</label><select id="nuevo-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\')">Guardar</button></div>';
-  openModal();
-}
-function guardarEstado(id){var e=v('nuevo-estado');closeModal();loading();updRow('Propiedades',id,{estado:e},function(){loadPropiedades();});}
 
 function abrirGastos(propId,dir){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo gasto · '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
@@ -425,97 +577,152 @@ function guardarGasto(propId){
 }
 
 // ============================================================
-// CAMBIOS 2 + 6: CIERRE DE OPERACIÓN
+// BÚSQUEDAS RESERVADAS
 // ============================================================
-function abrirCierre(origen,id,dir,precio,compPct,vendPct){
-  compPct=Number(compPct||4);vendPct=Number(vendPct||3);
+function loadBusquedas(){
+  getSheet('Busquedas',function(e,busqs){
+    busqs=(busqs||[]).filter(function(b){return b.agente===currentUser.nombre;});
+    var esAgente=currentUser.rol!=='Líder';
+    var html='<div class="section-header"><div class="section-title">Búsquedas</div><button class="btn btn-primary" onclick="abrirModalProp(\'Busquedas\')">+ Nueva búsqueda</button></div>'
+      +'<div style="font-size:13px;color:#888;margin-bottom:1.5rem">Propiedades reservadas a través de búsquedas de compradores.</div>';
+    if(busqs.length){
+      busqs.forEach(function(b){html+=propCardHtml(b,'Busquedas',esAgente);});
+    }else{html+='<div class="empty">No hay búsquedas cargadas.</div>';}
+    document.getElementById('tabContent').innerHTML=html;
+  });
+}
+
+// ============================================================
+// CIERRE DE OPERACIÓN — CAMBIO 6 + distribución por referido
+// ============================================================
+function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
+  compPct=Number(compPct||4);vendPct=Number(vendPct||3);referido=referido||'no';
+  var esAgente=currentUser.rol!=='Líder';
+  var d=getDistrib(referido);
+
   document.getElementById('modalBox').innerHTML=
     '<div class="modal-header"><span class="modal-title">Cerrar operación</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div style="font-size:13px;color:#555;margin-bottom:1rem;font-weight:500">📍 '+dir+'</div>'
-    +'<div class="section-divider">Valores</div>'
-    +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre()"/></div>'
+    +(esAgente?'<div style="font-size:12px;margin-bottom:1rem;padding:8px 12px;border-radius:8px;background:'+(referido==='si'?'#f0fdf4;color:#065f46;border:1px solid #bbf7d0':'#f9fafb;color:#555;border:1px solid #eee')+'">'+
+      (referido==='si'?'✓ Referida por TL — TL: '+d.tl+'% / Agente: '+d.agente+'% / Oficina: '+d.oficina+'%':'Sin referido — Agente: '+d.agente+'% / TL: '+d.tl+'% / Oficina: '+d.oficina+'%')+'</div>':'')
+    +'<div class="section-divider">Valores de la operación</div>'
+    +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
     +'<div class="form-group"><label>Fecha</label><input id="rc-fecha" type="date" value="'+today()+'"/></div></div>'
-    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre()"/></div>'
-    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre()"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div></div>'
     +'<div class="section-divider">Distribución</div>'
-    +'<div class="row"><div class="form-group"><label>% Gonzalo</label><input id="rc-pctg" type="number" value="80" oninput="calcCierre()"/></div>'
-    +'<div class="form-group"><label>% Oficina</label><input id="rc-pcto" type="number" value="20" oninput="calcCierre()"/></div></div>'
-    +'<div class="form-group"><label>% Martillero (sobre parte Gonzalo)</label><input id="rc-mart" type="number" value="4" oninput="calcCierre()"/></div>'
-    +'<div class="section-divider">IVA (valores fijos en USD)</div>'
-    +'<div class="row"><div class="form-group"><label>IVA comprador</label><input id="rc-ivac" type="number" value="0" oninput="calcCierre()"/></div>'
-    +'<div class="form-group"><label>IVA vendedor</label><input id="rc-ivav" type="number" value="0" oninput="calcCierre()"/></div>'
-    +'<div class="form-group"><label>IVA oficina</label><input id="rc-ivao" type="number" value="0" oninput="calcCierre()"/></div></div>'
+    +'<div class="row">'
+    +(esAgente
+      ?'<div class="form-group"><label>% Agente</label><input id="rc-pctag" type="number" value="'+d.agente+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+       +'<div class="form-group"><label>% Team Leader</label><input id="rc-pcttl" type="number" value="'+d.tl+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+       +'<div class="form-group"><label>% Oficina</label><input id="rc-pcto" type="number" value="'+d.oficina+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+      :'<div class="form-group"><label>% Gonzalo</label><input id="rc-pcttl" type="number" value="80" oninput="calcCierre(\'no\',false)"/></div>'
+       +'<div class="form-group"><label>% Oficina</label><input id="rc-pcto" type="number" value="20" oninput="calcCierre(\'no\',false)"/></div>'
+    )+'</div>'
+    +'<div class="form-group"><label>% Martillero (sobre parte TL/Gonzalo)</label><input id="rc-mart" type="number" value="4" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="section-divider">IVA</div>'
+    +'<div class="row"><div class="form-group"><label>IVA comprador</label><input id="rc-ivac" type="number" value="0" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="form-group"><label>Moneda</label><select id="rc-ivac-m" onchange="calcCierre(\''+referido+'\','+esAgente+')"><option value="USD">USD</option><option value="ARS">ARS</option></select></div></div>'
+    +'<div class="row"><div class="form-group"><label>IVA vendedor</label><input id="rc-ivav" type="number" value="0" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="form-group"><label>Moneda</label><select id="rc-ivav-m" onchange="calcCierre(\''+referido+'\','+esAgente+')"><option value="USD">USD</option><option value="ARS">ARS</option></select></div></div>'
+    +'<div class="row"><div class="form-group"><label>IVA oficina</label><input id="rc-ivao" type="number" value="0" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="form-group"><label>Moneda</label><select id="rc-ivao-m" onchange="calcCierre(\''+referido+'\','+esAgente+')"><option value="USD">USD</option><option value="ARS">ARS</option></select></div></div>'
     +'<div id="rc-preview"></div>'
     +'<div class="section-divider">Estado final</div>'
     +'<div class="form-group"><label>Estado</label><select id="rc-estado"><option value="Reservada">Reservada</option><option value="Vendida">Vendida</option></select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-success" onclick="confirmarCierre(\''+origen+'\',\''+id+'\')">Confirmar</button>'
+    +'<button class="btn btn-success" onclick="confirmarCierre(\''+origen+'\',\''+sheet+'\',\''+id+'\',\''+referido+'\','+esAgente+')">Confirmar</button>'
     +'</div>';
   openModal();
-  calcCierre();
+  calcCierre(referido,esAgente);
 }
 
-function calcCierre(){
-  var c=Number(v('rc-cierre')||0),comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
-  var pctG=Number(v('rc-pctg')||80),pctO=Number(v('rc-pcto')||20),pctM=Number(v('rc-mart')||4);
-  var ivaC=Number(v('rc-ivac')||0),ivaV=Number(v('rc-ivav')||0),ivaO=Number(v('rc-ivao')||0);
-  var ivaTotal=ivaC+ivaV+ivaO;
+function calcCierre(referido,esAgente){
+  var c=Number(v('rc-cierre')||0);
+  var comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
+  var pctTL=Number(v('rc-pcttl')||0);
+  var pctAg=esAgente?Number(v('rc-pctag')||0):0;
+  var pctO=Number(v('rc-pcto')||0);
+  var pctM=Number(v('rc-mart')||4);
+  var ivaC=Number(v('rc-ivac')||0),ivaCm=v('rc-ivac-m')||'USD';
+  var ivaV=Number(v('rc-ivav')||0),ivaVm=v('rc-ivav-m')||'USD';
+  var ivaO=Number(v('rc-ivao')||0),ivaOm=v('rc-ivao-m')||'USD';
   var comTotal=c*(comp+vend)/100;
-  var parteG=comTotal*pctG/100,parteO=comTotal*pctO/100;
-  var martillero=parteG*pctM/100;
-  var netoG=parteG-martillero-ivaTotal;
+  var parteTL=comTotal*pctTL/100;
+  var parteAg=esAgente?comTotal*pctAg/100:0;
+  var parteO=comTotal*pctO/100;
+  var martillero=parteTL*pctM/100;
+  // IVA solo resta al TL si son USD
+  var ivaTotalUSD=(ivaCm==='USD'?ivaC:0)+(ivaVm==='USD'?ivaV:0)+(ivaOm==='USD'?ivaO:0);
+  var netoTL=parteTL-martillero-ivaTotalUSD;
   var el=document.getElementById('rc-preview');if(!el)return;
   el.innerHTML='<div class="distrib-box">'
     +'<div class="distrib-row"><span>Comisión total ('+comp+'%+'+vend+'%)</span><span style="font-weight:600">USD '+fmt(Math.round(comTotal))+'</span></div>'
-    +'<div class="distrib-row"><span>Parte Gonzalo ('+pctG+'%)</span><span>USD '+fmt(Math.round(parteG))+'</span></div>'
+    +(esAgente?'<div class="distrib-row"><span>Parte Agente ('+pctAg+'%)</span><span>USD '+fmt(Math.round(parteAg))+'</span></div>':'')
+    +'<div class="distrib-row"><span>Parte Team Leader ('+pctTL+'%)</span><span>USD '+fmt(Math.round(parteTL))+'</span></div>'
     +'<div class="distrib-row"><span>Parte Oficina ('+pctO+'%)</span><span>USD '+fmt(Math.round(parteO))+'</span></div>'
     +'<div class="distrib-sep"></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− Martillero ('+pctM+'% s/ Gonzalo)</span><span>USD '+fmt(Math.round(martillero))+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA comprador</span><span>USD '+fmt(ivaC)+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA vendedor</span><span>USD '+fmt(ivaV)+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA oficina</span><span>USD '+fmt(ivaO)+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b;font-weight:600;border-top:1px dashed #bbf7d0;padding-top:6px"><span>IVA total</span><span>USD '+fmt(ivaTotal)+'</span></div>'
-    +'<div class="distrib-total"><span>🟢 Neto Gonzalo</span><span>USD '+fmt(Math.round(netoG))+'</span></div>'
+    +'<div class="distrib-row" style="color:#991b1b"><span>− Martillero ('+pctM+'% s/ TL)</span><span>USD '+fmt(Math.round(martillero))+'</span></div>'
+    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA comprador</span><span>'+ivaCm+' '+fmt(ivaC)+'</span></div>'
+    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA vendedor</span><span>'+ivaVm+' '+fmt(ivaV)+'</span></div>'
+    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA oficina</span><span>'+ivaOm+' '+fmt(ivaO)+'</span></div>'
+    +'<div class="distrib-total"><span>🟢 Neto Team Leader</span><span>USD '+fmt(Math.round(netoTL))+'</span></div>'
     +'</div>';
 }
 
-function confirmarCierre(origen,id){
-  var c=Number(v('rc-cierre')||0),comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
-  var pctG=Number(v('rc-pctg')||80),pctO=Number(v('rc-pcto')||20),pctM=Number(v('rc-mart')||4);
-  var ivaC=Number(v('rc-ivac')||0),ivaV=Number(v('rc-ivav')||0),ivaO=Number(v('rc-ivao')||0);
-  var ivaTotal=ivaC+ivaV+ivaO;
+function confirmarCierre(origen,sheet,id,referido,esAgente){
+  var c=Number(v('rc-cierre')||0);
+  var comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
+  var pctTL=Number(v('rc-pcttl')||0);
+  var pctAg=esAgente?Number(v('rc-pctag')||0):0;
+  var pctO=Number(v('rc-pcto')||0);
+  var pctM=Number(v('rc-mart')||4);
+  var ivaC=Number(v('rc-ivac')||0),ivaCm=v('rc-ivac-m')||'USD';
+  var ivaV=Number(v('rc-ivav')||0),ivaVm=v('rc-ivav-m')||'USD';
+  var ivaO=Number(v('rc-ivao')||0),ivaOm=v('rc-ivao-m')||'USD';
   var fecha=v('rc-fecha'),estado=v('rc-estado');
   var comTotal=c*(comp+vend)/100;
-  var parteG=comTotal*pctG/100,parteO=comTotal*pctO/100;
-  var martillero=parteG*pctM/100;
-  var netoG=parteG-martillero-ivaTotal;
+  var parteTL=comTotal*pctTL/100;
+  var parteAg=esAgente?comTotal*pctAg/100:0;
+  var parteO=comTotal*pctO/100;
+  var martillero=parteTL*pctM/100;
+  var ivaTotalUSD=(ivaCm==='USD'?ivaC:0)+(ivaVm==='USD'?ivaV:0)+(ivaOm==='USD'?ivaO:0);
+  var netoTL=parteTL-martillero-ivaTotalUSD;
+  var netoAg=parteAg;
   closeModal();loading();
 
-  var opData={id:uid(),fecha:fecha,precio_final:c,comision_total:Math.round(comTotal),
-    comision_agente:Math.round(parteG),parte_oficina:Math.round(parteO),
+  var opData={id:uid(),fecha:fecha,referido:referido,precio_final:c,
+    comision_total:Math.round(comTotal),
+    comision_agente:Math.round(parteAg),
+    comision_team_leader:Math.round(parteTL),
+    parte_oficina:Math.round(parteO),
     martillero:Math.round(martillero),
-    iva_comprador:ivaC,iva_vendedor:ivaV,iva_oficina:ivaO,iva_total:ivaTotal,
-    neto_agente:Math.round(netoG),agente:currentUser.nombre};
+    iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
+    iva_vendedor:ivaV,iva_vendedor_moneda:ivaVm,
+    iva_oficina:ivaO,iva_oficina_moneda:ivaOm,
+    neto_agente:Math.round(netoAg),
+    neto_team_leader:Math.round(netoTL),
+    agente:currentUser.nombre};
+
+  function afterOp(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();}
 
   if(origen==='prop'){
     opData.propiedad_id=id;
-    updRow('Propiedades',id,{valor_cierre:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
+    updRow(sheet,id,{valor_cierre:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
       addRow('Operaciones',opData,function(){
         if(estado==='Vendida'){
-          // CAMBIO 2: quitar de Reservas — ya no es proyectada, pasa a facturación
           getSheet('Reservas',function(e,reservas){
             var res=(reservas||[]).find(function(r){return r.propiedad_id===id;});
             if(res)delRow('Reservas',res.id,function(){});
-            loadPropiedades();
+            afterOp();
           });
         }else{
-          addRow('Reservas',{id:uid(),fecha:fecha,propiedad_id:id,precio_reserva:c,comision_compradora:comp,comision_vendedora:vend,agente:currentUser.nombre},function(){loadPropiedades();});
+          addRow('Reservas',{id:uid(),fecha:fecha,propiedad_id:id,precio_reserva:c,comision_compradora:comp,comision_vendedora:vend,agente:currentUser.nombre},function(){afterOp();});
         }
       });
     });
   }else{
-    // origen === 'unidad'
     opData.unidad_id=id;
     updRow('Unidades',id,{condicion:estado==='Vendida'?'Vendida':'Reservada'},function(){
       addRow('Operaciones',opData,function(){loadDesarrollos();});
@@ -542,20 +749,15 @@ function loadDesarrollos(){
         var vendidas=unis.filter(function(u){return u.condicion==='Vendida';}).length;
         var comGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var comProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        // CAMBIO 4: click en card abre ficha
         html+='<div class="dev-card" onclick="verFichaDesarrollo(\''+d.id+'\')">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:700;font-size:15px;color:#185FA5">🏢 '+d.nombre+'</div>'
           +'<div style="font-size:12px;color:#888;margin-top:3px">'+d.direccion+(d.localidad?' · '+d.localidad:'')+'</div>'
-          +(d.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+d.cliente+(d.telefono?' · '+d.telefono:'')+'</div>':'')
-          +'<div style="font-size:12px;color:#185FA5;margin-top:4px">Com: '+Number(d.comision_compradora||4)+'%+'+Number(d.comision_vendedora||3)+'%</div>'
-          +'</div>'
+          +(d.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+d.cliente+(d.telefono?' · '+d.telefono:'')+'</div>':'')+'</div>'
           +'<div style="text-align:right">'
           +'<div style="font-size:22px;font-weight:700">'+unis.length+'<span style="font-size:12px;font-weight:400;color:#888"> uds.</span></div>'
           +'<div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px">'
-          +'<span class="badge badge-blue">'+activas+' act.</span>'
-          +'<span class="badge badge-amber">'+reservadas+' res.</span>'
-          +'<span class="badge badge-green">'+vendidas+' vend.</span>'
+          +'<span class="badge badge-blue">'+activas+' act.</span><span class="badge badge-amber">'+reservadas+' res.</span><span class="badge badge-green">'+vendidas+' vend.</span>'
           +'</div>'
           +'<div style="font-size:12px;color:#065f46;font-weight:600;margin-top:6px">Generada: USD '+fmt(Math.round(comGen))+'</div>'
           +'<div style="font-size:12px;color:#92400e;font-weight:600;margin-top:2px">Proyectada: USD '+fmt(Math.round(comProy))+'</div>'
@@ -566,78 +768,54 @@ function loadDesarrollos(){
           +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarDev(\''+d.id+'\')">Eliminar</button>'
           +'</div></div>';
       });
-    }else{html+='<div class="empty">No hay desarrollos. Agregá el primero.</div>';}
+    }else{html+='<div class="empty">No hay desarrollos.</div>';}
     document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-// CAMBIO 4: Ficha de desarrollo al hacer click
 function verFichaDesarrollo(devId){
-  Promise.all([
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
-  ]).then(function(res){
+  Promise.all([fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),fetch(API+'?sheet=Unidades').then(function(r){return r.json();})]).then(function(res){
     var dev=(res[0]||[]).find(function(d){return d.id===devId;});if(!dev)return;
     var unis=(res[1]||[]).filter(function(u){return u.desarrollo_id===devId;});
-    var activas=unis.filter(function(u){return u.condicion==='Activa';});
-    var reservadas=unis.filter(function(u){return u.condicion==='Reservada';});
-    var vendidas=unis.filter(function(u){return u.condicion==='Vendida';});
-    var comGen=vendidas.reduce(function(a,u){return a+Number(u.comision||0);},0);
-    var comProy=activas.concat(reservadas).reduce(function(a,u){return a+Number(u.comision||0);},0);
-
+    var act=unis.filter(function(u){return u.condicion==='Activa';});
+    var res2=unis.filter(function(u){return u.condicion==='Reservada';});
+    var vend=unis.filter(function(u){return u.condicion==='Vendida';});
+    var comGen=vend.reduce(function(a,u){return a+Number(u.comision||0);},0);
+    var comProy=act.concat(res2).reduce(function(a,u){return a+Number(u.comision||0);},0);
     var html='<div class="modal-header"><span class="modal-title">🏢 '+dev.nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
-    html+='<div class="section-divider">Datos del desarrollo</div>'
+    html+='<div class="section-divider">Datos</div>'
       +'<div class="ficha-row"><span class="ficha-label">Dirección</span><span class="ficha-value">'+dev.direccion+(dev.localidad?' · '+dev.localidad:'')+'</span></div>'
       +(dev.cliente?'<div class="ficha-row"><span class="ficha-label">Cliente</span><span class="ficha-value">'+dev.cliente+'</span></div>':'')
-      +(dev.telefono?'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+dev.telefono+'</span></div>':'')
-      +(dev.mail?'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+dev.mail+'</span></div>':'');
-    html+='<div class="section-divider">Resumen de unidades</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem">'
-      +'<div style="background:#eff6ff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Activas</div><div style="font-size:22px;font-weight:700;color:#1e40af">'+activas.length+'</div></div>'
-      +'<div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Reservadas</div><div style="font-size:22px;font-weight:700;color:#92400e">'+reservadas.length+'</div></div>'
-      +'<div style="background:#d1fae5;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Vendidas</div><div style="font-size:22px;font-weight:700;color:#065f46">'+vendidas.length+'</div></div>'
+      +(dev.telefono?'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+dev.telefono+'</span></div>':'');
+    html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:1rem 0">'
+      +'<div style="background:#eff6ff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Activas</div><div style="font-size:22px;font-weight:700;color:#1e40af">'+act.length+'</div></div>'
+      +'<div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Reservadas</div><div style="font-size:22px;font-weight:700;color:#92400e">'+res2.length+'</div></div>'
+      +'<div style="background:#d1fae5;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Vendidas</div><div style="font-size:22px;font-weight:700;color:#065f46">'+vend.length+'</div></div>'
       +'<div style="background:#f3f4f6;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">'+unis.length+'</div></div>'
-      +'</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">'
-      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px">'
-      +'<div style="font-size:11px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. generada (vendidas)</div>'
-      +'<div style="font-size:18px;font-weight:700;color:#065f46">USD '+fmt(Math.round(comGen))+'</div></div>'
-      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px">'
-      +'<div style="font-size:11px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. proyectada (activas+reservadas)</div>'
-      +'<div style="font-size:18px;font-weight:700;color:#92400e">USD '+fmt(Math.round(comProy))+'</div></div>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. generada</div><div style="font-size:18px;font-weight:700;color:#065f46">USD '+fmt(Math.round(comGen))+'</div></div>'
+      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. proyectada</div><div style="font-size:18px;font-weight:700;color:#92400e">USD '+fmt(Math.round(comProy))+'</div></div>'
       +'</div>';
     if(unis.length){
-      html+='<div class="section-divider">Detalle de unidades</div>'
-        +'<div class="table-wrap"><table><tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Condición</th></tr>';
-      unis.forEach(function(u){
-        html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td>'
-          +'<td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#065f46':'#92400e')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td>'
-          +'<td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td></tr>';
-      });
+      html+='<div class="section-divider">Unidades</div><div class="table-wrap"><table><tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Condición</th></tr>';
+      unis.forEach(function(u){html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td><td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#065f46':'#92400e')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td><td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td></tr>';});
       html+='</table></div>';
-    }else{html+='<div class="empty">Sin unidades cargadas.</div>';}
-    html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
-      +'<button class="btn" onclick="closeModal()">Cerrar</button>'
-      +'<button class="btn btn-primary" onclick="closeModal();verUnidades(\''+devId+'\',\''+esc(dev.nombre)+'\','+Number(dev.comision_compradora||4)+','+Number(dev.comision_vendedora||3)+')">Gestionar unidades →</button>'
-      +'</div>';
-    document.getElementById('modalBox').innerHTML=html;
-    openModal();
+    }
+    html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem"><button class="btn" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="closeModal();verUnidades(\''+devId+'\',\''+esc(dev.nombre)+'\','+Number(dev.comision_compradora||4)+','+Number(dev.comision_vendedora||3)+')">Gestionar unidades →</button></div>';
+    document.getElementById('modalBox').innerHTML=html;openModal();
   });
 }
 
 function abrirModalDesarrollo(){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo desarrollo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="section-divider">Datos del desarrollo</div>'
-    +'<div class="form-group"><label>Nombre</label><input id="dev-nombre" autocomplete="off" placeholder="Ej: Edificio Urquiza Tower"/></div>'
-    +'<div class="row"><div class="form-group"><label>Dirección</label><input id="dev-dir" autocomplete="off"/></div>'
-    +'<div class="form-group"><label>Localidad</label><input id="dev-loc" value="Villa Urquiza" autocomplete="off"/></div></div>'
+    +'<div class="form-group"><label>Nombre</label><input id="dev-nombre" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Dirección</label><input id="dev-dir" autocomplete="off"/></div><div class="form-group"><label>Localidad</label><input id="dev-loc" value="Villa Urquiza" autocomplete="off"/></div></div>'
     +'<div class="section-divider">Cliente (desarrollador)</div>'
     +'<div class="form-group"><label>Nombre</label><input id="dev-cliente" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="dev-tel" autocomplete="off"/></div>'
-    +'<div class="form-group"><label>Mail</label><input id="dev-mail" type="email" autocomplete="off"/></div></div>'
-    +'<div class="section-divider">Comisiones (aplican a todas las unidades)</div>'
-    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="dev-comp" type="number" value="4"/></div>'
-    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="dev-vend" type="number" value="3"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="dev-tel" autocomplete="off"/></div><div class="form-group"><label>Mail</label><input id="dev-mail" type="email" autocomplete="off"/></div></div>'
+    +'<div class="section-divider">Comisiones</div>'
+    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="dev-comp" type="number" value="4"/></div><div class="form-group"><label>Com. vendedor (%)</label><input id="dev-vend" type="number" value="3"/></div></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarDesarrollo()">Guardar</button></div>';
   openModal();
 }
@@ -645,21 +823,16 @@ function guardarDesarrollo(){
   var data={id:uid(),nombre:v('dev-nombre'),direccion:v('dev-dir'),localidad:v('dev-loc'),cliente:v('dev-cliente'),telefono:v('dev-tel'),mail:v('dev-mail'),comision_compradora:v('dev-comp'),comision_vendedora:v('dev-vend'),agente:currentUser.nombre,fecha:today()};
   closeModal();loading();addRow('Desarrollos',data,function(){loadDesarrollos();});
 }
-function eliminarDev(id){if(!confirm('¿Eliminar este desarrollo?'))return;loading();delRow('Desarrollos',id,function(){loadDesarrollos();});}
-
+function eliminarDev(id){if(!confirm('¿Eliminar?'))return;loading();delRow('Desarrollos',id,function(){loadDesarrollos();});}
 function abrirGastosDev(devId,nombre){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto · '+nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Concepto</label><input id="gd-concepto" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Moneda</label><select id="gd-moneda"><option value="USD">USD</option><option value="ARS">Pesos $</option></select></div>'
-    +'<div class="form-group"><label>Monto</label><input id="gd-monto" type="number"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Moneda</label><select id="gd-moneda"><option value="USD">USD</option><option value="ARS">ARS</option></select></div><div class="form-group"><label>Monto</label><input id="gd-monto" type="number"/></div></div>'
     +'<div class="form-group"><label>Fecha</label><input id="gd-fecha" type="date" value="'+today()+'"/></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGastoDev(\''+devId+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarGastoDev(devId){
-  var data={id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:v('gd-moneda'),agente:currentUser.nombre};
-  closeModal();addRow('Gastos',data,function(){alert('Gasto registrado.');});
-}
+function guardarGastoDev(devId){var data={id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:v('gd-moneda'),agente:currentUser.nombre};closeModal();addRow('Gastos',data,function(){alert('Gasto registrado.');});}
 
 function verUnidades(devId,devNombre,compPct,vendPct){
   compPct=Number(compPct||4);vendPct=Number(vendPct||3);
@@ -670,34 +843,27 @@ function verUnidades(devId,devNombre,compPct,vendPct){
     var activas=unis.filter(function(u){return u.condicion==='Activa';}).length;
     var comGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
     var comProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-    var html='<div class="section-header">'
-      +'<div><div class="section-title">'+devNombre+'</div>'
+    var html='<div class="section-header"><div><div class="section-title">'+devNombre+'</div>'
       +'<div style="font-size:12px;color:#888;margin-top:4px">'+unis.length+' uds · '+activas+' act. · '+reservadas+' res. · '+vendidas+' vend.</div>'
-      +'<div style="display:flex;gap:12px;margin-top:6px">'
-      +'<span style="font-size:13px;color:#065f46;font-weight:600">Generada: USD '+fmt(Math.round(comGen))+'</span>'
-      +'<span style="font-size:13px;color:#92400e;font-weight:600">Proyectada: USD '+fmt(Math.round(comProy))+'</span>'
-      +'</div></div>'
-      +'<div style="display:flex;gap:8px">'
-      +'<button class="btn btn-sm" onclick="loadDesarrollos()">← Volver</button>'
-      +'<button class="btn btn-sm btn-primary" onclick="abrirModalUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">+ Nueva unidad</button>'
-      +'</div></div>';
+      +'<div style="display:flex;gap:12px;margin-top:6px"><span style="font-size:13px;color:#065f46;font-weight:600">Generada: USD '+fmt(Math.round(comGen))+'</span><span style="font-size:13px;color:#92400e;font-weight:600">Proyectada: USD '+fmt(Math.round(comProy))+'</span></div>'
+      +'</div><div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="loadDesarrollos()">← Volver</button><button class="btn btn-sm btn-primary" onclick="abrirModalUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">+ Nueva unidad</button></div></div>';
     if(unis.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table>'
-        +'<tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Agente</th><th>Condición</th><th></th></tr>';
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Referida</th><th>Agente</th><th>Condición</th><th></th></tr>';
       unis.forEach(function(u){
-        html+='<tr><td style="font-weight:600">'+u.nombre+'</td>'
-          +'<td>USD '+fmt(u.precio)+'</td>'
+        var ref=u.referido||'no';
+        html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td>'
           +'<td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#065f46':'#92400e')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td>'
+          +'<td>'+(ref==='si'?'<span class="referido-tag">✓ Ref.</span>':'<span class="no-referido-tag">No</span>')+'</td>'
           +'<td style="color:#888">'+(u.agente||'').split(' ').slice(-1)[0]+'</td>'
           +'<td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td>'
           +'<td style="display:flex;gap:4px">'
-          +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'unidad\',\''+u.id+'\',\''+esc(u.nombre)+'\','+Number(u.precio||0)+','+compPct+','+vendPct+')">Cerrar</button>'
+          +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'unidad\',\'Unidades\',\''+u.id+'\',\''+esc(u.nombre)+'\','+Number(u.precio||0)+','+compPct+','+vendPct+',\''+ref+'\')">Cerrar</button>'
           +'<button class="btn btn-sm" onclick="cambiarCondUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Estado</button>'
           +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">×</button>'
           +'</td></tr>';
       });
       html+='</table></div></div>';
-    }else{html+='<div class="empty">No hay unidades. Agregá la primera.</div>';}
+    }else{html+='<div class="empty">No hay unidades.</div>';}
     document.getElementById('tabContent').innerHTML=html;
   });
 }
@@ -711,6 +877,7 @@ function abrirModalUnidad(devId,devNombre,compPct,vendPct){
     +'<div class="form-group"><label>Precio de venta (USD)</label><input id="u-precio" type="number" oninput="calcComUnidad('+compPct+','+vendPct+')"/></div>'
     +'<div id="u-preview" style="background:#f0f9ff;border-radius:8px;padding:12px;margin:0.5rem 0;font-size:13px;display:none"></div>'
     +'<div class="form-group"><label>Comisión proyectada (USD)</label><input id="u-comision" type="number"/></div>'
+    +'<div class="form-group"><label>¿Referida por Gonzalo?</label><select id="u-referido"><option value="no">No</option><option value="si">Sí</option></select></div>'
     +'<div class="form-group"><label>Agente asignado</label><select id="u-agente">'+agentesOpts+'</select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Guardar</button></div>';
   openModal();
@@ -723,7 +890,7 @@ function calcComUnidad(cp,vp){
   pr.innerHTML='<strong>Com. comprador ('+cp+'%):</strong> USD '+fmt(Math.round(comp))+'<br><strong>Com. vendedor ('+vp+'%):</strong> USD '+fmt(Math.round(vend))+'<br><strong style="color:#065f46">Total: USD '+fmt(Math.round(total))+'</strong>';
 }
 function guardarUnidad(devId,devNombre,compPct,vendPct){
-  var data={id:uid(),desarrollo_id:devId,nombre:v('u-nombre'),precio:v('u-precio'),comision:v('u-comision'),condicion:v('u-cond'),agente:v('u-agente'),fecha:today()};
+  var data={id:uid(),desarrollo_id:devId,nombre:v('u-nombre'),precio:v('u-precio'),comision:v('u-comision'),condicion:v('u-cond'),referido:v('u-referido'),agente:v('u-agente'),fecha:today()};
   closeModal();loading();addRow('Unidades',data,function(){verUnidades(devId,devNombre,compPct,vendPct);});
 }
 function cambiarCondUnidad(id,devId,devNombre,compPct,vendPct){
@@ -733,7 +900,7 @@ function cambiarCondUnidad(id,devId,devNombre,compPct,vendPct){
   openModal();
 }
 function guardarCondUnidad(id,devId,devNombre,compPct,vendPct){var c=v('u-cond-new');closeModal();loading();updRow('Unidades',id,{condicion:c},function(){verUnidades(devId,devNombre,compPct,vendPct);});}
-function eliminarUnidad(id,devId,devNombre,compPct,vendPct){if(!confirm('¿Eliminar esta unidad?'))return;loading();delRow('Unidades',id,function(){verUnidades(devId,devNombre,compPct,vendPct);});}
+function eliminarUnidad(id,devId,devNombre,compPct,vendPct){if(!confirm('¿Eliminar?'))return;loading();delRow('Unidades',id,function(){verUnidades(devId,devNombre,compPct,vendPct);});}
 
 // ============================================================
 // FINANZAS
@@ -744,14 +911,17 @@ function loadFinanzas(){
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
     fetch(API+'?sheet=Operaciones').then(function(r){return r.json();})
   ]).then(function(res){
+    var esLider=currentUser.rol==='Líder';
     var fins=(res[0]||[]).filter(function(f){return f.agente===currentUser.nombre;});
     var gastos=(res[1]||[]).filter(function(g){return g.agente===currentUser.nombre;});
     var ops=(res[2]||[]).filter(function(o){return o.agente===currentUser.nombre;});
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var gastosPropUSD=gastos.filter(function(g){return(g.moneda||'USD')!=='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var gastosPropUSD=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
     var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
-    // CAMBIO 2: facturación = neto_agente
-    var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
+    var facturacion=ops.reduce(function(a,o){
+      if(esLider)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
+      return a+Number(o.neto_agente||o.comision_total||0);
+    },0);
     var rentabilidad=facturacion-gastosPropUSD-gastosOficina;
     var html='<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
@@ -762,31 +932,32 @@ function loadFinanzas(){
       +'</div>';
     html+='<div class="section-header" style="margin-top:1rem"><div class="section-title">Operaciones cerradas</div></div>';
     if(ops.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Com. total</th><th>Parte Gonzalo</th><th>Martillero</th><th>IVA total</th><th>Neto</th></tr>';
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Ref.</th><th>Com. total</th>'
+        +(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')
+        +'<th>Martillero</th><th>IVA</th><th>Neto</th></tr>';
       ops.forEach(function(o){
         html+='<tr><td>'+o.fecha+'</td>'
+          +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
           +'<td>USD '+fmt(Math.round(Number(o.comision_total||0)))+'</td>'
-          +'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>'
-          +'<td style="color:#991b1b">− USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
-          +'<td style="color:#991b1b">− USD '+fmt(Math.round(Number(o.iva_total||0)))+'</td>'
-          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(o.neto_agente||0)))+'</td></tr>';
+          +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
+          +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
+          +'<td style="color:#991b1b">−'+(o.iva_comprador_moneda||'USD')+' '+fmt(Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0)))+'</td>'
+          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0))))+'</td></tr>';
       });
       html+='</table></div></div>';
     }else{html+='<div class="empty">No hay operaciones cerradas.</div>';}
     html+='<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Movimientos de oficina</div><button class="btn btn-primary btn-sm" onclick="abrirModalFinanza()">+ Agregar</button></div>';
     if(fins.length){
       html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th><th></th></tr>';
-      fins.forEach(function(f){
-        html+='<tr><td>'+f.fecha+'</td><td><span class="badge '+(f.tipo==='Ingreso'?'badge-green':'badge-red')+'">'+f.tipo+'</span></td><td>'+f.concepto+'</td><td style="font-weight:600;color:'+(f.tipo==='Ingreso'?'#065f46':'#991b1b')+'">USD '+fmt(f.monto)+'</td><td><button class="btn btn-sm" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
-      });
+      fins.forEach(function(f){html+='<tr><td>'+f.fecha+'</td><td><span class="badge '+(f.tipo==='Ingreso'?'badge-green':'badge-red')+'">'+f.tipo+'</span></td><td>'+f.concepto+'</td><td style="font-weight:600;color:'+(f.tipo==='Ingreso'?'#065f46':'#991b1b')+'">USD '+fmt(f.monto)+'</td><td><button class="btn btn-sm" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){loadFinanzas();})">×</button></td></tr>';});
       html+='</table></div></div>';
     }else{html+='<div class="empty">No hay movimientos.</div>';}
-    html+='<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Gastos por propiedad</div></div>';
     if(gastos.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Moneda</th><th>Monto</th></tr>';
-      gastos.forEach(function(g){html+='<tr><td>'+g.fecha+'</td><td>'+g.concepto+'</td><td>'+(g.moneda||'USD')+'</td><td style="font-weight:600;color:#991b1b">'+(g.moneda==='ARS'?'$':'USD ')+fmt(g.monto)+'</td></tr>';});
+      html+='<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Gastos por propiedad</div></div>'
+        +'<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Moneda</th><th>Monto</th></tr>';
+      gastos.forEach(function(g){html+='<tr><td>'+g.fecha+'</td><td>'+g.concepto+'</td><td>'+(g.moneda||'USD')+'</td><td style="color:#991b1b;font-weight:600">'+(g.moneda==='ARS'?'$':'USD ')+fmt(g.monto)+'</td></tr>';});
       html+='</table></div></div>';
-    }else{html+='<div class="empty">No hay gastos por propiedad.</div>';}
+    }
     document.getElementById('tabContent').innerHTML=html;
   });
 }
@@ -799,10 +970,7 @@ function abrirModalFinanza(){
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarFinanza()">Guardar</button></div>';
   openModal();
 }
-function guardarFinanza(){
-  var data={id:uid(),fecha:v('ff-fecha'),tipo:v('ff-tipo'),concepto:v('ff-concepto'),monto:v('ff-monto'),agente:currentUser.nombre};
-  closeModal();loading();addRow('Finanzas',data,function(){loadFinanzas();});
-}
+function guardarFinanza(){var data={id:uid(),fecha:v('ff-fecha'),tipo:v('ff-tipo'),concepto:v('ff-concepto'),monto:v('ff-monto'),agente:currentUser.nombre};closeModal();loading();addRow('Finanzas',data,function(){loadFinanzas();});}
 
 // ============================================================
 // OBJETIVOS
@@ -814,16 +982,12 @@ function loadObjetivos(){
     if(objs.length){
       objs.forEach(function(o){
         var p=pct(o.actual,o.meta);
-        html+='<div class="obj-card">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-          +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div>'
-          +'<div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.vencimiento?' · Vence '+o.vencimiento:'')+(o.periodo?' · '+o.periodo:'')+'</div></div>'
-          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+o.actual+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div>'
-          +'<div style="font-size:12px;color:#888">'+p+'% completado</div></div></div>'
+        html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+          +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div><div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
+          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+o.actual+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div><div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
           +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div>'
           +'<div class="obj-actions"><button class="btn btn-sm btn-primary" onclick="actualizarProgreso(\''+o.id+'\',\''+esc(o.titulo)+'\','+o.actual+','+o.meta+',\''+esc(o.unidad)+'\')">Actualizar</button>'
-          +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){loadObjetivos();})">Eliminar</button></div>'
-          +'</div>';
+          +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){loadObjetivos();})">Eliminar</button></div></div>';
       });
     }else{html+='<div class="empty">No hay objetivos.</div>';}
     document.getElementById('tabContent').innerHTML=html;
@@ -833,18 +997,13 @@ function abrirModalObjetivo(){
   var agentesOpts=currentUser.rol==='Líder'?'<option>Equipo</option>'+allAgentes.map(function(a){return '<option>'+a+'</option>';}).join(''):'<option>'+currentUser.nombre+'</option>';
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo objetivo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Título</label><input id="fo-titulo" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Meta</label><input id="fo-meta" type="number"/></div>'
-    +'<div class="form-group"><label>Unidad</label><input id="fo-unidad" placeholder="ventas, USD..." autocomplete="off"/></div></div>'
-    +'<div class="row"><div class="form-group"><label>Período</label><select id="fo-periodo"><option>Mensual</option><option>Anual</option></select></div>'
-    +'<div class="form-group"><label>Vencimiento</label><input id="fo-venc" type="date"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Meta</label><input id="fo-meta" type="number"/></div><div class="form-group"><label>Unidad</label><input id="fo-unidad" placeholder="ventas, USD..." autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Período</label><select id="fo-periodo"><option>Mensual</option><option>Anual</option></select></div><div class="form-group"><label>Vencimiento</label><input id="fo-venc" type="date"/></div></div>'
     +'<div class="form-group"><label>Agente</label><select id="fo-agente">'+agentesOpts+'</select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarObjetivo()">Guardar</button></div>';
   openModal();
 }
-function guardarObjetivo(){
-  var data={id:uid(),titulo:v('fo-titulo'),meta:v('fo-meta'),actual:0,unidad:v('fo-unidad'),periodo:v('fo-periodo'),agente:v('fo-agente'),vencimiento:v('fo-venc')};
-  closeModal();loading();addRow('Objetivos',data,function(){loadObjetivos();});
-}
+function guardarObjetivo(){var data={id:uid(),titulo:v('fo-titulo'),meta:v('fo-meta'),actual:0,unidad:v('fo-unidad'),periodo:v('fo-periodo'),agente:v('fo-agente'),vencimiento:v('fo-venc')};closeModal();loading();addRow('Objetivos',data,function(){loadObjetivos();});}
 function actualizarProgreso(id,titulo,actual,meta,unidad){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Actualizar progreso</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div style="font-size:14px;margin-bottom:1rem;font-weight:500">'+titulo+'</div>'
@@ -855,10 +1014,9 @@ function actualizarProgreso(id,titulo,actual,meta,unidad){
 function guardarProgreso(id){var a=v('upd-actual');closeModal();loading();updRow('Objetivos',id,{actual:a},function(){loadObjetivos();});}
 
 // ============================================================
-// PANEL EQUIPO — CAMBIOS 3 + 5
+// PANEL EQUIPO
 // ============================================================
 function loadEquipo(){
-  // Agente: solo ve su cuenta corriente
   if(currentUser.rol!=='Líder'){
     getSheet('CuentaCorriente',function(e,rows){
       rows=(rows||[]).filter(function(r){return r.agente===currentUser.nombre&&r.visible_agente==='si';});
@@ -875,9 +1033,7 @@ function loadEquipo(){
     return;
   }
 
-  // LÍDER
-  var vistaActual='consolidado';
-  var agenteActual='';
+  var vistaActual='consolidado',agenteActual='';
 
   function render(vista,agente){
     vistaActual=vista;
@@ -886,54 +1042,50 @@ function loadEquipo(){
 
     Promise.all([
       fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
+      fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
       fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
       fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
       fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Reservas').then(function(r){return r.json();}),
       fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
       fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
       fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();})
     ]).then(function(res){
-      var allProps=res[0]||[],allOps=res[1]||[],allGastos=res[2]||[],allFins=res[3]||[],
-          allReservas=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
+      var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allFins=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
 
-      var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>';
-      html+='<div class="tabs-secondary">'
+      var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>'
+        +'<div class="tabs-secondary">'
         +'<div class="tab-sec'+(vistaActual==='consolidado'?' active':'')+'" onclick="window._eq(\'consolidado\')">Vista consolidada</div>'
         +'<div class="tab-sec'+(vistaActual==='individual'?' active':'')+'" onclick="window._eq(\'individual\')">Vista individual</div>'
         +'<div class="tab-sec'+(vistaActual==='cuentas'?' active':'')+'" onclick="window._eq(\'cuentas\')">Cuenta corriente</div>'
         +'</div>';
 
-      // ---- CONSOLIDADO ----
       if(vistaActual==='consolidado'){
         allAgentes.forEach(function(ag){
           var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
+          var busqs=allBusq.filter(function(b){return b.agente===ag;});
+          var todasProps=props.concat(busqs);
           var ops=allOps.filter(function(o){return o.agente===ag;});
           var gastos=allGastos.filter(function(g){return g.agente===ag;});
           var fins=allFins.filter(function(f){return f.agente===ag;});
           var devs=allDevs.filter(function(d){return d.agente===ag;});
           var unis=allUnis.filter(function(u){return u.agente===ag;});
-          var pventa=props.filter(function(p){return p.estado==='En venta';}).length;
-          var preserv=props.filter(function(p){return p.estado==='Reservada';}).length;
-          var pvend=props.filter(function(p){return p.estado==='Vendida';}).length;
+          var pventa=todasProps.filter(function(p){return p.estado==='En venta';}).length;
+          var preserv=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
+          var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length;
           var uact=unis.filter(function(u){return u.condicion==='Activa';}).length;
           var ures=unis.filter(function(u){return u.condicion==='Reservada';}).length;
           var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
           var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
           var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-          var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
-          var gastosT=gastos.filter(function(g){return(g.moneda||'USD')!=='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0)
-            +fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-          html+='<div class="card">'
-            +'<div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">Agente</span></div>'
-            // Props sueltas
-            +'<div class="section-divider" style="margin-top:0">Propiedades sueltas</div>'
+          var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||o.neto_agente||0);},0);
+          var gastosT=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+          html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">Agente</span></div>'
+            +'<div class="section-divider" style="margin-top:0">Propiedades y búsquedas</div>'
             +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(3,1fr)">'
             +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue" style="font-size:18px">'+pventa+'</div></div>'
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+preserv+'</div></div>'
             +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+pvend+'</div></div>'
             +'</div>'
-            // CAMBIO 3: Desarrollos y unidades
             +'<div class="section-divider">Desarrollos ('+devs.length+' · '+unis.length+' unidades)</div>'
             +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(5,1fr)">'
             +'<div class="metric"><div class="metric-label">Activas</div><div class="metric-value blue" style="font-size:18px">'+uact+'</div></div>'
@@ -942,63 +1094,58 @@ function loadEquipo(){
             +'<div class="metric"><div class="metric-label">Com. generada</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(uComGen))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Com. proyectada</div><div class="metric-value amber" style="font-size:13px">USD '+fmt(Math.round(uComProy))+'</div></div>'
             +'</div>'
-            // Financiero
-            +'<div class="section-divider">Financiero</div>'
+            +'<div class="section-divider">Financiero (mi parte)</div>'
             +'<div class="grid-metrics" style="margin-bottom:0;grid-template-columns:repeat(3,1fr)">'
-            +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green" style="font-size:15px">USD '+fmt(Math.round(facturacion))+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:15px">USD '+fmt(Math.round(facturacion))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:15px">USD '+fmt(Math.round(gastosT))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value" style="font-size:18px">'+ops.length+'</div></div>'
-            +'</div>'
-            +'</div>';
+            +'</div></div>';
         });
 
-      // ---- INDIVIDUAL ----
       }else if(vistaActual==='individual'){
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'individual\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
         html+='</div>';
         var ag=agenteActual;
         var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
+        var busqs=allBusq.filter(function(b){return b.agente===ag;});
+        var todasProps=props.concat(busqs);
         var ops=allOps.filter(function(o){return o.agente===ag;});
         var gastos=allGastos.filter(function(g){return g.agente===ag;});
         var devs=allDevs.filter(function(d){return d.agente===ag;});
         var unis=allUnis.filter(function(u){return u.agente===ag;});
         var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_agente||o.comision_total||0);},0);
+        var netoTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
         html+='<div class="grid-metrics">'
-          +'<div class="metric"><div class="metric-label">Props. en venta</div><div class="metric-value blue">'+props.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Props. reservadas</div><div class="metric-value amber">'+props.filter(function(p){return p.estado==='Reservada';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Props. vendidas</div><div class="metric-value green">'+props.filter(function(p){return p.estado==='Vendida';}).length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+todasProps.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+todasProps.filter(function(p){return p.estado==='Reservada';}).length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+todasProps.filter(function(p){return p.estado==='Vendida';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Desarrollos</div><div class="metric-value">'+devs.length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Uds. activas</div><div class="metric-value blue">'+unis.filter(function(u){return u.condicion==='Activa';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Uds. vendidas</div><div class="metric-value green">'+unis.filter(function(u){return u.condicion==='Vendida';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Com. gen. desarro.</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(uComGen))+'</div></div>'
           +'<div class="metric"><div class="metric-label">Com. proy. desarro.</div><div class="metric-value amber" style="font-size:14px">USD '+fmt(Math.round(uComProy))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(facturacion))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:14px">USD '+fmt(Math.round(gastos.filter(function(g){return(g.moneda||'USD')!=='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0)))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(netoTL))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:14px">USD '+fmt(Math.round(gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)))+'</div></div>'
           +'</div>';
-        html+='<div class="card"><div class="card-header"><span class="card-title">Propiedades sueltas</span></div>';
-        if(props.length){
-          html+='<div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Estado</th><th>Precio</th></tr>';
-          props.forEach(function(p){html+='<tr><td>'+p.direccion+'</td><td>'+(p.tipo||'')+'</td><td><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></td><td>USD '+fmt(p.precio)+'</td></tr>';});
+        html+='<div class="card"><div class="card-header"><span class="card-title">Propiedades y búsquedas</span></div>';
+        if(todasProps.length){
+          html+='<div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Referida</th><th>Estado</th><th>Precio</th></tr>';
+          todasProps.forEach(function(p){html+='<tr><td>'+p.direccion+'</td><td>'+(p.tipo||'')+'</td><td>'+(p.referido==='si'?'<span class="referido-tag">✓ Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td><td><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></td><td>USD '+fmt(p.precio)+'</td></tr>';});
           html+='</table></div>';
-        }else{html+='<div class="empty">Sin propiedades sueltas.</div>';}
+        }else{html+='<div class="empty">Sin propiedades.</div>';}
         html+='</div>';
         if(devs.length){
-          html+='<div class="card"><div class="card-header"><span class="card-title">Desarrollos</span></div>'
-            +'<div class="table-wrap"><table><tr><th>Nombre</th><th>Total uds.</th><th>Activas</th><th>Vendidas</th><th>Com. generada</th></tr>';
+          html+='<div class="card"><div class="card-header"><span class="card-title">Desarrollos</span></div><div class="table-wrap"><table><tr><th>Nombre</th><th>Total uds.</th><th>Activas</th><th>Vendidas</th><th>Com. generada</th></tr>';
           devs.forEach(function(d){
             var du=allUnis.filter(function(u){return u.desarrollo_id===d.id;});
-            var da=du.filter(function(u){return u.condicion==='Activa';}).length;
-            var dv=du.filter(function(u){return u.condicion==='Vendida';}).length;
             var dc=du.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-            html+='<tr><td style="font-weight:600">'+d.nombre+'</td><td>'+du.length+'</td><td>'+da+'</td><td>'+dv+'</td><td style="color:#065f46;font-weight:600">USD '+fmt(Math.round(dc))+'</td></tr>';
+            html+='<tr><td style="font-weight:600">'+d.nombre+'</td><td>'+du.length+'</td><td>'+du.filter(function(u){return u.condicion==='Activa';}).length+'</td><td>'+du.filter(function(u){return u.condicion==='Vendida';}).length+'</td><td style="color:#065f46;font-weight:600">USD '+fmt(Math.round(dc))+'</td></tr>';
           });
           html+='</table></div></div>';
         }
 
-      // ---- CUENTA CORRIENTE — CAMBIO 5 ----
       }else if(vistaActual==='cuentas'){
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'cuentas\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
@@ -1012,60 +1159,33 @@ function loadEquipo(){
           +'<button class="btn btn-sm btn-primary" onclick="window._nuevoCC(\'gasto_gonzalo\',\''+esc(agenteActual)+'\')">+ Mi gasto sobre agente</button>'
           +'<button class="btn btn-sm btn-success" onclick="window._nuevoCC(\'cuenta_corriente\',\''+esc(agenteActual)+'\')">+ Cargo cuenta corriente</button>'
           +'</div>';
-        // Mis gastos (solo Gonzalo los ve)
-        html+='<div class="cc-section">'
-          +'<div class="cc-section-title">'
-          +'<span>🔒 Mis gastos sobre '+agenteActual.split(' ')[0]+' <span style="font-size:11px;color:#888;font-weight:400">(solo vos lo ves)</span></span>'
-          +'<span style="color:#991b1b;font-weight:700">USD '+fmt(Math.round(totalMG))+'</span>'
-          +'</div>';
-        if(misGastos.length){
-          html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th></th></tr>';
-          misGastos.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});
-          html+='</table></div>';
-        }else{html+='<div class="empty">Sin gastos cargados.</div>';}
+        html+='<div class="cc-section"><div class="cc-section-title"><span>🔒 Mis gastos sobre '+agenteActual.split(' ')[0]+' <span style="font-size:11px;color:#888;font-weight:400">(solo vos lo ves)</span></span><span style="color:#991b1b;font-weight:700">USD '+fmt(Math.round(totalMG))+'</span></div>';
+        if(misGastos.length){html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th></th></tr>';misGastos.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});html+='</table></div>';}
+        else{html+='<div class="empty">Sin gastos.</div>';}
         html+='</div>';
-        // Cuenta corriente (agente debe rendir)
-        html+='<div class="cc-section">'
-          +'<div class="cc-section-title">'
-          +'<span>💳 Cuenta corriente · '+agenteActual.split(' ')[0]+' debe rendir</span>'
-          +'<span style="font-weight:700;color:'+(totalCC>0?'#991b1b':'#065f46')+'">USD '+fmt(Math.round(totalCC))+'</span>'
-          +'</div>';
-        if(ccDeuda.length){
-          html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
-          ccDeuda.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td><td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});
-          html+='</table></div>';
-        }else{html+='<div class="empty">Sin cargos en cuenta corriente.</div>';}
+        html+='<div class="cc-section"><div class="cc-section-title"><span>💳 Cuenta corriente · '+agenteActual.split(' ')[0]+' debe rendir</span><span style="font-weight:700;color:'+(totalCC>0?'#991b1b':'#065f46')+'">USD '+fmt(Math.round(totalCC))+'</span></div>';
+        if(ccDeuda.length){html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';ccDeuda.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td><td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});html+='</table></div>';}
+        else{html+='<div class="empty">Sin cargos.</div>';}
         html+='</div>';
       }
 
       document.getElementById('tabContent').innerHTML=html;
-
       window._eq=function(vista,ag){render(vista,ag);};
-
       window._nuevoCC=function(tipo,ag){
-        var titulo=tipo==='gasto_gonzalo'?'Mi gasto sobre '+ag.split(' ')[0]:'Cargo cuenta corriente · '+ag.split(' ')[0];
-        document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+titulo+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-          +'<div class="row"><div class="form-group"><label>Fecha</label><input id="cc-fecha" type="date" value="'+today()+'"/></div>'
-          +'<div class="form-group"><label>Monto (USD)</label><input id="cc-monto" type="number"/></div></div>'
-          +'<div class="form-group"><label>Concepto</label><input id="cc-concepto" autocomplete="off" placeholder="Ej: Fee de oficina, Cartel, Destaque..."/></div>'
+        document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(tipo==='gasto_gonzalo'?'Mi gasto sobre ':'Cargo cuenta corriente · ')+ag.split(' ')[0]+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+          +'<div class="row"><div class="form-group"><label>Fecha</label><input id="cc-fecha" type="date" value="'+today()+'"/></div><div class="form-group"><label>Monto (USD)</label><input id="cc-monto" type="number"/></div></div>'
+          +'<div class="form-group"><label>Concepto</label><input id="cc-concepto" autocomplete="off"/></div>'
           +(tipo==='cuenta_corriente'?'<div class="form-group"><label>Nota (opcional)</label><input id="cc-nota" autocomplete="off"/></div>':'<div id="cc-nota" style="display:none"></div>')
           +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="window._guardarCC(\''+tipo+'\',\''+esc(ag)+'\')">Guardar</button></div>';
         openModal();
       };
-
       window._guardarCC=function(tipo,ag){
         var data={id:uid(),fecha:v('cc-fecha'),agente:ag,concepto:v('cc-concepto'),monto:v('cc-monto'),moneda:'USD',tipo:tipo,visible_agente:tipo==='cuenta_corriente'?'si':'no',nota:v('cc-nota')||''};
-        closeModal();
-        addRow('CuentaCorriente',data,function(){render('cuentas',ag);});
+        closeModal();addRow('CuentaCorriente',data,function(){render('cuentas',ag);});
       };
-
-      window._elimCC=function(id){
-        if(!confirm('¿Eliminar este registro?'))return;
-        delRow('CuentaCorriente',id,function(){render('cuentas',agenteActual);});
-      };
+      window._elimCC=function(id){if(!confirm('¿Eliminar?'))return;delRow('CuentaCorriente',id,function(){render('cuentas',agenteActual);});};
     });
   }
-
   render('consolidado','');
   window._eq=function(vista,ag){render(vista,ag);};
 }
