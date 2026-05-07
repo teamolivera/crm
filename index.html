@@ -310,49 +310,49 @@ function loadDashboard(filtroAgente){
 
       // Widget del team (siempre visible para el líder)
       if(agente===currentUser.nombre){
-        var teamAgentes=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+        var teamAgentes=allAgentes;
         var teamComPrBruta=0,teamComPrNeta=0,teamComResBruta=0,teamComResNeta=0;
         teamAgentes.forEach(function(ag){
+          var esLiderAg=ag===currentUser.nombre;
           var agProps=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
           var agBusqs=allBusq.filter(function(b){return b.agente===ag;});
           var agDevIds2=allDevsDash.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
           var agUnis=allUnis.filter(function(u){return agDevIds2.indexOf(u.desarrollo_id)>=0;});
-          var agRes=reservas.filter(function(r){return r.agente===ag;});
           var agTodas=agProps.concat(agBusqs);
 
           agTodas.filter(function(p){return p.estado==='En venta';}).forEach(function(p){
             var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
-            var d=getDistrib(p.referido);
+            var pctTL=esLiderAg?100:getDistrib(p.referido).tl;
             var martillero=comBruta*0.8*0.04;
-            teamComPrBruta+=comBruta*d.tl/100;
-            teamComPrNeta+=comBruta*d.tl/100-martillero;
+            teamComPrBruta+=comBruta*pctTL/100;
+            teamComPrNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
           });
           agUnis.filter(function(u){return u.condicion==='Activa';}).forEach(function(u){
             var comBruta=Number(u.comision||0);
-            var d=getDistrib(u.referido);
+            var pctTL=esLiderAg?100:getDistrib(u.referido).tl;
             var martillero=comBruta*0.8*0.04;
-            teamComPrBruta+=comBruta*d.tl/100;
-            teamComPrNeta+=comBruta*d.tl/100-martillero;
+            teamComPrBruta+=comBruta*pctTL/100;
+            teamComPrNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
           });
           // Reservadas
           agTodas.filter(function(p){return p.estado==='Reservada';}).forEach(function(p){
             var comBruta=Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
-            var d=getDistrib(p.referido);
+            var pctTL=esLiderAg?100:getDistrib(p.referido).tl;
             var martillero=comBruta*0.8*0.04;
-            teamComResBruta+=comBruta*d.tl/100;
-            teamComResNeta+=comBruta*d.tl/100-martillero;
+            teamComResBruta+=comBruta*pctTL/100;
+            teamComResNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
           });
           agUnis.filter(function(u){return u.condicion==='Reservada';}).forEach(function(u){
             var comBruta=Number(u.comision||0);
-            var d=getDistrib(u.referido);
+            var pctTL=esLiderAg?100:getDistrib(u.referido).tl;
             var martillero=comBruta*0.8*0.04;
-            teamComResBruta+=comBruta*d.tl/100;
-            teamComResNeta+=comBruta*d.tl/100-martillero;
+            teamComResBruta+=comBruta*pctTL/100;
+            teamComResNeta+=(comBruta*pctTL/100)-(esLiderAg?martillero:0);
           });
         });
 
         html+='<div class="team-widget">'
-          +'<div class="team-widget-title">📊 Mi Team · Comisiones proyectadas para mí</div>'
+          +'<div class="team-widget-title">Team Olivera</div>'
           +'<div class="team-metrics">'
           +'<div class="team-metric"><div class="team-metric-label">Com. proy. total (bruta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComPrBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Com. proy. total (neta)</div><div class="team-metric-value">USD '+fmt(Math.round(teamComPrNeta))+'</div></div>'
@@ -1073,7 +1073,7 @@ function loadEquipo(){
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+preserv+'</div></div>'
             +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+pvend+'</div></div>'
             +'</div>'
-            +'<div class="section-divider">Desarrollos ('+devs.length+' · '+unis.length+' unidades)</div>'
+            +'<div class="section-divider">Desarrollos ('+devs.length+' activos · '+unis.length+' unidades en total)</div>'
             +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(5,1fr)">'
             +'<div class="metric"><div class="metric-label">Activas</div><div class="metric-value blue" style="font-size:18px">'+uact+'</div></div>'
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+ures+'</div></div>'
