@@ -729,6 +729,7 @@ function propCardHtml(p,sheet,mostrarReferido){
     +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
     +'</div></div>'
     +'<div class="prop-actions">'
+    +'<button class="btn btn-sm" onclick="abrirModalProp(\''+sheet+'\',window._props&&window._props[\''+p.id+'\']?window._props[\''+p.id+'\']: {id:\''+p.id+'\',direccion:\''+esc(p.direccion)+'\',localidad:\''+esc(p.localidad||p.zona||'')+'\',tipo:\''+esc(p.tipo||'')+'\',estado:\''+esc(p.estado||'')+'\',precio:\''+p.precio+'\',cliente:\''+esc(p.cliente||'')+'\',telefono:\''+esc(p.telefono||'')+'\',mail:\''+esc(p.mail||'')+'\',comision_compradora:\''+p.comision_compradora+'\',comision_vendedora:\''+p.comision_vendedora+'\',referido:\''+referido+'\'})">✏️ Editar</button>'
     +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
     +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+referido+'\')">Reservar/Vender</button>'
     +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')">Estado</button>'
@@ -766,13 +767,31 @@ function guardarEditProp(id,sheet){
   updRow(sheet,id,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
 }
 function eliminarProp(id,sheet){
-  if(!confirm('¿Eliminar?'))return;loading();
-  delRow(sheet,id,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+  if(!confirm('¿Eliminar esta propiedad y sus operaciones asociadas?'))return;
+  loading();
+  delRow(sheet,id,function(){
+    // Eliminar operaciones asociadas
+    getSheet('Operaciones',function(e,ops){
+      var asociadas=(ops||[]).filter(function(o){return o.propiedad_id===id;});
+      var pending=asociadas.length;
+      if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();return;}
+      asociadas.forEach(function(o){
+        delRow('Operaciones',o.id,function(){
+          pending--;
+          if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();}
+        });
+      });
+    });
+  });
 }
 function cambiarEstado(id,sheet){
+function cambiarEstado(id,sheet){
+  var opciones=sheet==='Busquedas'
+    ?'<option>Reservada</option><option>Vendida</option>'
+    :'<option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option>';
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar estado</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="form-group"><label>Nuevo estado</label><select id="nuevo-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\',\''+sheet+'\')">Guardar</button></div>';
+    +'<div class="form-group"><label>Nuevo estado</label><select id="nuevo-estado">'+opciones+'</select></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\',\''+sheet+'\')" >Guardar</button></div>';
   openModal();
 }
 function guardarEstado(id,sheet){
@@ -915,9 +934,9 @@ function calcCierre(referido,esAgente){
   var parteAg=esAgente?comTotal*pctAg/100:0;
   var parteO=comTotal*pctO/100;
   var martillero=parteTL*pctM/100;
-  // IVA solo resta al TL si son USD
-  var ivaTotalUSD=(ivaCm==='USD'?ivaC:0)+(ivaVm==='USD'?ivaV:0)+(ivaOm==='USD'?ivaO:0);
-  var netoTL=parteTL-martillero-ivaTotalUSD;
+  // IVA es recaudación aparte, NO se descuenta del neto
+  var ivaTotal=ivaC+ivaV+ivaO;
+  var netoTL=parteTL-martillero;
   var el=document.getElementById('rc-preview');if(!el)return;
   el.innerHTML='<div class="distrib-box">'
     +'<div class="distrib-row"><span>Comisión total ('+comp+'%+'+vend+'%)</span><span style="font-weight:600">USD '+fmt(Math.round(comTotal))+'</span></div>'
@@ -926,10 +945,13 @@ function calcCierre(referido,esAgente){
     +'<div class="distrib-row"><span>Parte Oficina ('+pctO+'%)</span><span>USD '+fmt(Math.round(parteO))+'</span></div>'
     +'<div class="distrib-sep"></div>'
     +'<div class="distrib-row" style="color:#991b1b"><span>− Martillero ('+pctM+'% s/ TL)</span><span>USD '+fmt(Math.round(martillero))+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA comprador</span><span>'+ivaCm+' '+fmt(ivaC)+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA vendedor</span><span>'+ivaVm+' '+fmt(ivaV)+'</span></div>'
-    +'<div class="distrib-row" style="color:#991b1b"><span>− IVA oficina</span><span>'+ivaOm+' '+fmt(ivaO)+'</span></div>'
     +'<div class="distrib-total"><span>🟢 Neto Team Leader</span><span>USD '+fmt(Math.round(netoTL))+'</span></div>'
+    +'<div class="distrib-sep"></div>'
+    +'<div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:6px">Recaudación IVA (aparte)</div>'
+    +'<div class="distrib-row"><span>IVA comprador</span><span>'+ivaCm+' '+fmt(ivaC)+'</span></div>'
+    +'<div class="distrib-row"><span>IVA vendedor</span><span>'+ivaVm+' '+fmt(ivaV)+'</span></div>'
+    +'<div class="distrib-row"><span>IVA oficina</span><span>'+ivaOm+' '+fmt(ivaO)+'</span></div>'
+    +'<div class="distrib-row" style="font-weight:600"><span>Total IVA recaudado</span><span>'+fmt(ivaTotal)+'</span></div>'
     +'</div>';
 }
 
@@ -948,27 +970,36 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
   var parteTL=comTotal*pctTL/100;
   var parteAg=esAgente?comTotal*pctAg/100:0;
   var parteO=comTotal*pctO/100;
-  var martillero=parteTL*pctM/100;
-  var ivaTotalUSD=(ivaCm==='USD'?ivaC:0)+(ivaVm==='USD'?ivaV:0)+(ivaOm==='USD'?ivaO:0);
-  var netoTL=parteTL-martillero-ivaTotalUSD;
-  var netoAg=parteAg;
+  var martillero=Math.round(parteTL*pctM/100);
+  var ivaTotal=ivaC+ivaV+ivaO;
+  // IVA es recaudacion aparte, no se descuenta del neto
+  var netoTL=Math.round(parteTL-martillero);
+  var netoAg=Math.round(parteAg);
   closeModal();loading();
 
   var fechaVenta=v('rc-fecha-venta')||fecha;
   var opData={id:uid(),fecha:fecha,fecha_venta:fechaVenta,referido:referido,precio_final:c,
     comision_total:Math.round(comTotal),
-    comision_agente:Math.round(parteAg),
+    comision_agente:netoAg,
     comision_team_leader:Math.round(parteTL),
     parte_oficina:Math.round(parteO),
-    martillero:Math.round(martillero),
+    martillero:martillero,
     iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
     iva_vendedor:ivaV,iva_vendedor_moneda:ivaVm,
     iva_oficina:ivaO,iva_oficina_moneda:ivaOm,
-    neto_agente:Math.round(netoAg),
-    neto_team_leader:Math.round(netoTL),
+    iva_total:ivaTotal,
+    neto_agente:netoAg,
+    neto_team_leader:netoTL,
     agente:currentUser.nombre};
 
-  function afterOp(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();}
+  function afterOp(){
+    if(estado==='Vendida'){
+      // Recargar dashboard para que compute la venta
+      loadDashboard(currentUser.nombre);
+    }else{
+      sheet==='Busquedas'?loadBusquedas():loadPropiedades();
+    }
+  }
 
   if(origen==='prop'){
     opData.propiedad_id=id;
@@ -1122,6 +1153,7 @@ function verUnidades(devId,devNombre,compPct,vendPct){
           +'<td style="color:#888">'+(u.agente||'').split(' ').slice(-1)[0]+'</td>'
           +'<td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td>'
           +'<td style="display:flex;gap:4px">'
+          +'<button class="btn btn-sm" onclick="abrirEditUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">✏️</button>'
           +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'unidad\',\'Unidades\',\''+u.id+'\',\''+esc(u.nombre)+'\','+Number(u.precio||0)+','+compPct+','+vendPct+',\''+ref+'\')">Cerrar</button>'
           +'<button class="btn btn-sm" onclick="cambiarCondUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Estado</button>'
           +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarUnidad(\''+u.id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">×</button>'
@@ -1158,6 +1190,26 @@ function guardarUnidad(devId,devNombre,compPct,vendPct){
   var data={id:uid(),desarrollo_id:devId,nombre:v('u-nombre'),precio:v('u-precio'),comision:v('u-comision'),condicion:v('u-cond'),referido:v('u-referido'),agente:v('u-agente'),fecha:today()};
   closeModal();loading();addRow('Unidades',data,function(){verUnidades(devId,devNombre,compPct,vendPct);});
 }
+function abrirEditUnidad(id,devId,devNombre,compPct,vendPct){
+  getSheet('Unidades',function(e,unis){
+    var u=(unis||[]).find(function(x){return x.id===id;});
+    if(!u)return;
+    var agentesOpts=allAgentes.map(function(a){return '<option'+(a===u.agente?' selected':'')+'>'+a+'</option>';}).join('');
+    document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Editar unidad · '+u.nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      +'<div class="row"><div class="form-group"><label>Nombre/Número</label><input id="ue-nombre" value="'+esc(u.nombre||'')+'" autocomplete="off"/></div>'
+      +'<div class="form-group"><label>Precio (USD)</label><input id="ue-precio" type="number" value="'+(u.precio||'')+'"/></div></div>'
+      +'<div class="form-group"><label>Comisión proyectada (USD)</label><input id="ue-comision" type="number" value="'+(u.comision||'')+'"/></div>'
+      +'<div class="form-group"><label>¿Referida por Gonzalo?</label><select id="ue-referido"><option value="no"'+(u.referido!=='si'?' selected':'')+'>No</option><option value="si"'+(u.referido==='si'?' selected':'')+'>Sí</option></select></div>'
+      +'<div class="form-group"><label>Agente</label><select id="ue-agente">'+agentesOpts+'</select></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditUnidad(''+id+'',''+devId+'',''+esc(devNombre)+'','+compPct+','+vendPct+')">Guardar</button></div>';
+    openModal();
+  });
+}
+function guardarEditUnidad(id,devId,devNombre,compPct,vendPct){
+  var data={nombre:v('ue-nombre'),precio:v('ue-precio'),comision:v('ue-comision'),referido:v('ue-referido'),agente:v('ue-agente')};
+  closeModal();loading();updRow('Unidades',id,data,function(){verUnidades(devId,devNombre,compPct,vendPct);});
+}
+
 function cambiarCondUnidad(id,devId,devNombre,compPct,vendPct){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cambiar condición</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Nueva condición</label><select id="u-cond-new"><option>Activa</option><option>Reservada</option><option>Vendida</option><option>Cancelada</option></select></div>'
