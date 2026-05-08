@@ -842,6 +842,7 @@ function verFichaProp(id,sheet){
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
       +'<button class="btn" onclick="closeModal()">Cerrar</button>'
       +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\',window._editProp)">Editar</button>'
+      +(p.valor_cierre?'<button class="btn btn-success" onclick="closeModal();abrirEditCierreProp(\''+p.id+'\',\''+sheet+'\')" >✏️ Editar cierre</button>':'')
       +'</div>';
     window._editProp=p;
     openModal();
@@ -893,8 +894,8 @@ function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
     +(esAgente?'<div style="font-size:12px;margin-bottom:1rem;padding:8px 12px;border-radius:8px;background:'+(referido==='si'?'#f0fdf4;color:#065f46;border:1px solid #bbf7d0':'#f9fafb;color:#555;border:1px solid #eee')+'">'+
       (referido==='si'?'✓ Referida por TL — TL: '+d.tl+'% / Agente: '+d.agente+'% / Oficina: '+d.oficina+'%':'Sin referido — Agente: '+d.agente+'% / TL: '+d.tl+'% / Oficina: '+d.oficina+'%')+'</div>':'')
     +'<div class="section-divider">Valores de la operación</div>'
-    +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
-    +'<div class="form-group"><label>Fecha de carga</label><input id="rc-fecha" type="date" value="'+today()+'"/></div>'
+    +'<div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="row"><div class="form-group"><label>Fecha de carga</label><input id="rc-fecha" type="date" value="'+today()+'"/></div>'
     +'<div class="form-group"><label>Fecha de venta</label><input id="rc-fecha-venta" type="date" value="'+today()+'"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
     +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div></div>'
@@ -1235,7 +1236,24 @@ function guardarCondUnidad(id,devId,devNombre,compPct,vendPct){
     closeModal();loading();updRow('Unidades',id,{condicion:cond},function(){verUnidades(devId,devNombre,compPct,vendPct);});
   }
 }
-function eliminarUnidad(id,devId,devNombre,compPct,vendPct){if(!confirm('¿Eliminar?'))return;loading();delRow('Unidades',id,function(){verUnidades(devId,devNombre,compPct,vendPct);});}
+function eliminarUnidad(id,devId,devNombre,compPct,vendPct){
+  if(!confirm('¿Eliminar esta unidad y sus operaciones asociadas?'))return;
+  loading();
+  delRow('Unidades',id,function(){
+    getSheet('Operaciones',function(e,ops){
+      var asociadas=(ops||[]).filter(function(o){return o.unidad_id===id;});
+      var pending=asociadas.length;
+      if(pending===0){verUnidades(devId,devNombre,compPct,vendPct);return;}
+      asociadas.forEach(function(o){
+        if(!o.id)return;
+        delRow('Operaciones',o.id,function(){
+          pending--;
+          if(pending===0)verUnidades(devId,devNombre,compPct,vendPct);
+        });
+      });
+    });
+  });
+}
 
 // ============================================================
 // FINANZAS
@@ -1267,17 +1285,18 @@ function loadFinanzas(){
       +'</div>';
     html+='<div class="section-header" style="margin-top:1rem"><div class="section-title">Operaciones cerradas</div></div>';
     if(ops.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Ref.</th><th>Com. total</th>'
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'
         +(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')
-        +'<th>Martillero</th><th>IVA</th><th>Neto</th></tr>';
+        +'<th>Martillero</th><th>IVA</th><th>Neto</th><th></th></tr>';
       ops.forEach(function(o){
-        html+='<tr><td>'+o.fecha+'</td>'
+        html+='<tr><td>'+(o.fecha_venta||o.fecha||'')+'</td>'
           +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
           +'<td>USD '+fmt(Math.round(Number(o.comision_total||0)))+'</td>'
           +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
           +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
           +'<td style="color:#991b1b">−'+(o.iva_comprador_moneda||'USD')+' '+fmt(Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0)))+'</td>'
-          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0))))+'</td></tr>';
+          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0))))+'</td>'
+          +'<td><button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')" >✏️</button></td></tr>';
       });
       html+='</table></div></div>';
     }else{html+='<div class="empty">No hay operaciones cerradas.</div>';}
@@ -1615,6 +1634,93 @@ function abrirPanelTeam(){
     document.getElementById('modalBox').innerHTML=html;
     openModal();
   });
+}
+
+// ============================================================
+// EDITAR CIERRE DE OPERACIÓN
+// ============================================================
+function abrirEditCierreProp(propId,sheet){
+  getSheet('Operaciones',function(e,ops){
+    var op=(ops||[]).find(function(o){return o.propiedad_id===propId;});
+    if(!op){alert('No se encontró la operación asociada.');return;}
+    abrirEditCierre(op.id);
+  });
+}
+
+function abrirEditCierre(opId){
+  getSheet('Operaciones',function(e,ops){
+    var op=(ops||[]).find(function(o){return o.id===opId;});
+    if(!op){alert('Operación no encontrada.');return;}
+    var esAgente=currentUser.rol!=='Líder';
+    var html='<div class="modal-header"><span class="modal-title">✏️ Editar cierre</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      +'<div class="section-divider">Valores</div>'
+      +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="ec-cierre" type="number" value="'+(op.precio_final||0)+'"/></div>'
+      +'<div class="form-group"><label>Fecha de carga</label><input id="ec-fecha" type="date" value="'+(op.fecha||today())+'"/></div>'
+      +'<div class="form-group"><label>Fecha de venta</label><input id="ec-fecha-venta" type="date" value="'+(op.fecha_venta||op.fecha||today())+'"/></div></div>'
+      +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="ec-comp" type="number" value="'+(op.comision_compradora||4)+'"/></div>'
+      +'<div class="form-group"><label>Com. vendedor (%)</label><input id="ec-vend" type="number" value="'+(op.comision_vendedora||3)+'"/></div></div>'
+      +'<div class="section-divider">Distribución</div>'
+      +'<div class="row">'
+      +(esAgente
+        ?'<div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="'+(op.comision_agente&&op.comision_total?Math.round(op.comision_agente/op.comision_total*100):35)+'"/></div>'
+        +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="'+(op.comision_team_leader&&op.comision_total?Math.round(op.comision_team_leader/op.comision_total*100):45)+'"/></div>'
+        +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="'+(op.parte_oficina&&op.comision_total?Math.round(op.parte_oficina/op.comision_total*100):20)+'"/></div>'
+        :'<div class="form-group"><label>% Gonzalo</label><input id="ec-pcttl" type="number" value="80"/></div>'
+        +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
+      )+'</div>'
+      +'<div class="form-group"><label>% Martillero (sobre parte TL)</label><input id="ec-mart" type="number" value="'+(op.martillero&&op.comision_team_leader?Math.round(op.martillero/op.comision_team_leader*100):4)+'"/></div>'
+      +'<div class="section-divider">IVA (recaudación aparte)</div>'
+      +'<div class="row"><div class="form-group"><label>IVA comprador</label><input id="ec-ivac" type="number" value="'+(op.iva_comprador||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivac-m"><option value="USD"'+(op.iva_comprador_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_comprador_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div class="row"><div class="form-group"><label>IVA vendedor</label><input id="ec-ivav" type="number" value="'+(op.iva_vendedor||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivav-m"><option value="USD"'+(op.iva_vendedor_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_vendedor_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div class="row"><div class="form-group"><label>IVA oficina</label><input id="ec-ivao" type="number" value="'+(op.iva_oficina||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivao-m"><option value="USD"'+(op.iva_oficina_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_oficina_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+      +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+      +'<button class="btn btn-success" onclick="guardarEditCierre(\''+opId+'\','+esAgente+')">Guardar cambios</button>'
+      +'</div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
+}
+
+function guardarEditCierre(opId,esAgente){
+  var cierre=Number(document.getElementById('ec-cierre').value||0);
+  var comp=Number(document.getElementById('ec-comp').value||0);
+  var vend=Number(document.getElementById('ec-vend').value||0);
+  var pctTL=Number(document.getElementById('ec-pcttl').value||0);
+  var pctAg=esAgente?Number(document.getElementById('ec-pctag').value||0):0;
+  var pctO=Number(document.getElementById('ec-pcto').value||0);
+  var pctM=Number(document.getElementById('ec-mart').value||4);
+  var ivaC=Number(document.getElementById('ec-ivac').value||0);
+  var ivaCm=document.getElementById('ec-ivac-m').value||'USD';
+  var ivaV=Number(document.getElementById('ec-ivav').value||0);
+  var ivaVm=document.getElementById('ec-ivav-m').value||'USD';
+  var ivaO=Number(document.getElementById('ec-ivao').value||0);
+  var ivaOm=document.getElementById('ec-ivao-m').value||'USD';
+  var fecha=document.getElementById('ec-fecha').value;
+  var fechaVenta=document.getElementById('ec-fecha-venta').value||fecha;
+  var comTotal=cierre*(comp+vend)/100;
+  var parteTL=comTotal*pctTL/100;
+  var parteAg=esAgente?comTotal*pctAg/100:0;
+  var parteO=comTotal*pctO/100;
+  var martillero=Math.round(parteTL*pctM/100);
+  var ivaTotal=ivaC+ivaV+ivaO;
+  var netoTL=Math.round(parteTL-martillero);
+  var netoAg=Math.round(parteAg);
+  var data={
+    fecha:fecha,fecha_venta:fechaVenta,precio_final:cierre,
+    comision_total:Math.round(comTotal),
+    comision_agente:netoAg,comision_team_leader:Math.round(parteTL),
+    parte_oficina:Math.round(parteO),martillero:martillero,
+    iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
+    iva_vendedor:ivaV,iva_vendedor_moneda:ivaVm,
+    iva_oficina:ivaO,iva_oficina_moneda:ivaOm,
+    iva_total:ivaTotal,neto_agente:netoAg,neto_team_leader:netoTL
+  };
+  closeModal();loading();
+  updRow('Operaciones',opId,data,function(){loadFinanzas();});
 }
 </script>
 </body>
