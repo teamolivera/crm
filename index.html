@@ -1367,17 +1367,29 @@ function guardarFinanza(){var data={id:uid(),fecha:v('ff-fecha'),tipo:v('ff-tipo
 // OBJETIVOS
 // ============================================================
 function loadObjetivos(){
-  getSheet('Objetivos',function(e,objs){
-    objs=(objs||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
+  Promise.all([
+    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();})
+  ]).then(function(res){
+    var objs=(res[0]||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
+    var allOpsObj=res[1]||[];
+    var anoActual=new Date().getFullYear();
     var html='<div class="section-header"><div class="section-title">Objetivos</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
     if(objs.length){
       objs.forEach(function(o){
-        var p=pct(o.actual,o.meta);
+        // Para objetivos anuales en USD, calcular progreso real desde operaciones
+        var actualReal=Number(o.actual||0);
+        if(o.periodo==='Anual'&&o.unidad==='USD'){
+          actualReal=allOpsObj.filter(function(op){
+            return op.agente===o.agente&&op.fecha_venta&&op.fecha_venta.startsWith(String(anoActual));
+          }).reduce(function(a,op){return a+Number(op.comision_total||0);},0);
+        }
+        var p=pct(actualReal,o.meta);
         html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div><div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
-          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+o.actual+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div><div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
+          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+fmt(Math.round(actualReal))+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div><div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
           +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div>'
-          +'<div class="obj-actions"><button class="btn btn-sm btn-primary" onclick="actualizarProgreso(\''+o.id+'\',\''+esc(o.titulo)+'\','+o.actual+','+o.meta+',\''+esc(o.unidad)+'\')">Actualizar</button>'
+          +'<div class="obj-actions"><button class="btn btn-sm btn-primary" onclick="actualizarProgreso(\''+o.id+'\',\''+esc(o.titulo)+'\','+actualReal+','+o.meta+',\''+esc(o.unidad)+'\')">Actualizar</button>'
           +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){loadObjetivos();})">Eliminar</button></div></div>';
       });
     }else{html+='<div class="empty">No hay objetivos.</div>';}
@@ -1464,7 +1476,8 @@ function loadEquipo(){
           var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
           var pventa=todasProps.filter(function(p){return p.estado==='En venta';}).length;
           var preserv=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
-          var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length;
+          var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length
+            +allOps.filter(function(o){return o.agente===ag&&o.unidad_id&&o.fecha_venta&&o.fecha_venta.startsWith(String(new Date().getFullYear()));}).length;
           var uact=unis.filter(function(u){return u.condicion==='Activa';}).length;
           var ures=unis.filter(function(u){return u.condicion==='Reservada';}).length;
           var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
@@ -1472,7 +1485,7 @@ function loadEquipo(){
           var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
           var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||o.neto_agente||0);},0);
           var gastosT=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-          html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">Agente</span></div>'
+          html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">'+(ag===currentUser.nombre?currentUser.rol:'Agente')+'</span></div>'
             +'<div class="section-divider" style="margin-top:0">Propiedades y búsquedas</div>'
             +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(3,1fr)">'
             +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue" style="font-size:18px">'+pventa+'</div></div>'
