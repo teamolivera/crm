@@ -465,7 +465,7 @@ function loadDashboard(filtroAgente){
     // Ticket promedio: precio_final promedio de ops cerradas del año
     // Si no hay ops, se estima por precio promedio del stock en venta
     var ticketPromedio=opsAno.length>0
-      ?Math.round(opsAno.reduce(function(a,o){return a+Number(o.precio_final||0);},0)/opsAno.length)
+      ?Math.round(opsAno.reduce(function(a,o){return a+Number(o.valor_cierre||o.precio_final||0);},0)/opsAno.length)
       :(function(){
           var precios=todasProps.filter(function(p){return p.estado==='En venta';})
             .map(function(p){return Number(p.precio||0);})
