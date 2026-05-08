@@ -785,7 +785,6 @@ function eliminarProp(id,sheet){
   });
 }
 function cambiarEstado(id,sheet){
-function cambiarEstado(id,sheet){
   var opciones=sheet==='Busquedas'
     ?'<option>Reservada</option><option>Vendida</option>'
     :'<option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option>';
@@ -1201,7 +1200,7 @@ function abrirEditUnidad(id,devId,devNombre,compPct,vendPct){
       +'<div class="form-group"><label>Comisión proyectada (USD)</label><input id="ue-comision" type="number" value="'+(u.comision||'')+'"/></div>'
       +'<div class="form-group"><label>¿Referida por Gonzalo?</label><select id="ue-referido"><option value="no"'+(u.referido!=='si'?' selected':'')+'>No</option><option value="si"'+(u.referido==='si'?' selected':'')+'>Sí</option></select></div>'
       +'<div class="form-group"><label>Agente</label><select id="ue-agente">'+agentesOpts+'</select></div>'
-      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditUnidad(''+id+'',''+devId+'',''+esc(devNombre)+'','+compPct+','+vendPct+')">Guardar</button></div>';
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEditUnidad(\''+id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Guardar</button></div>';
     openModal();
   });
 }
