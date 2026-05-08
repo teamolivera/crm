@@ -725,7 +725,7 @@ function propCardHtml(p,sheet,mostrarReferido){
     +(p.cliente?'<div style="font-size:12px;color:#555;margin-top:4px">👤 '+p.cliente+(p.telefono?' · '+p.telefono:'')+'</div>':'')
     +'</div>'
     +'<div style="text-align:right"><div style="font-weight:700;font-size:16px;color:#185FA5">USD '+fmt(p.precio)+'</div>'
-    +(p.valor_cierre?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.valor_cierre)+'</div>':'')
+    +(p.precio_final?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.precio_final)+'</div>':'')
     +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
     +'</div></div>'
     +'<div class="prop-actions">'
@@ -767,18 +767,26 @@ function guardarEditProp(id,sheet){
   updRow(sheet,id,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
 }
 function eliminarProp(id,sheet){
-  if(!confirm('¿Eliminar esta propiedad y sus operaciones asociadas?'))return;
+  // Validación crítica: id debe ser un string numérico válido
+  if(!id||String(id).trim()===''){alert('Error: ID inválido, no se puede eliminar.');return;}
+  if(!confirm('¿Eliminar esta propiedad?'))return;
   loading();
-  delRow(sheet,id,function(){
-    // Eliminar operaciones asociadas
-    getSheet('Operaciones',function(e,ops){
-      var asociadas=(ops||[]).filter(function(o){return o.propiedad_id===id;});
-      var pending=asociadas.length;
-      if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();return;}
-      asociadas.forEach(function(o){
-        delRow('Operaciones',o.id,function(){
-          pending--;
-          if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();}
+  // Primero verificar que la propiedad existe antes de eliminar
+  getSheet(sheet,function(e,props){
+    var p=(props||[]).find(function(x){return x.id===id;});
+    if(!p){alert('Error: propiedad no encontrada.');sheet==='Busquedas'?loadBusquedas():loadPropiedades();return;}
+    delRow(sheet,id,function(){
+      // Eliminar operaciones asociadas
+      getSheet('Operaciones',function(e2,ops){
+        var asociadas=(ops||[]).filter(function(o){return o.propiedad_id===id;});
+        var pending=asociadas.length;
+        if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();return;}
+        asociadas.forEach(function(o){
+          if(!o.id||String(o.id).trim()==='')return;
+          delRow('Operaciones',o.id,function(){
+            pending--;
+            if(pending===0){sheet==='Busquedas'?loadBusquedas():loadPropiedades();}
+          });
         });
       });
     });
@@ -800,7 +808,7 @@ function guardarEstado(id,sheet){
     closeModal();
     getSheet(sheet,function(err,props){
       var p=(props||[]).find(function(x){return x.id===id;});
-      if(p)abrirCierre('prop',sheet,p.id,p.direccion,Number(p.precio||0),Number(p.comision_compradora||4),Number(p.comision_vendedora||3),p.referido||'no');
+      if(p)abrirCierre('prop',sheet,p.id,p.direccion,Number(p.precio_final||p.precio||0),Number(p.comision_compradora||4),Number(p.comision_vendedora||3),p.referido||'no');
     });
   }else{
     closeModal();loading();updRow(sheet,id,{estado:e},function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
@@ -821,8 +829,8 @@ function verFichaProp(id,sheet){
       +'<div class="ficha-row"><span class="ficha-label">Localidad</span><span class="ficha-value">'+(p.localidad||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Tipo</span><span class="ficha-value">'+(p.tipo||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Valor publicación</span><span class="ficha-value" style="color:#185FA5">USD '+fmt(p.precio)+'</span></div>'
-      +(p.valor_cierre?'<div class="ficha-row"><span class="ficha-label">Valor cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.valor_cierre)+'</span></div>':'')
-      +(function(){var d=diasEnMercado(p.fecha,p.valor_cierre?p.fecha_venta:null);return d!==null?'<div class="ficha-row"><span class="ficha-label">'+(p.valor_cierre?'Días en mercado':'Días en cartera')+'</span><span class="ficha-value">'+d+' días</span></div>':'';})();
+      +(p.precio_final?'<div class="ficha-row"><span class="ficha-label">Valor cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.precio_final)+'</span></div>':'')
+      +(function(){var d=diasEnMercado(p.fecha,p.precio_final?p.fecha_venta:null);return d!==null?'<div class="ficha-row"><span class="ficha-label">'+(p.valor_cierre?'Días en mercado':'Días en cartera')+'</span><span class="ficha-value">'+d+' días</span></div>':'';})();
       +'<div class="section-divider">Cliente</div>'
       +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
@@ -1002,7 +1010,7 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 
   if(origen==='prop'){
     opData.propiedad_id=id;
-    updRow(sheet,id,{valor_cierre:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
+    updRow(sheet,id,{precio_final:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
       addRow('Operaciones',opData,function(){
         if(estado==='Vendida'){
           getSheet('Reservas',function(e,reservas){
