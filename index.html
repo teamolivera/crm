@@ -175,7 +175,19 @@ function chipLabel(n){return n===currentUser.nombre?'Yo':n.split(' ').slice(-1)[
 function v(id){return document.getElementById(id)?document.getElementById(id).value:'';}
 function esc(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function uid(){return Date.now().toString();}
-function today(){return new Date().toISOString().slice(0,10);}
+function today(){
+  var d=new Date();
+  // Ajustar a hora local (evitar desfase UTC)
+  var offset=d.getTimezoneOffset()*60000;
+  return new Date(d-offset).toISOString().slice(0,10);
+}
+function diasEnMercado(fechaCarga,fechaVenta){
+  if(!fechaCarga)return null;
+  var inicio=new Date(fechaCarga);
+  var fin=fechaVenta?new Date(fechaVenta):new Date();
+  var diff=Math.round((fin-inicio)/(1000*60*60*24));
+  return diff>=0?diff:null;
+}
 function loading(){document.getElementById('tabContent').innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';}
 function pct(a,m){return Math.min(100,Math.round(Number(a||0)/Number(m||1)*100))||0;}
 function progColor(p){return p>=80?'#065f46':p>=50?'#185FA5':'#92400e';}
@@ -428,7 +440,10 @@ function loadDashboard(filtroAgente){
 
     // ---- AÑO CALENDARIO ----
     var anoActual=new Date().getFullYear();
-    var opsAno=ops.filter(function(o){return o.fecha&&o.fecha.startsWith(String(anoActual));});
+    var opsAno=ops.filter(function(o){
+      var fv=o.fecha_venta||o.fecha||'';
+      return fv.startsWith(String(anoActual));
+    });
     var facturacionBrutaAno=opsAno.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
     var facturacionNetaAno=opsAno.reduce(function(a,o){
       if(esLider&&agente===currentUser.nombre)return a+Number(o.neto_team_leader||o.neto_agente||0);
@@ -472,7 +487,8 @@ function loadDashboard(filtroAgente){
     var pctCuatri=cuatri===1?0.25:cuatri===2?0.35:0.40;
     var metaCuatri=Math.round(metaAnual*pctCuatri);
     var opsEnCuatri=opsAno.filter(function(o){
-      var m=parseInt((o.fecha||'').split('-')[1]||0);
+      var fv=o.fecha_venta||o.fecha||'';
+      var m=parseInt(fv.split('-')[1]||0);
       if(cuatri===1)return m>=1&&m<=4;
       if(cuatri===2)return m>=5&&m<=8;
       return m>=9&&m<=12;
@@ -759,7 +775,19 @@ function cambiarEstado(id,sheet){
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\',\''+sheet+'\')">Guardar</button></div>';
   openModal();
 }
-function guardarEstado(id,sheet){var e=v('nuevo-estado');closeModal();loading();updRow(sheet,id,{estado:e},function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});}
+function guardarEstado(id,sheet){
+  var e=v('nuevo-estado');
+  if(e==='Vendida'){
+    // Redirigir al modal de cierre
+    closeModal();
+    getSheet(sheet,function(err,props){
+      var p=(props||[]).find(function(x){return x.id===id;});
+      if(p)abrirCierre('prop',sheet,p.id,p.direccion,Number(p.precio||0),Number(p.comision_compradora||4),Number(p.comision_vendedora||3),p.referido||'no');
+    });
+  }else{
+    closeModal();loading();updRow(sheet,id,{estado:e},function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+  }
+}
 
 function verFichaProp(id,sheet){
   getSheet(sheet,function(e,props){
@@ -776,6 +804,7 @@ function verFichaProp(id,sheet){
       +'<div class="ficha-row"><span class="ficha-label">Tipo</span><span class="ficha-value">'+(p.tipo||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Valor publicación</span><span class="ficha-value" style="color:#185FA5">USD '+fmt(p.precio)+'</span></div>'
       +(p.valor_cierre?'<div class="ficha-row"><span class="ficha-label">Valor cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.valor_cierre)+'</span></div>':'')
+      +(function(){var d=diasEnMercado(p.fecha,p.valor_cierre?p.fecha_venta:null);return d!==null?'<div class="ficha-row"><span class="ficha-label">'+(p.valor_cierre?'Días en mercado':'Días en cartera')+'</span><span class="ficha-value">'+d+' días</span></div>':'';})();
       +'<div class="section-divider">Cliente</div>'
       +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
       +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
@@ -839,7 +868,8 @@ function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
       (referido==='si'?'✓ Referida por TL — TL: '+d.tl+'% / Agente: '+d.agente+'% / Oficina: '+d.oficina+'%':'Sin referido — Agente: '+d.agente+'% / TL: '+d.tl+'% / Oficina: '+d.oficina+'%')+'</div>':'')
     +'<div class="section-divider">Valores de la operación</div>'
     +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
-    +'<div class="form-group"><label>Fecha</label><input id="rc-fecha" type="date" value="'+today()+'"/></div></div>'
+    +'<div class="form-group"><label>Fecha de carga</label><input id="rc-fecha" type="date" value="'+today()+'"/></div>'
+    +'<div class="form-group"><label>Fecha de venta</label><input id="rc-fecha-venta" type="date" value="'+today()+'"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
     +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div></div>'
     +'<div class="section-divider">Distribución</div>'
@@ -924,7 +954,8 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
   var netoAg=parteAg;
   closeModal();loading();
 
-  var opData={id:uid(),fecha:fecha,referido:referido,precio_final:c,
+  var fechaVenta=v('rc-fecha-venta')||fecha;
+  var opData={id:uid(),fecha:fecha,fecha_venta:fechaVenta,referido:referido,precio_final:c,
     comision_total:Math.round(comTotal),
     comision_agente:Math.round(parteAg),
     comision_team_leader:Math.round(parteTL),
@@ -1133,7 +1164,18 @@ function cambiarCondUnidad(id,devId,devNombre,compPct,vendPct){
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarCondUnidad(\''+id+'\',\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">Guardar</button></div>';
   openModal();
 }
-function guardarCondUnidad(id,devId,devNombre,compPct,vendPct){var c=v('u-cond-new');closeModal();loading();updRow('Unidades',id,{condicion:c},function(){verUnidades(devId,devNombre,compPct,vendPct);});}
+function guardarCondUnidad(id,devId,devNombre,compPct,vendPct){
+  var cond=v('u-cond-new');
+  if(cond==='Vendida'){
+    closeModal();
+    getSheet('Unidades',function(err,unis){
+      var u=(unis||[]).find(function(x){return x.id===id;});
+      if(u)abrirCierre('unidad','Unidades',u.id,u.nombre,Number(u.precio||0),compPct,vendPct,u.referido||'no');
+    });
+  }else{
+    closeModal();loading();updRow('Unidades',id,{condicion:cond},function(){verUnidades(devId,devNombre,compPct,vendPct);});
+  }
+}
 function eliminarUnidad(id,devId,devNombre,compPct,vendPct){if(!confirm('¿Eliminar?'))return;loading();delRow('Unidades',id,function(){verUnidades(devId,devNombre,compPct,vendPct);});}
 
 // ============================================================
