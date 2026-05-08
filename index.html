@@ -1274,12 +1274,35 @@ function loadFinanzas(){
   Promise.all([
     fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();})
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})
   ]).then(function(res){
     var esLider=currentUser.rol==='Líder';
     var fins=(res[0]||[]).filter(function(f){return f.agente===currentUser.nombre;});
     var gastos=(res[1]||[]).filter(function(g){return g.agente===currentUser.nombre;});
     var ops=(res[2]||[]).filter(function(o){return o.agente===currentUser.nombre;});
+    var allPropsFin=res[3]||[];
+    var allBusqFin=res[4]||[];
+    var allUnisFin=res[5]||[];
+    var allDevsFin=res[6]||[];
+    function getDireccionOp(o){
+      if(o.propiedad_id){
+        var p=allPropsFin.find(function(x){return x.id===o.propiedad_id;})||allBusqFin.find(function(x){return x.id===o.propiedad_id;});
+        return p?p.direccion:o.propiedad_id;
+      }
+      if(o.unidad_id){
+        var u=allUnisFin.find(function(x){return x.id===o.unidad_id;});
+        if(u){
+          var d=allDevsFin.find(function(x){return x.id===u.desarrollo_id;});
+          return (d?d.direccion+' · ':'')+u.nombre;
+        }
+        return o.unidad_id;
+      }
+      return '—';
+    }
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosPropUSD=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
     var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
@@ -1297,17 +1320,19 @@ function loadFinanzas(){
       +'</div>';
     html+='<div class="section-header" style="margin-top:1rem"><div class="section-title">Operaciones cerradas</div></div>';
     if(ops.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'
         +(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')
         +'<th>Martillero</th><th>IVA</th><th>Neto</th><th></th></tr>';
       ops.forEach(function(o){
-        html+='<tr><td>'+(o.fecha_venta||o.fecha||'')+'</td>'
+        var ivaTotal=Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0));
+        html+='<tr>'
+          +'<td style="font-weight:500">'+getDireccionOp(o)+'</td>'
+          +'<td>'+(o.fecha_venta||o.fecha||'')+'</td>'
           +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
           +'<td>USD '+fmt(Math.round(Number(o.comision_total||0)))+'</td>'
           +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
           +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
-          +'<td style="color:#991b1b">−'+(o.iva_comprador_moneda||'USD')+' '+fmt(Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0)))+'</td>'
-          +'<td style="font-weight:700;color:#065f46">USD '+fmt(Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0))))+'</td>'
+          +'<td style="color:#059669">+USD '+fmt(ivaTotal)+'</td>'
           +'<td><button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')" >✏️</button></td></tr>';
       });
       html+='</table></div></div>';
