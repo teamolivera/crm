@@ -181,6 +181,13 @@ function today(){
   var offset=d.getTimezoneOffset()*60000;
   return new Date(d-offset).toISOString().slice(0,10);
 }
+function fmtFecha(f){
+  // Forzar que SheetDB guarde como texto y no como número serial de Excel
+  if(!f)return '';
+  // Asegurar formato YYYY-MM-DD
+  if(f.match(/^\d{4}-\d{2}-\d{2}$/))return f;
+  return f;
+}
 function diasEnMercado(fechaCarga,fechaVenta){
   if(!fechaCarga)return null;
   var inicio=new Date(fechaCarga);
@@ -985,8 +992,11 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
   var netoAg=Math.round(parteAg);
   closeModal();loading();
 
-  var fechaVenta=v('rc-fecha-venta')||fecha;
-  var opData={id:uid(),fecha:fecha,fecha_venta:fechaVenta,referido:referido,precio_final:c,
+  var fechaVenta=fmtFecha(v('rc-fecha-venta'))||fmtFecha(fecha);
+  // Forzar texto en SheetDB agregando comilla simple
+  var fechaStr="'"+fecha;
+  var fechaVentaStr="'"+fechaVenta;
+  var opData={id:uid(),fecha:fechaStr,fecha_venta:fechaVentaStr,referido:referido,precio_final:c,
     comision_total:Math.round(comTotal),
     comision_agente:netoAg,
     comision_team_leader:Math.round(parteTL),
@@ -1002,7 +1012,9 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 
   function afterOp(){
     if(estado==='Vendida'){
-      // Recargar dashboard para que compute la venta
+      // Activar tab dashboard y recargar
+      document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+      document.querySelector('.nav-btn').classList.add('active');
       loadDashboard(currentUser.nombre);
     }else{
       sheet==='Busquedas'?loadBusquedas():loadPropiedades();
@@ -1011,7 +1023,7 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 
   if(origen==='prop'){
     opData.propiedad_id=id;
-    updRow(sheet,id,{precio_final:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
+    updRow(sheet,id,{valor_cierre:c,estado:estado,comision_compradora:comp,comision_vendedora:vend},function(){
       addRow('Operaciones',opData,function(){
         if(estado==='Vendida'){
           getSheet('Reservas',function(e,reservas){
