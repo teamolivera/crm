@@ -736,7 +736,10 @@ function calcRentProp(p,gastosProp){
   var vendPct=Number(p.comision_vendedora||3);
   var bruta=precio*(compPct+vendPct)/100;
   var neta=bruta*0.80-(bruta*0.80*0.04);
-  var gastos=gastosProp.filter(function(g){return g.propiedad_id===p.id&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+  var gastos=gastosProp.filter(function(g){return g.propiedad_id===p.id;}).reduce(function(a,g){
+    if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
+    return a+Number(g.monto||0);
+  },0);
   // Neto = lo que te queda después de gastos
   var netoFinal=neta-gastos;
   // Penalización por días sin reservar (>90 días) — baja el neto un 10% mensual
@@ -1114,7 +1117,10 @@ function loadDesarrollos(){
         var vendidas=unis.filter(function(u){return u.condicion==='Vendida';}).length;
         var comGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var comProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        var gastosDev=allGastosDevs.filter(function(g){return g.propiedad_id===d.id&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+        var gastosDev=allGastosDevs.filter(function(g){return g.propiedad_id===d.id;}).reduce(function(a,g){
+          if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
+          return a+Number(g.monto||0);
+        },0);
         var comBrutaDev=comGen+comProy;
         var netoDev=comBrutaDev*0.80-comBrutaDev*0.80*0.04;
         var rentDevNeta=netoDev-gastosDev;
@@ -1183,16 +1189,21 @@ function verFichaDesarrollo(devId){
 function abrirModalDesarrollo(){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo desarrollo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Nombre</label><input id="dev-nombre" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Dirección</label><input id="dev-dir" autocomplete="off"/></div><div class="form-group"><label>Localidad</label><input id="dev-loc" value="Villa Urquiza" autocomplete="off"/></div></div>'
-    +'<div class="section-divider">Cliente (desarrollador)</div>'
-    +'<div class="form-group"><label>Nombre</label><input id="dev-cliente" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="dev-tel" autocomplete="off"/></div><div class="form-group"><label>Mail</label><input id="dev-mail" type="email" autocomplete="off"/></div></div>'
-    +'<div class="section-divider">Comisiones</div>'
-    +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="dev-comp" type="number" value="4"/></div><div class="form-group"><label>Com. vendedor (%)</label><input id="dev-vend" type="number" value="3"/></div></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarDesarrollo()">Guardar</button></div>';
+function abrirGastosDev(devId,nombre){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto · '+nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Concepto</label><input id="gd-concepto" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Moneda</label><select id="gd-moneda" onchange="toggleEquivUSD(\'gd\')"><option value="USD">USD</option><option value="ARS">Pesos $</option></select></div><div class="form-group"><label>Monto</label><input id="gd-monto" type="number"/></div></div>'
+    +'<div id="gd-equiv-wrap" style="display:none"><div class="form-group"><label>Equivalente en USD (para rentabilidad)</label><input id="gd-equiv" type="number" placeholder="0"/></div></div>'
+    +'<div class="form-group"><label>Fecha</label><input id="gd-fecha" type="date" value="'+today()+'"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGastoDev(\''+devId+'\')" >Guardar</button></div>';
   openModal();
 }
-function guardarDesarrollo(){
+function guardarGastoDev(devId){
+  var moneda=v('gd-moneda');
+  var equivUSD=moneda==='ARS'?(Number(v('gd-equiv'))||0):Number(v('gd-monto'));
+  var data={id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:moneda,equiv_usd:equivUSD,agente:currentUser.nombre};
+  closeModal();addRow('Gastos',data,function(){alert('Gasto registrado.');});
+}
   var data={id:uid(),nombre:v('dev-nombre'),direccion:v('dev-dir'),localidad:v('dev-loc'),cliente:v('dev-cliente'),telefono:v('dev-tel'),mail:v('dev-mail'),comision_compradora:v('dev-comp'),comision_vendedora:v('dev-vend'),agente:currentUser.nombre,fecha:today()};
   closeModal();loading();addRow('Desarrollos',data,function(){loadDesarrollos();});
 }
@@ -1361,7 +1372,10 @@ function loadFinanzas(){
       return '—';
     }
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var gastosPropUSD=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var gastosPropUSD=gastos.reduce(function(a,g){
+      if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
+      return a+Number(g.monto||0);
+    },0);
     var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
     var facturacion=ops.reduce(function(a,o){
       if(esLider)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
