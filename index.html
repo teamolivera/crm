@@ -709,22 +709,62 @@ function getPropData(extra){
 // PROPIEDADES
 // ============================================================
 function loadPropiedades(){
-  getSheet('Propiedades',function(e,props){
-    props=(props||[]).filter(function(p){return p.agente===currentUser.nombre&&!p.desarrollo_id;});
+  Promise.all([
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();})
+  ]).then(function(res){
+    var props=(res[0]||[]).filter(function(p){return p.agente===currentUser.nombre&&!p.desarrollo_id;});
+    var gastosProp=res[1]||[];
     var esAgente=currentUser.rol!=='Líder';
     var html='<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalProp(\'Propiedades\')">+ Nueva propiedad</button></div>';
     if(props.length){
-      props.forEach(function(p){html+=propCardHtml(p,'Propiedades',esAgente);});
+      props.forEach(function(p){html+=propCardHtml(p,'Propiedades',esAgente,gastosProp);});
     }else{html+='<div class="empty">No hay propiedades. Agregá la primera.</div>';}
     document.getElementById('tabContent').innerHTML=html;
   });
 }
 
 
-function propCardHtml(p,sheet,mostrarReferido){
+function calcRentProp(p,gastosProp){
+  // Solo para propiedades sueltas (no desarrollos)
+  if(p.desarrollo_id)return null;
+  var precio=Number(p.precio||0);
+  var compPct=Number(p.comision_compradora||4);
+  var vendPct=Number(p.comision_vendedora||3);
+  var bruta=precio*(compPct+vendPct)/100;
+  var neta=bruta*0.80-(bruta*0.80*0.04);
+  var gastos=gastosProp.filter(function(g){return g.propiedad_id===p.id&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+  var rent=bruta-neta-gastos;
+  // Penalización por días sin reservar (>90 días)
+  if(p.estado==='En venta'&&p.fecha){
+    var dias=diasEnMercado(p.fecha,null);
+    if(dias>90){
+      var mesesExtra=Math.floor((dias-90)/30);
+      rent=rent*Math.pow(0.90,mesesExtra);
+    }
+  }
+  var pct=bruta>0?Math.round(rent/bruta*100):0;
+  return {rent:Math.round(rent),pct:pct,bruta:Math.round(bruta),neta:Math.round(neta),gastos:gastos};
+}
+
+function propCardHtml(p,sheet,mostrarReferido,gastosProp){
+  gastosProp=gastosProp||[];
   var referido=p.referido||'no';
+  var rentInfo=calcRentProp(p,gastosProp);
   var refTag='';
   if(mostrarReferido){refTag=referido==='si'?'<span class="referido-tag">✓ Referida</span>':'<span class="no-referido-tag">Sin referido</span>';}
+  var rentWidget='';
+  if(rentInfo&&p.estado==='En venta'){
+    var dias=diasEnMercado(p.fecha,null)||0;
+    var mesesExtra=dias>90?Math.floor((dias-90)/30):0;
+    var colorRent=rentInfo.pct>=60?'#059669':rentInfo.pct>=30?'#d97706':'#CC2229';
+    rentWidget='<div style="display:flex;gap:8px;align-items:center;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb">'
+      +'<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.3px;font-weight:600">Rentabilidad proyectada</div>'
+      +'<div style="margin-left:auto;font-size:15px;font-weight:800;color:'+colorRent+'">'+rentInfo.pct+'%</div>'
+      +'<div style="font-size:12px;font-weight:600;color:'+colorRent+'">USD '+fmt(rentInfo.rent)+'</div>'
+      +(mesesExtra>0?'<div style="font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:10px">−'+mesesExtra+'×10% por tiempo</div>':'')
+      +'</div>';
+  }
   return '<div class="prop-card">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
     +'<div><div class="prop-link" onclick="verFichaProp(\''+p.id+'\',\''+sheet+'\')">'+p.direccion+'</div>'
@@ -735,7 +775,8 @@ function propCardHtml(p,sheet,mostrarReferido){
     +(p.precio_final?'<div style="font-size:12px;color:#065f46;margin-top:2px">Cierre: USD '+fmt(p.precio_final)+'</div>':'')
     +'<div style="margin-top:4px"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></div>'
     +'</div></div>'
-    +'<div class="prop-actions">'
+    +rentWidget
+  +'<div class="prop-actions">'
     +'<button class="btn btn-sm" onclick="abrirModalProp(\''+sheet+'\',window._props&&window._props[\''+p.id+'\']?window._props[\''+p.id+'\']: {id:\''+p.id+'\',direccion:\''+esc(p.direccion)+'\',localidad:\''+esc(p.localidad||p.zona||'')+'\',tipo:\''+esc(p.tipo||'')+'\',estado:\''+esc(p.estado||'')+'\',precio:\''+p.precio+'\',cliente:\''+esc(p.cliente||'')+'\',telefono:\''+esc(p.telefono||'')+'\',mail:\''+esc(p.mail||'')+'\',comision_compradora:\''+p.comision_compradora+'\',comision_vendedora:\''+p.comision_vendedora+'\',referido:\''+referido+'\'})">✏️ Editar</button>'
     +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
     +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+referido+'\')">Reservar/Vender</button>'
@@ -875,13 +916,17 @@ function guardarGasto(propId){
 // BÚSQUEDAS RESERVADAS
 // ============================================================
 function loadBusquedas(){
-  getSheet('Busquedas',function(e,busqs){
-    busqs=(busqs||[]).filter(function(b){return b.agente===currentUser.nombre;});
+  Promise.all([
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();})
+  ]).then(function(res){
+    var busqs=(res[0]||[]).filter(function(b){return b.agente===currentUser.nombre;});
+    var gastosProp=res[1]||[];
     var esAgente=currentUser.rol!=='Líder';
     var html='<div class="section-header"><div class="section-title">Búsquedas</div><button class="btn btn-primary" onclick="abrirModalProp(\'Busquedas\')">+ Nueva búsqueda</button></div>'
       +'<div style="font-size:13px;color:#888;margin-bottom:1.5rem">Propiedades reservadas a través de búsquedas de compradores.</div>';
     if(busqs.length){
-      busqs.forEach(function(b){html+=propCardHtml(b,'Busquedas',esAgente);});
+      busqs.forEach(function(b){html+=propCardHtml(b,'Busquedas',esAgente,gastosProp);});
     }else{html+='<div class="empty">No hay búsquedas cargadas.</div>';}
     document.getElementById('tabContent').innerHTML=html;
   });
