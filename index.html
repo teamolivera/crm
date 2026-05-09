@@ -1098,14 +1098,14 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 // ============================================================
 function loadDesarrollos(){
   Promise.all([
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();})
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
     var devs=(res[0]||[]).filter(function(d){return d.agente===currentUser.nombre||currentUser.rol==='Líder';});
     var allUnis=res[1]||[];
-    var allUnis=res[1]||[];
     var allGastosDevs=res[2]||[];
+    var html='<div class="section-header"><div class="section-title">Desarrollos</div><button class="btn btn-primary" onclick="abrirModalDesarrollo()">+ Nuevo desarrollo</button></div>';
     if(devs.length){
       devs.forEach(function(d){
         var unis=allUnis.filter(function(u){return u.desarrollo_id===d.id;});
