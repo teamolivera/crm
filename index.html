@@ -1583,6 +1583,8 @@ function loadEquipo(){
           var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
           var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
           var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
+          var propComGen=todasProps.filter(function(p){return p.estado==='Vendida';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
+          var comGenTotal=propComGen+uComGen;
           var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||o.neto_agente||0);},0);
           var gastosT=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
           html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">'+(ag===currentUser.nombre?currentUser.rol:'Agente')+'</span></div>'
@@ -1591,6 +1593,7 @@ function loadEquipo(){
             +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue" style="font-size:18px">'+pventa+'</div></div>'
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+preserv+'</div></div>'
             +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+pvend+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Com. generada</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComGen))+'</div></div>'
             +'</div>'
             +'<div class="section-divider">Desarrollos ('+devs.length+' activos · '+unis.length+' unidades en total)</div>'
             +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(5,1fr)">'
@@ -1602,6 +1605,7 @@ function loadEquipo(){
             +'</div>'
             +'<div class="section-divider">Financiero (mi parte)</div>'
             +'<div class="grid-metrics" style="margin-bottom:0;grid-template-columns:repeat(3,1fr)">'
+            +'<div class="metric"><div class="metric-label">Com. gen. total</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comGenTotal))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:15px">USD '+fmt(Math.round(facturacion))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:15px">USD '+fmt(Math.round(gastosT))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value" style="font-size:18px">'+ops.length+'</div></div>'
