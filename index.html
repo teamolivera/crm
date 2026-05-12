@@ -1577,7 +1577,7 @@ function loadEquipo(){
           var pventa=todasProps.filter(function(p){return p.estado==='En venta';}).length;
           var preserv=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
           var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length
-            +allOps.filter(function(o){return o.agente===ag&&o.unidad_id&&o.fecha_venta&&o.fecha_venta.startsWith(String(new Date().getFullYear()));}).length;
+            +unis.filter(function(u){return u.condicion==='Vendida';}).length;
           var uact=unis.filter(function(u){return u.condicion==='Activa';}).length;
           var ures=unis.filter(function(u){return u.condicion==='Reservada';}).length;
           var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
@@ -1585,18 +1585,20 @@ function loadEquipo(){
           var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
           var propComGen=todasProps.filter(function(p){return p.estado==='Vendida';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
           var comGenTotal=propComGen+uComGen;
-          var facturacion=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||o.neto_agente||0);},0);
-          var gastosT=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+          var esPropio=ag===currentUser.nombre;
+          var facturacionBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+          var facturacionNeta=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+          var gastosT=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
           html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">'+(ag===currentUser.nombre?currentUser.rol:'Agente')+'</span></div>'
             +'<div class="section-divider" style="margin-top:0">Propiedades y búsquedas</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(3,1fr)">'
+            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
             +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue" style="font-size:18px">'+pventa+'</div></div>'
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+preserv+'</div></div>'
             +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+pvend+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. generada</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComGen))+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Com. bruta gen.</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComGen))+'</div></div>'
             +'</div>'
             +'<div class="section-divider">Desarrollos ('+devs.length+' activos · '+unis.length+' unidades en total)</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(5,1fr)">'
+            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
             +'<div class="metric"><div class="metric-label">Activas</div><div class="metric-value blue" style="font-size:18px">'+uact+'</div></div>'
             +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+ures+'</div></div>'
             +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+uvend+'</div></div>'
@@ -1604,14 +1606,14 @@ function loadEquipo(){
             +'<div class="metric"><div class="metric-label">Com. proyectada</div><div class="metric-value amber" style="font-size:13px">USD '+fmt(Math.round(uComProy))+'</div></div>'
             +'</div>'
             +'<div class="section-divider">Financiero (mi parte)</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0;grid-template-columns:repeat(3,1fr)">'
-            +'<div class="metric"><div class="metric-label">Com. gen. total</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comGenTotal))+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:15px">USD '+fmt(Math.round(facturacion))+'</div></div>'
+            +'<div class="grid-metrics" style="margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
+            +'<div class="metric"><div class="metric-label">Com. bruta total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(facturacionBruta))+'</div></div>'
+            +'<div class="metric"><div class="metric-label">Com. neta TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(facturacionNeta))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:15px">USD '+fmt(Math.round(gastosT))+'</div></div>'
             +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value" style="font-size:18px">'+ops.length+'</div></div>'
             +'</div></div>';
-        });
 
+        });
       }else if(vistaActual==='individual'){
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'individual\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
@@ -1628,25 +1630,51 @@ function loadEquipo(){
         var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
         var netoTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+        var esPropio=ag===currentUser.nombre;
+        // Com bruta y neta de props+busquedas vendidas
+        var propVend=todasProps.filter(function(p){return p.estado==='Vendida';});
+        var propComBruta=propVend.reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
+        var propComNeta=esPropio
+          ?propComBruta*0.76
+          :ops.filter(function(o){return !o.unidad_id;}).reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+        var propComNetaAgente=ops.filter(function(o){return !o.unidad_id;}).reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
+        // Com bruta y neta total (props+busquedas+unidades)
+        var comBrutaTotal=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+        var comNetaTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+        var comNetaAgente=ops.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
+        var gastosAg=allGastos.filter(function(g){return g.agente===ag;}).reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
+        var rentAgPct=comBrutaTotal>0?Math.round((comNetaTL-gastosAg)/comBrutaTotal*100):null;
+        var rentColor=rentAgPct===null?'#888':rentAgPct>=50?'#065f46':'#991b1b';
+
         html+='<div class="grid-metrics">'
-          +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+todasProps.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Props. en venta</div><div class="metric-value blue">'+todasProps.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+todasProps.filter(function(p){return p.estado==='Reservada';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+todasProps.filter(function(p){return p.estado==='Vendida';}).length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Props. vendidas</div><div class="metric-value green">'+propVend.length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Com. bruta props</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(propComBruta))+'</div></div>'
+          +(esPropio
+            ?'<div class="metric"><div class="metric-label">Com. neta props</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComNeta))+'</div></div>'
+            :'<div class="metric"><div class="metric-label">Com. neta TL props</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComNeta))+'</div></div>'
+             +'<div class="metric"><div class="metric-label">Com. neta agente props</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(propComNetaAgente))+'</div></div>'
+          )
+          +'</div>'
+          +'<div class="section-divider">Desarrollos</div>'
+          +'<div class="grid-metrics">'
           +'<div class="metric"><div class="metric-label">Desarrollos</div><div class="metric-value">'+devs.length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Uds. activas</div><div class="metric-value blue">'+unis.filter(function(u){return u.condicion==='Activa';}).length+'</div></div>'
           +'<div class="metric"><div class="metric-label">Uds. vendidas</div><div class="metric-value green">'+unis.filter(function(u){return u.condicion==='Vendida';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. gen. desarro.</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(uComGen))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. proy. desarro.</div><div class="metric-value amber" style="font-size:14px">USD '+fmt(Math.round(uComProy))+'</div></div>'
-          +(function(){
-            var gAg=allGastos.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
-            var agBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-            var rentAgNeta=netoTL-gAg;
-            var rentAgPct=agBruta>0?Math.round(rentAgNeta/agBruta*100):null;
-            var rc=rentAgPct===null?'#888':rentAgPct>=50?'#065f46':'#991b1b';
-            return '<div class="metric"><div class="metric-label">Neto TL generado</div><div class="metric-value green" style="font-size:14px">USD '+fmt(Math.round(netoTL))+'</div></div>'
-              +'<div class="metric"><div class="metric-label">Rentabilidad</div><div class="metric-value" style="font-size:18px;color:'+rc+'">'+(rentAgPct!==null?rentAgPct+'%':'—')+'</div></div>';
-          })()
-          +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:14px">USD '+fmt(Math.round(gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0)))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Com. gen. desarro.</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(uComGen))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Com. proy. desarro.</div><div class="metric-value amber" style="font-size:13px">USD '+fmt(Math.round(uComProy))+'</div></div>'
+          +'</div>'
+          +'<div class="section-divider">Financiero total</div>'
+          +'<div class="grid-metrics">'
+          +'<div class="metric"><div class="metric-label">Com. bruta total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comBrutaTotal))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Com. neta TL total</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comNetaTL))+'</div></div>'
+          +(esPropio?''
+            :'<div class="metric"><div class="metric-label">Com. neta agente total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comNetaAgente))+'</div></div>'
+          )
+          +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:13px">USD '+fmt(Math.round(gastosAg))+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
+          +'<div class="metric"><div class="metric-label">Rentabilidad TL</div><div class="metric-value" style="color:'+rentColor+'">'+(rentAgPct!==null?rentAgPct+'%':'—')+'</div></div>'
           +'</div>';
         html+='<div class="card"><div class="card-header"><span class="card-title">Propiedades y búsquedas</span></div>';
         if(todasProps.length){
@@ -1878,20 +1906,22 @@ function guardarEditCierre(opId,esAgente){
 }
 </script>
 <script>
-// Registrar Service Worker para forzar siempre la versión más nueva
 if('serviceWorker' in navigator){
+  // Escuchar mensaje de recarga del Service Worker
+  navigator.serviceWorker.addEventListener('message', function(e){
+    if(e.data && e.data.type==='RELOAD'){
+      window.location.reload();
+    }
+  });
   navigator.serviceWorker.register('/sw.js').then(function(reg){
-    // Verificar si hay una nueva versión disponible
     reg.addEventListener('updatefound', function(){
-      var newWorker=reg.installing;
-      newWorker.addEventListener('statechange', function(){
-        if(newWorker.state==='activated'){
-          // Nueva versión instalada — recargar automáticamente
+      var nw=reg.installing;
+      nw.addEventListener('statechange', function(){
+        if(nw.state==='activated' && navigator.serviceWorker.controller){
           window.location.reload();
         }
       });
     });
-    // Forzar chequeo de actualización en cada carga
     reg.update();
   }).catch(function(err){
     console.log('SW no disponible:', err);
