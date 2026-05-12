@@ -2038,7 +2038,18 @@ function generarDocAutorizacion(){
       }).then(function(blob){
         var url=URL.createObjectURL(blob);
         var a=document.createElement('a');
-        a.href=url;a.download='Autorizacion_Venta_'+f[1].replace(/ /g,'_')+'.docx';a.click();
+        var dir=f[9]||'';
+        var num=f[10]||'';
+        var uf=f[11]?(' '+f[11]):'';
+        var nombreArchivo='Autorizacion de venta ('+dir+' '+num+uf+').docx';
+        // Crear File con el nombre correcto en lugar de Blob anónimo
+        var namedFile=new File([blob],nombreArchivo,{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+        var url=URL.createObjectURL(namedFile);
+        a.href=url;
+        a.setAttribute('download',nombreArchivo);
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
         URL.revokeObjectURL(url);
         btn.disabled=false;btn.textContent='📄 Generar documento';
         st.innerHTML='<span style="color:#059669">\u2705 Documento generado y descargado correctamente.</span>';
