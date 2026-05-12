@@ -343,7 +343,8 @@ function loadDashboard(filtroAgente){
         var agPrBruta=0,agPrNeta=0,agResBruta=0,agResNeta=0;
         // Bloque 3: Operaciones cerradas
         var opsTtlBruta=0,opsTtlNeta=0; // Team+TL
-        var opsAgBruta=0,opsAgNeta=0;   // Solo agentes
+        var opsAgBruta=0,opsAgNeta=0;   // Solo agentes (neto TL de ops de agentes)
+        var opsAgNetoTM=0; // neto que les queda a los agentes
         var gastosTeamUSD=0;
 
         allAgentes.forEach(function(ag){
@@ -372,15 +373,10 @@ function loadDashboard(filtroAgente){
             if(!esLiderAg){
               opsAgBruta+=bruta;
               opsAgNeta+=netoTL; // lo que le queda al TL de ops de agentes
+              opsAgNetoTM+=netoAgente; // lo que le queda al agente
             }
           });
-          // opsAgNeta2: neto que les queda a los agentes (para widget 4)
-          var opsAgNetoTM=0;
-          allAgentes.filter(function(a){return a!==currentUser.nombre;}).forEach(function(ag){
-            allOpsDash.filter(function(o){return o.agente===ag;}).forEach(function(o){
-              opsAgNetoTM+=Number(o.neto_agente||0);
-            });
-          });
+
 
           function calcStock(items,getPrecio,isActiva){
             items.forEach(function(item){
