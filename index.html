@@ -1873,5 +1873,26 @@ function guardarEditCierre(opId,esAgente){
   updRow('Operaciones',opId,data,function(){loadFinanzas();});
 }
 </script>
+<script>
+// Registrar Service Worker para forzar siempre la versión más nueva
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    // Verificar si hay una nueva versión disponible
+    reg.addEventListener('updatefound', function(){
+      var newWorker=reg.installing;
+      newWorker.addEventListener('statechange', function(){
+        if(newWorker.state==='activated'){
+          // Nueva versión instalada — recargar automáticamente
+          window.location.reload();
+        }
+      });
+    });
+    // Forzar chequeo de actualización en cada carga
+    reg.update();
+  }).catch(function(err){
+    console.log('SW no disponible:', err);
+  });
+}
+</script>
 </body>
 </html>
