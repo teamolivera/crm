@@ -2013,38 +2013,49 @@ function generarDocAutorizacion(){
   }
   function procesarDoc(){
     try{
-      // Decodificar base64 a binario
       var bin=atob(AUTORIZACION_TEMPLATE_B64);
       var arr=new Uint8Array(bin.length);
       for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-      var zip=new PizZip(arr);
-      var doc=new window.Docxtemplater(zip,{paragraphLoop:true,linebreaks:true,delimiters:{start:'{{',end:'}}'}});
-      doc.render({
-        1:f[1],2:f[2],3:f[3],4:f[4],5:f[5],6:f[6],7:f[7],8:f[8],
-        9:f[9],10:f[10],11:f[11],12:f[12],13:f[13],14:f[14],15:f[15],
-        16:f[16],17:f[17],18:f[18],19:f[19],20:f[20],21:f[21],
-        22:f[22],23:fecha,24:f[24],25:f[25]
+      // Usar JSZip para abrir el docx
+      JSZip.loadAsync(arr).then(function(zip){
+        // Obtener el document.xml
+        return zip.file('word/document.xml').async('string').then(function(xml){
+          // Reemplazar los marcadores {{N}} con los valores
+          var vals={
+            '{{1}}':f[1],'{{2}}':f[2],'{{3}}':f[3],'{{4}}':f[4],'{{5}}':f[5],
+            '{{6}}':f[6],'{{7}}':f[7],'{{8}}':f[8],'{{9}}':f[9],'{{10}}':f[10],
+            '{{11}}':f[11],'{{12}}':f[12],'{{13}}':f[13],'{{14}}':f[14],'{{15}}':f[15],
+            '{{16}}':f[16],'{{17}}':f[17],'{{18}}':f[18],'{{19}}':f[19],'{{20}}':f[20],
+            '{{21}}':f[21],'{{22}}':f[22],'{{23}}':fecha,'{{24}}':f[24],'{{25}}':f[25]
+          };
+          Object.keys(vals).forEach(function(k){
+            var v=vals[k]||'';
+            xml=xml.split(k).join(v);
+          });
+          zip.file('word/document.xml',xml);
+          return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+        });
+      }).then(function(blob){
+        var url=URL.createObjectURL(blob);
+        var a=document.createElement('a');
+        a.href=url;a.download='Autorizacion_Venta_'+f[1].replace(/ /g,'_')+'.docx';a.click();
+        URL.revokeObjectURL(url);
+        btn.disabled=false;btn.textContent='📄 Generar documento';
+        st.innerHTML='<span style="color:#059669">\u2705 Documento generado y descargado correctamente.</span>';
+      }).catch(function(err){
+        console.error(err);
+        btn.disabled=false;btn.textContent='📄 Generar documento';
+        st.innerHTML='<span style="color:#CC2229">\u274C Error: '+err.message+'</span>';
       });
-      var out=doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-      var url=URL.createObjectURL(out);
-      var a=document.createElement('a');
-      a.href=url;a.download='Autorizacion_Venta_'+f[1].replace(/ /g,'_')+'.docx';a.click();
-      URL.revokeObjectURL(url);
-      btn.disabled=false;btn.textContent='📄 Generar documento';
-      st.innerHTML='<span style="color:#059669">\u2705 Documento generado y descargado correctamente.</span>';
     }catch(err){
       console.error(err);
       btn.disabled=false;btn.textContent='📄 Generar documento';
       st.innerHTML='<span style="color:#CC2229">\u274C Error: '+err.message+'</span>';
     }
   }
-  if(window.PizZip&&window.Docxtemplater){procesarDoc();}
-  else if(window.PizZip){
-    cargarScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js',procesarDoc);
-  }else{
-    cargarScript('https://unpkg.com/pizzip@3.1.7/dist/pizzip.js',function(){
-      cargarScript('https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js',procesarDoc);
-    });
+  if(window.JSZip){procesarDoc();}
+  else{
+    cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',procesarDoc);
   }
 }
 
