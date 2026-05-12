@@ -155,6 +155,7 @@
     <button class="nav-btn" onclick="showTab('desarrollos',this)">Desarrollos</button>
     <button class="nav-btn" onclick="showTab('finanzas',this)">Finanzas</button>
     <button class="nav-btn" onclick="showTab('objetivos',this)">Objetivos</button>
+    <button class="nav-btn" onclick="showTab('documentos',this)">Documentos</button>
     <button class="nav-btn" id="btnEquipo" style="display:none" onclick="showTab('equipo',this)">Panel Equipo</button>
   </div>
   <div class="content" id="tabContent"></div>
@@ -271,6 +272,7 @@ function showTab(tab,btn){
   else if(tab==='finanzas')loadFinanzas();
   else if(tab==='objetivos')loadObjetivos();
   else if(tab==='equipo')loadEquipo();
+  else if(tab==='documentos')loadDocumentos();
 }
 
 // ============================================================
@@ -1904,8 +1906,204 @@ function guardarEditCierre(opId,esAgente){
   closeModal();loading();
   updRow('Operaciones',opId,data,function(){loadFinanzas();});
 }
-</script>
-<script>
+
+// ============================================================
+// DOCUMENTOS
+// ============================================================
+var AGENTES_DATOS={
+  'golivera':{nombre:'Gonzalo Javier Olivera',dni:'31.694.160'},
+  'gquintana':{nombre:'Gonzalo Ariel Quintana',dni:'28.031.147'}
+};
+
+function loadDocumentos(){
+  var html='<div class="section-title" style="margin-bottom:1.5rem">Documentos</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">'
+    +'<div class="card" style="cursor:pointer" onclick="abrirFormAutorizacion()">'
+    +'<div style="font-size:32px;margin-bottom:8px">📋</div>'
+    +'<div style="font-weight:700;font-size:14px;color:#1a1a1a">Autorización de Venta Exclusiva</div>'
+    +'<div style="font-size:12px;color:#888;margin-top:4px">CABA / PBA</div>'
+    +'</div></div>';
+  document.getElementById('tabContent').innerHTML=html;
+}
+
+function abrirFormAutorizacion(){
+  var ad=AGENTES_DATOS[currentUser.user]||{nombre:'',dni:''};
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">'
+    +'<div><div class="section-title">Autorización de Venta Exclusiva</div>'
+    +'<div style="font-size:13px;color:#888;margin-top:2px">Completá los datos y descargá el documento</div></div>'
+    +'<button class="btn" onclick="loadDocumentos()">← Volver</button></div>'
+    +'<div class="card">'
+    +'<div class="section-divider" style="margin-top:0">Datos del autorizante</div>'
+    +'<div class="row"><div class="form-group"><label>(1) Nombre completo</label><input id="d1" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(2) DNI</label><input id="d2" autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>(3) CUIT/CUIL</label><input id="d3" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(7) Celular</label><input id="d7" autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>(4) Domicilio (calle y número)</label><input id="d4" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(5) Localidad</label><input id="d5" autocomplete="off"/></div></div>'
+    +'<div class="form-group"><label>(6) Jurisdicción del autorizante</label>'
+    +'<select id="d6"><option value="Ciudad Autónoma de Buenos Aires">Ciudad Autónoma de Buenos Aires</option>'
+    +'<option value="Provincia de Buenos Aires">Provincia de Buenos Aires</option></select></div>'
+    +'<div class="form-group"><label>(8) Email</label><input id="d8" type="email" autocomplete="off"/></div>'
+    +'<div class="section-divider">Datos del inmueble</div>'
+    +'<div class="row"><div class="form-group"><label>(9) Calle del inmueble</label><input id="d9" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(10) Número</label><input id="d10" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(11) Unidad funcional</label><input id="d11" autocomplete="off" placeholder="Ej: 3A"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>(12) Localidad del inmueble</label><input id="d12" autocomplete="off"/></div></div>'
+    +'<div class="form-group"><label>(13) Jurisdicción del inmueble</label>'
+    +'<select id="d13"><option value="Ciudad Autónoma de Buenos Aires">Ciudad Autónoma de Buenos Aires</option>'
+    +'<option value="Provincia de Buenos Aires">Provincia de Buenos Aires</option></select></div>'
+    +'<div class="section-divider">Precio y honorarios</div>'
+    +'<div class="row"><div class="form-group"><label>(14) Precio en letras</label><input id="d14" autocomplete="off" placeholder="Ej: DOSCIENTOS MIL"/></div>'
+    +'<div class="form-group"><label>(15) Precio en USD</label><input id="d15" type="number" autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>(16) % Honorarios (número)</label><input id="d16" type="number" value="4"/></div>'
+    +'<div class="form-group"><label>(17) % Honorarios (letras)</label><input id="d17" autocomplete="off" placeholder="Ej: CUATRO"/></div>'
+    +'<div class="form-group"><label>(18) Días de exclusividad</label><input id="d18" type="number" value="90"/></div></div>'
+    +'<div class="section-divider">Cónyuge (si aplica)</div>'
+    +'<div class="row"><div class="form-group"><label>(19) Tratamiento</label>'
+    +'<select id="d19"><option value="">No aplica</option><option value="El Sr.">El Sr.</option><option value="La Sra.">La Sra.</option></select></div>'
+    +'<div class="form-group"><label>(20) Nombre completo del cónyuge</label><input id="d20" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(21) DNI del cónyuge</label><input id="d21" autocomplete="off"/></div></div>'
+    +'<div class="section-divider">Lugar y fecha</div>'
+    +'<div class="row"><div class="form-group"><label>(22) Ciudad de firma</label><input id="d22" value="Ciudad Autónoma de Buenos Aires" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>(23) Fecha de firma</label><input id="d23" type="date" value="'+today()+'" /></div></div>'
+    +'<div class="section-divider">Agente interviniente</div>'
+    +'<div class="row"><div class="form-group"><label>(24) Nombre del agente</label>'
+    +'<input id="d24" value="'+ad.nombre+'" readonly style="background:#f8fafc;color:#555"/></div>'
+    +'<div class="form-group"><label>(25) DNI del agente</label>'
+    +'<input id="d25" value="'+ad.dni+'" readonly style="background:#f8fafc;color:#555"/></div></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+    +'<button class="btn btn-primary" id="btn-gen-doc" onclick="generarDocAutorizacion()">📄 Generar documento</button>'
+    +'</div><div id="doc-status" style="margin-top:1rem;font-size:13px;color:#888;text-align:center"></div>'
+    +'</div>';
+  document.getElementById('tabContent').innerHTML=html;
+}
+
+function vDoc(id){return document.getElementById(id)?document.getElementById(id).value.trim():'';}
+
+function generarDocAutorizacion(){
+  var f={1:vDoc('d1'),2:vDoc('d2'),3:vDoc('d3'),4:vDoc('d4'),5:vDoc('d5'),6:vDoc('d6'),
+    7:vDoc('d7'),8:vDoc('d8'),9:vDoc('d9'),10:vDoc('d10'),11:vDoc('d11'),
+    12:vDoc('d12'),13:vDoc('d13'),14:vDoc('d14'),15:vDoc('d15'),16:vDoc('d16'),
+    17:vDoc('d17'),18:vDoc('d18'),19:vDoc('d19'),20:vDoc('d20'),21:vDoc('d21'),
+    22:vDoc('d22'),23:vDoc('d23'),24:vDoc('d24'),25:vDoc('d25')};
+  if(!f[1]||!f[2]||!f[9]){alert('Complet\u00e1 al menos nombre completo, DNI y calle del inmueble.');return;}
+  var btn=document.getElementById('btn-gen-doc');
+  var st=document.getElementById('doc-status');
+  btn.disabled=true;btn.textContent='Generando...';
+  st.textContent='Preparando el documento...';
+  if(window.docx){generarDocxContenido(f,btn,st);}
+  else{
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.umd.min.js';
+    s.onload=function(){generarDocxContenido(f,btn,st);};
+    s.onerror=function(){btn.disabled=false;btn.textContent='📄 Generar documento';st.textContent='Error al cargar librer\u00eda.';};
+    document.head.appendChild(s);
+  }
+}
+
+function generarDocxContenido(f,btn,st){
+  try{
+    var D=window.docx;
+    var fecha='';
+    if(f[23]){
+      var dd=new Date(f[23]+'T12:00:00');
+      var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      fecha=dd.getDate()+' de '+meses[dd.getMonth()]+' de '+dd.getFullYear();
+    }
+    function r(t,bold){return new D.TextRun({text:t||'',bold:!!bold,size:20,font:'Arial'});}
+    function b(t){return r(t,true);}
+    function p(ch,opts){return new D.Paragraph(Object.assign({children:ch,spacing:{after:100}},opts||{}));}
+    function br(){return new D.Paragraph({children:[r('')],spacing:{after:60}});}
+    var uf=f[11]?'"'+f[11]+'"':'""';
+    var body=[
+      p([b('Martillero P\u00fablico Mauro E. Marvisi')],{alignment:D.AlignmentType.CENTER}),
+      p([b('(C.U.C.I.C.B.A N\u00b0 1762 \u2013 C.M.C.P.S.I N\u00b0 5574)')],{alignment:D.AlignmentType.CENTER}),
+      br(),
+      p([b('AUTORIZACI\u00d3N DE VENTA EN EXCLUSIVA')],{alignment:D.AlignmentType.CENTER}),
+      br(),
+      p([r('Por intermedio de la presente, quien suscribe '),b(f[1]),r(', D.N.I N\u00b0: '),b(f[2]),r(', CUIT/CUIL N\u00b0 '),b(f[3]),r(', domiciliado en la '),b(f[4]),r(', de la localidad de '),b(f[5]),r(', '),b(f[6]),r(', Celular '),b(f[7]),r(', constituyendo domicilio electr\u00f3nico a los efectos de la presente, en el e-mail: '),b(f[8]),r(', donde se tendr\u00e1n por eficaces y v\u00e1lidas todas las notificaciones cursadas, en su car\u00e1cter de propietario, en adelante el '),b('"AUTORIZANTE"'),r(', quien '),b('AUTORIZA'),r(' en forma '),b('EXCLUSIVA'),r(' al Martillero y Corredor P\u00fablico '),b('MAURO MARVISI'),r(', ('),b('C.U.C.I.C.B.A. N\u00b0 1762 / C.M.C.P.S.I. N\u00b0 5574'),r('), con domicilio en la calle Fitz Roy N\u00b0 1925, PB, Ciudad Aut\u00f3noma de Buenos Aires / Av. Del Libertador 15.200 (esq. Almafuerte), Localidad de Acassuso, Partido de San Isidro, Provincia Buenos Aires, domicilio electr\u00f3nico en el e-mail '),b('datagold@remax.com.ar'),r(', en adelante el '),b('"AUTORIZADO"'),r(' para que el mismo proceda a ofrecer en venta el inmueble propiedad del '),b('AUTORIZANTE'),r(' sito en la '),b(f[9]),r(', N\u00ba '),b(f[10]),r(', Unidad Funcional '+uf+' de la localidad de '),b(f[12]),r(', '),b(f[13]),r(', con las medidas y dem\u00e1s circunstancias tal como lo especifica el t\u00edtulo de propiedad (cuya copia simple se acompa\u00f1a), y de acuerdo a las condiciones que seguidamente se exponen:')]),
+      br(),
+      p([r('- Que el '),b('Precio de Publicaci\u00f3n'),r(' autorizado se fija en la suma de DOLARES ESTADOUNIDENSES BILLETES '),b(f[14]),r(' ('),b('USD '),b(f[15]),r('.-).') ]),
+      br(),
+      p([r('- Que el '),b('AUTORIZANTE'),r(' manifiesta y declara con car\u00e1cter de declaraci\u00f3n jurada que:')]),
+      p([r('a) Es titular de dominio del inmueble antes referido;')],{indent:{left:360}}),
+      p([r('b) Los t\u00edtulos son perfectos;')],{indent:{left:360}}),
+      p([r('c) No se encuentra inhibido ni limitado para disponer del mismo;')],{indent:{left:360}}),
+      p([r('d) Que asume la obligaci\u00f3n de entregar el inmueble libre de ocupantes, hipotecas, embargos y dem\u00e1s grav\u00e1menes.')],{indent:{left:360}}),
+      br(),
+      p([r('Sin perjuicio de lo expuesto, el '),b('AUTORIZANTE'),r(' a su vez declara:')]),
+      br(),
+      p([r('\tBien de Familia: '),b('SI / NO'),r('\t\tDonaci\u00f3n: '),b('NO / SI'),r(' \u2013 Fecha: __/__/__')]),
+      p([r('\tRegistra Hipoteca Sin Levantamiento: '),b('SI / NO'),r('\t\tSuces\u00f3n en Tr\u00e1mite: '),b('SI / NO')]),
+      p([r('\tInmueble a Construir: '),b('SI/NO'),r('\t\tApto Cr\u00e9dito: '),b('SI / NO.')]),
+      p([b('Es condominio: SI/NO'),r('                    '),b('Certificado Retenci\u00f3n Extranjero: SI/NO')]),
+      br(),
+      p([b('En caso afirmativo:')]),
+      p([b('Nombre: ___________________________________________________________________________')]),
+      p([b('D.N.I./C.U.I.T.: ____________________________________________________________________')]),
+      p([b('Porcentaje de Titularidad: ___________________________________________________________')]),
+      p([b('Otras: _____________________________________________________________________________')]),
+      br(),
+      p([r('- Que el '),b('AUTORIZANTE'),r(' faculta al '),b('AUTORIZADO'),r(' a percibir sumas de dinero en concepto de reservas, refuerzos, y/o se\u00f1as, las cuales quedar\u00e1n en cauci\u00f3n del '),b('AUTORIZADO'),r(', otorgando los correspondientes recibos.')]),
+      br(),
+      p([r('- Que el '),b('AUTORIZANTE'),r(' abonar\u00e1 al '),b('AUTORIZADO'),r(' la suma que resulte del '),b(f[16]),r(' por ciento ('),b(f[17]),r(') m\u00e1s IVA del precio de venta de la propiedad, en concepto de honorarios y gastos de comercializaci\u00f3n y marketing, cuyo pago se har\u00e1 efectivo en el acto de la firma del boleto de compraventa, contrato de se\u00f1al, o la escritura traslativa de dominio, lo primero que suceda.')]),
+      br(),
+      p([r('- Que esta autorizaci\u00f3n se otorga '),b('EN FORMA EXCLUSIVA'),r(' y con car\u00e1cter irrevocable por el t\u00e9rmino de '),b(f[18]),r(' dias h\u00e1biles a partir de la presente.')]),
+      br(),
+      p([r('- En el supuesto que el '),b('AUTORIZANTE'),r(' se negase a firmar el boleto de compraventa respectivo o la escritura traslativa de dominio, siendo que el '),b('AUTORIZADO'),r(' hubiese obtenido una reserva, este abonar\u00e1 al '),b('AUTORIZADO'),r(' el porcentaje pactado en concepto de indemnizaci\u00f3n.')]),
+      br(),
+      p([r('- Que el '),b('AUTORIZANTE'),r(' se notifica y consiente la realizaci\u00f3n de toda la publicidad necesaria para la venta de su propiedad, incluyendo la colocaci\u00f3n de carteles, publicaci\u00f3n en medios de circulaci\u00f3n masiva, e inclusi\u00f3n en el sistema MLS de la Red RE/MAX.')]),
+      br(),
+      p([r('- Que el '),b('AUTORIZANTE'),r(' toma conocimiento que los gastos de publicidad correr\u00e1n por cuenta del '),b('AUTORIZADO'),r('.')]),
+      br(),
+      p([r('- El '),b('AUTORIZADO'),r(' se obliga a que todas las ofertas que se realicen sobre el inmueble, le sean presentadas al '),b('AUTORIZANTE'),r('.')]),
+      br(),
+      p([b('El AUTORIZANTE'),r(' manifiesta en car\u00e1cter de declaraci\u00f3n jurada que la propiedad objeto de la presente, al d\u00eda de la fecha, cuenta con los servicios b\u00e1sicos de luz, agua, gas, conectados y en funcionamiento.')]),
+      br(),
+    ];
+    if(f[19]){
+      body.push(p([r('- '),b(f[19]),r(' '),b(f[20]),r(' DNI '),b(f[21]),r(' en su car\u00e1cter de c\u00f3nyuge del '),b('AUTORIZANTE'),r(' presta el correspondiente asentimiento conyugal en los t\u00e9rminos del C\u00f3digo Civil y Comercial de la Naci\u00f3n.')]));
+      body.push(br());
+    }
+    body=body.concat([
+      p([r('- Para todos los efectos legales las partes constituyen domicilios especiales en los denunciados al inicio del presente y se someten a la competencia y jurisdicci\u00f3n de los Tribunales Ordinarios de la Ciudad Aut\u00f3noma de Buenos Aires.')]),
+      br(),
+      p([r('En '),r(f[22]),r(', a los '),r(fecha),r('.')]),
+      br(),
+      p([r('Autorizante:  ________________________________     ____________________________________')]),
+      p([r('                           Aclaraci\u00f3n                                                              Firma')]),
+      br(),
+      p([r('C\u00f3nyuge:  ________________________________     ____________________________________')]),
+      p([r('                           Aclaraci\u00f3n                                                              Firma')]),
+      br(),br(),
+      p([b('CERTIFICADO DE GARANTIA DE SERVICIOS PROFESIONALES')],{alignment:D.AlignmentType.CENTER}),
+      br(),
+      p([r('Por intermedio de la presente, el se\u00f1or/la se\u00f1ora '),b(f[1]),r(', D.N.I N\u00b0 '),b(f[2]),r(', domiciliado/a en '),b(f[4]),r(', Unidad '),r(uf),r(', de la Localidad/Barrio '),b(f[12]),r(', '),b(f[13]),r(', en su calidad de '),b('CLIENTE'),r(', manifiesta haber sido informado que '),b('MAURO MARVISI'),r(' en su car\u00e1cter de Martillero P\u00fablico y Corredor matriculado ('),b('C.U.C.I.C.B.A N\u00b0 1762 \u2013 C.M.C.P.S.I N\u00b0 5574'),r(') de RE/MAX '),b('DATA GOLD'),r(', es quien est\u00e1 a cargo de la intermediaci\u00f3n inmobiliaria encomendada. En el mismo sentido, el '),b('CLIENTE'),r(' declara que ha sido informado que '),b(f[24]),r(', D.N.I N\u00b0 '),b(f[25]),r(', en adelante el '),b('AGENTE'),r(', colaborar\u00e1 en las gestiones relacionadas en la operaci\u00f3n.')]),
+      br(),
+      p([r('En prueba de conformidad se suscribe el presente en '),r(f[22]),r(', a los '),r(fecha),r('.')]),
+      br(),
+      p([r('Autorizante:  ________________________________     ____________________________________')]),
+      p([r('                           Aclaraci\u00f3n                                                              Firma')]),
+      br(),
+      p([r('Fitz Roy 1925 \u2013 Palermo \u2013 CABA \u2013 Av. Del Libertador 15.200, Acassuso, San Isidro - PBA, ARGENTINA \u2013 datagold@remax.com.ar \u2013 Tel/Fax: 4535-2700')],{alignment:D.AlignmentType.CENTER}),
+      p([r('Cada Oficina es de propiedad y gesti\u00f3n independiente')],{alignment:D.AlignmentType.CENTER}),
+    ]);
+    var doc=new D.Document({sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1000,right:1000,bottom:1000,left:1000}}},children:body}]});
+    D.Packer.toBlob(doc).then(function(blob){
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url;a.download='Autorizacion_Venta_'+f[1].replace(/ /g,'_')+'.docx';a.click();
+      URL.revokeObjectURL(url);
+      btn.disabled=false;btn.textContent='📄 Generar documento';
+      st.innerHTML='<span style="color:#059669">\u2705 Documento generado y descargado correctamente.</span>';
+    });
+  }catch(err){
+    console.error(err);
+    btn.disabled=false;btn.textContent='📄 Generar documento';
+    st.innerHTML='<span style="color:#CC2229">\u274C Error: '+err.message+'</span>';
+  }
+}
+
 if('serviceWorker' in navigator){
   // Escuchar mensaje de recarga del Service Worker
   navigator.serviceWorker.addEventListener('message', function(e){
