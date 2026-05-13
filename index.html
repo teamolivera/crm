@@ -348,6 +348,8 @@ function loadDashboard(filtroAgente){
         var opsAgBruta=0,opsAgNeta=0;   // Solo agentes (neto TL de ops de agentes)
         var opsAgNetoTM=0; // neto que les queda a los agentes
         var gastosTeamUSD=0;
+        // Gastos del TL sobre sus TM (gasto_gonzalo de CuentaCorriente)
+        var gastosTMCC=allCC.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
 
         allAgentes.forEach(function(ag){
           var esLiderAg=ag===currentUser.nombre;
@@ -359,7 +361,8 @@ function loadDashboard(filtroAgente){
 
           // Gastos de agentes
           if(!esLiderAg){
-            gastosTeamUSD+=allGastosDash.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+            // No sumar gastos del Sheet Gastos — esos son gastos de propiedades
+            // gastosTeamUSD usa solo gasto_gonzalo de CuentaCorriente
           }
           // Operaciones cerradas
           var agOps=allOpsDash.filter(function(o){return o.agente===ag;});
@@ -420,6 +423,7 @@ function loadDashboard(filtroAgente){
           );
         });
 
+        gastosTeamUSD=gastosTMCC;
         var rentTeam=opsAgNeta-gastosTeamUSD;
         var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
         var RENT_TEAM_UMBRAL=25;
@@ -1553,7 +1557,6 @@ function loadEquipo(){
       fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
       fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
       fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
       fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();})
     ]).then(function(res){
       var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allFins=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
@@ -1710,7 +1713,6 @@ function loadEquipo(){
           :allCC.filter(function(r){return r.agente===agenteActual&&r.tipo==='cuenta_corriente';});
         var misGastos=bloque1;
         var ccDeuda=bloque2;
-        var totalMG=misGastos.reduce(function(a,r){return a+Number(r.monto||0);},0);
         html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:1rem">'
           +(esViendoMismo
             ?'<button class="btn btn-sm btn-primary" onclick="window._nuevoCC(\'gasto_tl\',\''+esc(agenteActual)+'\')">+ Mi gasto propio</button>'
