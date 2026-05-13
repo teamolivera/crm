@@ -1758,9 +1758,12 @@ function loadEquipo(){
         }else{html+='<div class="empty">'+(esViendoMismo?'Sin gastos sobre el team.':'Sin cargos.')+'</div>';}
         html+='</div>';
       }
+      document.getElementById('tabContent').innerHTML=html;
+      window._eq=function(vista,ag){render(vista,ag);};
       window._elimCC=function(id){if(!confirm('¿Eliminar?'))return;delRow('CuentaCorriente',id,function(){render('cuentas',agenteActual);});};
-    });
+    }).catch(function(err){document.getElementById('tabContent').innerHTML='<div style="padding:2rem;color:#CC2229">Error: '+err.message+'</div>';});
   }
+  render('consolidado','');
   render('consolidado','');
   window._eq=function(vista,ag){render(vista,ag);};
 }
