@@ -458,9 +458,10 @@ function loadDashboard(filtroAgente){
 
         teamCerradas=Object.keys(teamCerradasIds).length;
         gastosTeamUSD=gastosTMCC;
-        var rentTeam=opsAgNeta-gastosTeamUSD;
+        var rentTeam=opsAgNeta-gastosTeamUSD; // netas TL de ops TM menos gastos team
         var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
         var RENT_TEAM_UMBRAL=25;
+        var rentTeamPctColor=rentTeamPct<25?'#FF4444':rentTeamPct<50?'#FFCC00':'#00DD66';
         var sep='<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px">';
 
         html+='<div class="team-widget" style="cursor:pointer" onclick="abrirPanelTeam()">'
@@ -491,10 +492,11 @@ function loadDashboard(filtroAgente){
           +'<div class="team-metric"><div class="team-metric-label">Comisiones netas para TL s/stock TM</div><div class="team-metric-value">USD '+fmt(Math.round(agPrNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Comisiones brutas s/reservas TM</div><div class="team-metric-value">USD '+fmt(Math.round(agResBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Comisiones netas s/reservas TM</div><div class="team-metric-value">USD '+fmt(Math.round(agResNeta))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Com. netas TL s/cerradas TM</div><div class="team-metric-value">USD '+fmt(Math.round(opsAgNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Gastos Team</div><div class="team-metric-value" style="color:#FF4444">USD '+fmt(Math.round(gastosTeamUSD))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Rentabilidad team</div>'
-          +'<div class="team-metric-value" style="color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00DD66':'#FF4444')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
-          +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00DD66':'#FF4444')+'">'+rentTeamPct+'%</div>':'')
+          +'<div class="team-metric-value" style="color:'+rentTeamPctColor+'">USD '+fmt(Math.round(rentTeam))+'</div>'
+          +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+rentTeamPctColor+'">'+rentTeamPct+'%</div>':'')
           +'</div>'
           +sep+'Stock del team</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
@@ -1932,6 +1934,10 @@ function guardarNuevoCC(tm){
   closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
+
+function abrirPanelTeam(){
+  showTab('equipo',document.querySelector('.nav-btn:last-child'));
+}
 
 function loadEquipo(){
   if(currentUser.rol!=='Líder'){
