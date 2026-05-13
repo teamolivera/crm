@@ -420,7 +420,12 @@ function loadDashboard(filtroAgente){
 
           calcStock(
             agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';}),
-            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},
+            function(p){
+              var comp=Number(p.comision_compradora||0);
+              var vend=Number(p.comision_vendedora||0);
+              if(comp===0&&vend===0){comp=4;vend=3;}
+              return Number(p.precio||0)*(comp+vend)/100;
+            },
             true
           );
           calcStock(
@@ -430,7 +435,12 @@ function loadDashboard(filtroAgente){
           );
           calcStock(
             agTodas.filter(function(p){return (p.estado||'').trim()==='Reservada';}),
-            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},
+            function(p){
+              var comp=Number(p.comision_compradora||0);
+              var vend=Number(p.comision_vendedora||0);
+              if(comp===0&&vend===0){comp=4;vend=3;}
+              return Number(p.precio||0)*(comp+vend)/100;
+            },
             false
           );
           calcStock(
