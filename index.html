@@ -1577,7 +1577,8 @@ function loadEquipo(){
       fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
       fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
     ]).then(function(res){
-      var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allFins=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
+      function toArr(x){return Array.isArray(x)?x:[];}
+      var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]),allGastos=toArr(res[3]),allFins=toArr(res[4]),allDevs=toArr(res[5]),allUnis=toArr(res[6]),allCC=toArr(res[7]);
 
       var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>'
         +'<div class="tabs-secondary">'
