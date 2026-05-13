@@ -110,7 +110,7 @@
     .cc-section-title{font-size:14px;font-weight:600;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
     .team-widget{background:linear-gradient(135deg,#185FA5,#0C447C);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;color:#fff}
     .team-widget-title{font-size:14px;font-weight:600;opacity:0.85;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.5px}
-    .team-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+    .team-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
     .team-metric{background:rgba(255,255,255,0.12);border-radius:10px;padding:12px 16px}
     .team-metric-label{font-size:10px;opacity:0.75;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
     .team-metric-value{font-size:18px;font-weight:700}
@@ -354,6 +354,7 @@ function loadDashboard(filtroAgente){
         var gastosTeamUSD=0;
         // Contadores globales team
         var teamReservadas=0,teamActivas=0,teamCerradas=0;
+        var teamCerradasIds={};
         // Gastos del TL sobre sus TM (gasto_gonzalo de CuentaCorriente)
         var gastosTMCC=allCC.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
 
@@ -368,8 +369,8 @@ function loadDashboard(filtroAgente){
             +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
           teamActivas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='en venta';}).length
             +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='activa';}).length;
-          teamCerradas+=allOpsDash.filter(function(o){return (o.agente||'').trim()===ag.trim();}).length
-            +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
+          allOpsDash.filter(function(o){return (o.agente||'').trim()===ag.trim();}).forEach(function(o){teamCerradasIds[o.id]=1;});
+          agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).forEach(function(u){teamCerradasIds[u.id]=1;});
 
           // Gastos de agentes
           if(!esLiderAg){
@@ -415,7 +416,7 @@ function loadDashboard(filtroAgente){
 
           calcStock(
             agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';}),
-            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},
+            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},
             true
           );
           calcStock(
@@ -425,7 +426,7 @@ function loadDashboard(filtroAgente){
           );
           calcStock(
             agTodas.filter(function(p){return (p.estado||'').trim()==='Reservada';}),
-            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},
+            function(p){return Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},
             false
           );
           calcStock(
@@ -435,6 +436,7 @@ function loadDashboard(filtroAgente){
           );
         });
 
+        teamCerradas=Object.keys(teamCerradasIds).length;
         gastosTeamUSD=gastosTMCC;
         var rentTeam=opsAgNeta-gastosTeamUSD;
         var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
@@ -475,10 +477,10 @@ function loadDashboard(filtroAgente){
           +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#6ee7b7':'#fca5a5')+'">'+rentTeamPct+'%</div>':'')
           +'</div>'
           +sep+'Stock del team</div>'
-          +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-          +'<div class="team-metric" style="flex:1;min-width:120px"><div class="team-metric-label">Propiedades activas</div><div class="team-metric-value">'+teamActivas+'</div></div>'
-          +'<div class="team-metric" style="flex:1;min-width:120px"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#fcd34d">'+teamReservadas+'</div></div>'
-          +'<div class="team-metric" style="flex:1;min-width:120px"><div class="team-metric-label">Cerradas</div><div class="team-metric-value" style="color:#6ee7b7">'+teamCerradas+'</div></div>'
+          +'<div class="team-metrics">'
+          +'<div class="team-metric"><div class="team-metric-label">Propiedades activas</div><div class="team-metric-value">'+teamActivas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#fcd34d">'+teamReservadas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Cerradas</div><div class="team-metric-value" style="color:#6ee7b7">'+teamCerradas+'</div></div>'
           +'</div>'
           +'</div></div>';
       }
