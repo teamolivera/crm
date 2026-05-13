@@ -315,7 +315,7 @@ function loadDashboard(filtroAgente){
     var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length+unis.filter(function(u){return u.condicion==='Reservada';}).length;
     var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
 
-    var gastosOficina=allFins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
+    var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
 
     // Facturación bruta = comision_total de operaciones cerradas
