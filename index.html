@@ -282,18 +282,20 @@ function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
   var esLider=currentUser.rol==='Líder';
   Promise.all([
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Reservas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();})
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
-    var allProps=res[0]||[],allBusq=res[1]||[],fins=res[2]||[],objs=res[3]||[],allOpsDash=res[4]||[],allGastosDash=res[5]||[],reservas=res[6]||[],allUnis=res[7]||[],allDevsDash=res[8]||[],allCC=res[9]||[];
+    function toArr(x){return Array.isArray(x)?x:[];}
+    var allProps=toArr(res[0]),allBusq=toArr(res[1]),fins=toArr(res[2]),objs=toArr(res[3]);
+    var allOpsDash=toArr(res[4]),allGastosDash=toArr(res[5]),allUnis=toArr(res[6]),allDevsDash=toArr(res[7]),allCC=toArr(res[8]);
+    var reservas=[];
     var ops=allOpsDash.filter(function(o){return o.agente===agente;});
     var gastos=allGastosDash.filter(function(g){return g.agente===agente;});
 
@@ -302,7 +304,8 @@ function loadDashboard(filtroAgente){
     fins=fins.filter(function(f){return f.agente===agente;});
     gastos=gastos.filter(function(g){return g.agente===agente;});
     ops=ops.filter(function(o){return o.agente===agente;});
-    reservas=reservas.filter(function(r){return r.agente===agente;});
+    // reservas eliminado - no existe el sheet
+
     var devIds=allDevsDash.filter(function(d){return d.agente===agente;}).map(function(d){return d.id;});
     var unis=allUnis.filter(function(u){return devIds.indexOf(u.desarrollo_id)>=0;});
 
@@ -325,7 +328,7 @@ function loadDashboard(filtroAgente){
     var rentabilidad=facturacion-gastosProp-gastosOficina;
 
     // Com proyectada propia
-    var comReservas=reservas.reduce(function(a,r){return a+Number(r.precio_reserva||0)*(Number(r.comision_compradora||0)+Number(r.comision_vendedora||0))/100;},0)
+    var comReservas=todasProps.filter(function(p){return p.estado==='Reservada';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},0)
       +unis.filter(function(u){return u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
     var comStock=todasProps.filter(function(p){return p.estado==='En venta';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0)
       +unis.filter(function(u){return u.condicion==='Activa';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
@@ -761,10 +764,17 @@ function calcRentProp(p,gastosProp){
   // Para TL: siempre calcular como TL (35% + martillero)
   var esLiderCalc=currentUser.rol==='Líder';
   var referido=p.referido||'no';
-  var pctNeto=esLiderCalc
-    ?(referido==='si'?0.45:0.35)*(1-0.04)  // TL: 45% ref / 35% no ref, menos martillero
-    :(referido==='si'?0.35:0.45);           // TM: 35% ref / 45% no ref
-  var neta=bruta*pctNeto;
+  var neta;
+  if(esLiderCalc){
+    // TL: bruta − 20% oficina − martillero (4% sobre 80%)
+    var parteNeta=bruta*0.80;
+    var martillero=parteNeta*0.04;
+    neta=parteNeta-martillero; // = bruta * 80% * 96%
+  }else{
+    // TM: bruta − 20% oficina − parte TL (ref=45%, no ref=35%)
+    var pctTL=referido==='si'?0.45:0.35;
+    neta=bruta*(1-0.20-pctTL); // = bruta * (45% ref / 35% no ref)
+  }
   var gastos=gastosProp.filter(function(g){return g.propiedad_id===p.id;}).reduce(function(a,g){
     if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
     return a+Number(g.monto||0);
@@ -1931,8 +1941,7 @@ function loadEquipo(){
     var busqs=allBusq.filter(function(b){return b.agente===ag;});
     var todasProps=props.concat(busqs);
     var ops=allOps.filter(function(o){
-      var fv=o.fecha_venta||o.fecha||'';
-      return o.agente===ag&&fv.startsWith(String(anoActual));
+      return o.agente===ag;
     });
     var gastos=allGastos.filter(function(g){return g.agente===ag;});
     var devs=allDevs.filter(function(d){return d.agente===ag;});
