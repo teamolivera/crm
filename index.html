@@ -360,17 +360,21 @@ function loadDashboard(filtroAgente){
 
         allAgentes.forEach(function(ag){
           var esLiderAg=ag===currentUser.nombre;
-          var agProps=allProps.filter(function(p){return (p.agente||'').trim()===ag.trim()&&!p.desarrollo_id;});
-          var agBusqs=allBusq.filter(function(b){return (b.agente||'').trim()===ag.trim();});
-          var agDevIds2=allDevsDash.filter(function(d){return (d.agente||'').trim()===ag.trim();}).map(function(d){return d.id;});
+          // Buscar por nombre completo o nombre corto (ej: "Gonzalo Olivera" vs "Gonzalo Javier Olivera")
+          function matchAgente(agNombre,agFiltro){
+            var a=(agNombre||'').trim();var b=(agFiltro||'').trim();
+            return a===b||a.indexOf(b)>=0||b.indexOf(a)>=0;
+          }
+          var agProps=allProps.filter(function(p){return matchAgente(p.agente,ag)&&!p.desarrollo_id;});
+          var agBusqs=allBusq.filter(function(b){return matchAgente(b.agente,ag);});
+          var agDevIds2=allDevsDash.filter(function(d){return matchAgente(d.agente,ag);}).map(function(d){return d.id;});
           var agUnis=allUnis.filter(function(u){return agDevIds2.indexOf(u.desarrollo_id)>=0;});
           var agTodas=agProps.concat(agBusqs);
           teamReservadas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';}).length
             +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
           teamActivas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='en venta';}).length
             +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='activa';}).length;
-          allOpsDash.filter(function(o){return (o.agente||'').trim()===ag.trim();}).forEach(function(o){teamCerradasIds[o.id]=1;});
-          agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).forEach(function(u){teamCerradasIds[u.id]=1;});
+          allOpsDash.filter(function(o){return matchAgente(o.agente,ag);}).forEach(function(o){teamCerradasIds['op_'+o.id]=1;});
 
           // Gastos de agentes
           if(!esLiderAg){
@@ -378,7 +382,7 @@ function loadDashboard(filtroAgente){
             // gastosTeamUSD usa solo gasto_gonzalo de CuentaCorriente
           }
           // Operaciones cerradas
-          var agOps=allOpsDash.filter(function(o){return (o.agente||'').trim()===ag.trim();});
+          var agOps=allOpsDash.filter(function(o){return matchAgente(o.agente,ag);});
           agOps.forEach(function(o){
             var bruta=Number(o.comision_total||0);
             var netoTL=esLiderAg
@@ -414,10 +418,8 @@ function loadDashboard(filtroAgente){
             });
           }
 
-          var activasParaCalc=agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';});
-          console.log('calcStock activas ag:['+ag+'] items:'+activasParaCalc.length+' agTodas:'+agTodas.length);
           calcStock(
-            activasParaCalc,
+            agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';}),
             function(p){return Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100;},
             true
           );
@@ -439,7 +441,6 @@ function loadDashboard(filtroAgente){
         });
 
         teamCerradas=Object.keys(teamCerradasIds).length;
-        console.log('teamCerradas IDs:'+JSON.stringify(Object.keys(teamCerradasIds))+' total:'+teamCerradas);
         gastosTeamUSD=gastosTMCC;
         var rentTeam=opsAgNeta-gastosTeamUSD;
         var rentTeamPct=opsAgBruta>0?Math.round(rentTeam/opsAgBruta*100):0;
