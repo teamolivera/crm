@@ -1905,11 +1905,12 @@ function loadEquipo(){
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
     fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
     fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];})
+    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
     function toArr(x){return Array.isArray(x)?x:[];}
     var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]);
-    var allGastos=toArr(res[3]),allDevs=toArr(res[4]),allUnis=toArr(res[5]),allObjs=toArr(res[6]);
+    var allGastos=toArr(res[3]),allDevs=toArr(res[4]),allUnis=toArr(res[5]),allObjs=toArr(res[6]),allCC=toArr(res[7]);
 
     // Agentes = todos menos el TL
     var tms=allAgentes.filter(function(a){return a!==currentUser.nombre;});
@@ -1939,8 +1940,8 @@ function loadEquipo(){
     }
 
     var ag=agenteActual;
-    var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
-    var busqs=allBusq.filter(function(b){return b.agente===ag;});
+    var props=allProps.filter(function(p){return (p.agente||'').trim()===ag.trim()&&!p.desarrollo_id;});
+    var busqs=allBusq.filter(function(b){return (b.agente||'').trim()===ag.trim();});
     var todasProps=props.concat(busqs);
     var ops=allOps.filter(function(o){
       return (o.agente||'').trim()===ag.trim();
@@ -1957,6 +1958,7 @@ function loadEquipo(){
     // Cálculos
     var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length;
     var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
+    // Vendidas: usar ops cerradas como fuente de verdad
     var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
 
     var comReservasBruta=todasProps.filter(function(p){return p.estado==='Reservada';}).reduce(function(a,p){
@@ -1972,7 +1974,8 @@ function loadEquipo(){
     var factNetaTM=ops.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
     var factNetaTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
     var gastosTotal=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
-    var rentNetaTL=factNetaTL-gastosTotal;
+    var gastosCC=allCC.filter(function(r){return r.tipo==='gasto_gonzalo'&&(r.agente||'').trim()===ag.trim();}).reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var rentNetaTL=factNetaTL-gastosTotal-gastosCC;
 
     // % objetivo
     var pctAnual=metaAnual>0?Math.min(Math.round(factBruta/metaAnual*100),100):null;
@@ -2007,7 +2010,7 @@ function loadEquipo(){
       +'<div class="metric"><div class="metric-label">Fact. bruta</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(factBruta))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Fact. neta TM</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(factNetaTM))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Fact. neta TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(factNetaTL))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:13px">USD '+fmt(Math.round(gastosTotal))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:13px">USD '+fmt(Math.round(gastosTotal+gastosCC))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Rent. neta TL</div><div class="metric-value '+(rentNetaTL>=0?'green':'red')+'" style="font-size:13px">USD '+fmt(Math.round(rentNetaTL))+'</div></div>'
       +'</div>';
     html+='<div class="section-divider">Objetivos y participación</div>'
