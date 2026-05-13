@@ -1439,7 +1439,7 @@ function loadFinanzas(){
       if(ops.length){
         var totalBruta=0,totalNeta=0;
         html+='<div class="card" style="padding:0"><div class="table-wrap"><table>';
-        html+='<tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'+(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')+'<th>Martillero</th><th>IVA</th><th>Neto</th><th>Neto %</th><th></th></tr>';
+        html+='<tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'+(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')+(esLider?'<th>Martillero</th>':'')+'<th>IVA</th><th>Neto</th><th>Neto %</th><th></th></tr>';
         ops.forEach(function(o){
           var ivaTotal=Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0));
           var comTotal=Math.round(Number(o.comision_total||0));
@@ -1452,7 +1452,7 @@ function loadFinanzas(){
             +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
             +'<td>USD '+fmt(comTotal)+'</td>'
             +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
-            +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
+            +(esLider?'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>':'')
             +'<td style="color:#059669">+USD '+fmt(ivaTotal)+'</td>'
             +'<td style="font-weight:700;color:#065f46">USD '+fmt(neto)+'</td>'
             +'<td style="font-weight:700;color:'+(netoPct>=70?'#059669':netoPct>=50?'#d97706':'#CC2229')+'">'+netoPct+'%</td>'
@@ -1585,12 +1585,20 @@ function abrirEditCierre(opId){
       +'<div class="form-group"><label>Com. vendedor (%)</label><input id="ec-vend" type="number" value="'+(op.comision_vendedora||3)+'"/></div></div>'
       +'<div class="section-divider">Distribución</div>'
       +'<div class="row">'
+      // Calcular % reales desde montos guardados
+      var comTot=Number(op.comision_total||0);
+      var pctAgCalc=comTot>0&&op.neto_agente?Math.round(Number(op.neto_agente)/comTot*100):35;
+      var pctTLCalc=comTot>0&&op.comision_team_leader?Math.round(Number(op.comision_team_leader)/comTot*100):45;
+      var pctOCalc=comTot>0&&op.parte_oficina?Math.round(Number(op.parte_oficina)/comTot*100):20;
+      var pctMCalc=op.comision_team_leader&&op.martillero?Math.round(Number(op.martillero)/Number(op.comision_team_leader)*100):4;
+      var esRefTL=op.referido==='si';
       +(esAgente
-        ?'<div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="35"/></div>'
-         +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="45"/></div>'
-         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
-        :'<div class="form-group"><label>% Gonzalo</label><input id="ec-pcttl" type="number" value="80"/></div>'
-         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
+        ?'<div class="form-group"><label>Referido TL</label><select id="ec-ref" onchange="calcDistribRef()"><option value="no"'+(esRefTL?'':' selected')+'>No (TM 45% / TL 35%)</option><option value="si"'+(esRefTL?' selected':'')+'>Sí (TM 35% / TL 45%)</option></select></div>'
+         +'<div class="row"><div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="'+pctAgCalc+'"/></div>'
+         +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="'+pctTLCalc+'"/></div>'
+         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="'+pctOCalc+'"/></div></div>'
+        :'<div class="form-group"><label>% Gonzalo</label><input id="ec-pcttl" type="number" value="'+pctTLCalc+'"/></div>'
+         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="'+pctOCalc+'"/></div>'
       )+'</div>'
       +'<div class="form-group"><label>% Martillero (sobre parte TL)</label><input id="ec-mart" type="number" value="4"/></div>'
       +'<div class="section-divider">IVA (recaudación aparte)</div>'
@@ -1609,11 +1617,21 @@ function abrirEditCierre(opId){
   });
 }
 
+function calcDistribRef(){
+  var refEl=document.getElementById('ec-ref');
+  if(!refEl)return;
+  var esRef=refEl.value==='si';
+  var pctAg=document.getElementById('ec-pctag');
+  var pctTL=document.getElementById('ec-pcttl');
+  if(pctAg)pctAg.value=esRef?35:45;
+  if(pctTL)pctTL.value=esRef?45:35;
+}
 function guardarEditCierre(opId,esAgente){
   var cierre=Number(document.getElementById('ec-cierre').value||0);
   var comp=Number(document.getElementById('ec-comp').value||0);
   var vend=Number(document.getElementById('ec-vend').value||0);
   var pctTL=Number(document.getElementById('ec-pcttl').value||0);
+  var referidoVal=document.getElementById('ec-ref')?document.getElementById('ec-ref').value:'no';
   var pctAg=esAgente?Number(document.getElementById('ec-pctag').value||0):0;
   var pctO=Number(document.getElementById('ec-pcto').value||0);
   var pctM=Number(document.getElementById('ec-mart').value||4);
@@ -1634,7 +1652,7 @@ function guardarEditCierre(opId,esAgente){
   var netoTL=Math.round(parteTL-martillero);
   var netoAg=Math.round(parteAg);
   var data={
-    fecha:fecha,fecha_venta:fechaVenta,valor_cierre:cierre,precio_final:cierre,
+    fecha:fecha,fecha_venta:fechaVenta,valor_cierre:cierre,precio_final:cierre,referido:referidoVal,
     comision_total:Math.round(comTotal),comision_agente:netoAg,
     comision_team_leader:Math.round(parteTL),parte_oficina:Math.round(parteO),
     martillero:martillero,iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
