@@ -49,7 +49,7 @@
     .metric-value.green{color:#00C853}
     .metric-value.red{color:#FF1A1A}
     .metric-value.blue{color:#1e40af}
-    .metric-value.amber{color:#FFF000}
+    .metric-value.amber{color:#FFCC00}
     .card{background:#fff;border-radius:12px;border:1px solid #eee;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
     .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
     .card-title{font-size:15px;font-weight:600}
@@ -65,7 +65,7 @@
     .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
     .badge-blue{background:#dbeafe;color:#1e40af}
     .badge-green{background:#d1fae5;color:#00C853}
-    .badge-amber{background:#fef3c7;color:#FFF000}
+    .badge-amber{background:#fef3c7;color:#FFCC00}
     .badge-red{background:#fee2e2;color:#FF1A1A}
     .badge-purple{background:#ede9fe;color:#5b21b6}
     .badge-gray{background:#f3f4f6;color:#374151}
@@ -116,9 +116,7 @@
     .team-metric-value{font-size:18px;font-weight:700}
     .referido-tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:#ccfbf1;color:#0f766e;margin-left:6px}
     .no-referido-tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:#f3f4f6;color:#374151;margin-left:6px}
-    /* Amarillo accesible para daltonismo */
-  [style*="color:#FFF000"]{text-shadow:-1px -1px 0 rgba(0,0,0,0.3),1px -1px 0 rgba(0,0,0,0.3),-1px 1px 0 rgba(0,0,0,0.3),1px 1px 0 rgba(0,0,0,0.3);}
-</style>
+  </style>
 </head>
 <body>
 
@@ -203,7 +201,7 @@ function diasEnMercado(fechaCarga,fechaVenta){
 }
 function loading(){document.getElementById('tabContent').innerHTML='<div class="loading"><span class="spinner"></span>Cargando...</div>';}
 function pct(a,m){return Math.min(100,Math.round(Number(a||0)/Number(m||1)*100))||0;}
-function progColor(p){return p>=80?'#00C853':p>=50?'#185FA5':'#FFF000';}
+function progColor(p){return p>=80?'#00C853':p>=50?'#185FA5':'#FFCC00';}
 function estadoBadge(e){
   if(e==='En venta'||e==='Activa')return 'badge-blue';
   if(e==='Vendida')return 'badge-green';
@@ -493,16 +491,16 @@ function loadDashboard(filtroAgente){
           +'<div class="team-metric"><div class="team-metric-label">Comisiones netas para TL s/stock TM</div><div class="team-metric-value">USD '+fmt(Math.round(agPrNeta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Comisiones brutas s/reservas TM</div><div class="team-metric-value">USD '+fmt(Math.round(agResBruta))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Comisiones netas s/reservas TM</div><div class="team-metric-value">USD '+fmt(Math.round(agResNeta))+'</div></div>'
-          +'<div class="team-metric"><div class="team-metric-label">Gastos Team</div><div class="team-metric-value" style="color:#fca5a5">USD '+fmt(Math.round(gastosTeamUSD))+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Gastos Team</div><div class="team-metric-value" style="color:#FF4444">USD '+fmt(Math.round(gastosTeamUSD))+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Rentabilidad team</div>'
-          +'<div class="team-metric-value" style="color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00C853':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
-          +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00C853':'#fca5a5')+'">'+rentTeamPct+'%</div>':'')
+          +'<div class="team-metric-value" style="color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00DD66':'#FF4444')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
+          +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#00DD66':'#FF4444')+'">'+rentTeamPct+'%</div>':'')
           +'</div>'
           +sep+'Stock del team</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
           +'<div class="team-metric"><div class="team-metric-label">Propiedades activas</div><div class="team-metric-value">'+teamActivas+'</div></div>'
-          +'<div class="team-metric"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#FFF000">'+teamReservadas+'</div></div>'
-          +'<div class="team-metric"><div class="team-metric-label">Cerradas</div><div class="team-metric-value" style="color:#00C853">'+teamCerradas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#FFCC00">'+teamReservadas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Cerradas</div><div class="team-metric-value" style="color:#00DD66">'+teamCerradas+'</div></div>'
           +'</div>'
           +'</div></div>';
       }
@@ -658,10 +656,10 @@ function loadDashboard(filtroAgente){
       +'<div style="width:3px;height:14px;background:'+TO_BLUE+';border-radius:2px"></div>Stock y captaciones</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1.5rem">'
       +dcard('🏠','Captaciones en venta',''+captacionesActuales,'Props + unidades activas',TO_BLUE)
-      +dcard('🟡','Reservadas',''+reservadas,'','#FFF000')
+      +dcard('🟡','Reservadas',''+reservadas,'','#FFCC00')
       +dcard('🟢','Vendidas este año',''+opsAno.length,'','#00C853')
       +dcard('📋','Com. proy. stock','USD '+fmt(Math.round(comStock)),'',TO_BLUE)
-      +dcard('⏳','Com. proy. reservas','USD '+fmt(Math.round(comReservas)),'','#FFF000')
+      +dcard('⏳','Com. proy. reservas','USD '+fmt(Math.round(comReservas)),'','#FFCC00')
       +'</div>';
 
     // Bloque 3: Objetivo
@@ -707,7 +705,7 @@ function loadDashboard(filtroAgente){
         )
         +'</div>';
     }else{
-      html+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:1.25rem;margin-bottom:1rem;font-size:13px;color:#FFF000">'
+      html+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:1.25rem;margin-bottom:1rem;font-size:13px;color:#FFCC00">'
         +'💡 No hay objetivo anual cargado. Agregá uno en <strong>Objetivos</strong> con período <strong>Anual</strong> y unidad <strong>USD</strong>.</div>';
     }
 
@@ -845,7 +843,7 @@ function propCardHtml(p,sheet,mostrarReferido,gastosProp){
   if(rentInfo&&p.estado==='En venta'){
     var dias=diasEnMercado(p.fecha,null)||0;
     var mesesExtra=dias>90?Math.floor((dias-90)/30):0;
-    var colorRent=rentInfo.pct>=60?'#00C853':rentInfo.pct>=30?'#FFF000':'#FF1A1A';
+    var colorRent=rentInfo.pct>=60?'#00C853':rentInfo.pct>=30?'#FFCC00':'#FF1A1A';
     rentWidget='<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'
       +'<span style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.3px;font-weight:600">Neto proyectado</span>'
       +'<span style="font-size:16px;font-weight:800;color:'+colorRent+'">'+rentInfo.pct+'%</span>'
@@ -991,7 +989,7 @@ function verFichaProp(id,sheet){
         +(gastosUSD?'<div class="ficha-row"><span class="ficha-label">Gastos USD</span><span class="ficha-value" style="color:#FF1A1A">− USD '+fmt(Math.round(gastosUSD))+'</span></div>':'')
         +(gastosARS?'<div class="ficha-row"><span class="ficha-label">Gastos ARS</span><span class="ficha-value" style="color:#FF1A1A">− $ '+fmt(Math.round(gastosARS))+'</span></div>':'')
         +(gastosUSD||comNetaBase?'<div class="ficha-row" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:4px"><span class="ficha-label" style="font-weight:700">Neto ajustado</span><span class="ficha-value" style="color:#00C853;font-weight:800">USD '+fmt(Math.round(comNeta))+'</span></div>':'')
-        +(comBruta>0?'<div class="ficha-row"><span class="ficha-label" style="font-weight:700">Rentabilidad neta</span><span class="ficha-value" style="font-weight:800;color:'+(comNeta/comBruta>=0.5?'#00C853':comNeta/comBruta>=0.3?'#FFF000':'#FF1A1A')+'">'+Math.round(comNeta/comBruta*100)+'%</span></div>':'')
+        +(comBruta>0?'<div class="ficha-row"><span class="ficha-label" style="font-weight:700">Rentabilidad neta</span><span class="ficha-value" style="font-weight:800;color:'+(comNeta/comBruta>=0.5?'#00C853':comNeta/comBruta>=0.3?'#FFCC00':'#FF1A1A')+'">'+Math.round(comNeta/comBruta*100)+'%</span></div>':'')
         +(ivaTotal?'<div class="ficha-row"><span class="ficha-label">IVA recaudado</span><span class="ficha-value">USD '+fmt(Math.round(ivaTotal))+'</span></div>':'')
         +'<div class="section-divider">Cliente</div>'
         +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
@@ -1232,7 +1230,7 @@ function loadDesarrollos(){
         var netoDev=comBrutaDev*0.80-comBrutaDev*0.80*0.04;
         var rentDevNeta=netoDev-gastosDev;
         var rentDevPct=comBrutaDev>0?Math.round(rentDevNeta/comBrutaDev*100):null;
-        var rentDevColor=rentDevPct===null?'#888':rentDevPct>=70?'#00C853':rentDevPct>=50?'#FFF000':'#FF1A1A';
+        var rentDevColor=rentDevPct===null?'#888':rentDevPct>=70?'#00C853':rentDevPct>=50?'#FFCC00':'#FF1A1A';
         html+='<div class="dev-card" onclick="verFichaDesarrollo(\''+d.id+'\')">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:700;font-size:15px;color:#185FA5">🏢 '+d.nombre+'</div>'
@@ -1244,7 +1242,7 @@ function loadDesarrollos(){
           +'<span class="badge badge-blue">'+activas+' act.</span><span class="badge badge-amber">'+reservadas+' res.</span><span class="badge badge-green">'+vendidas+' vend.</span>'
           +'</div>'
           +'<div style="font-size:12px;color:#00C853;font-weight:600;margin-top:6px">Generada: USD '+fmt(Math.round(comGen))+'</div>'
-          +'<div style="font-size:12px;color:#FFF000;font-weight:600;margin-top:2px">Proyectada: USD '+fmt(Math.round(comProy))+'</div>'
+          +'<div style="font-size:12px;color:#FFCC00;font-weight:600;margin-top:2px">Proyectada: USD '+fmt(Math.round(comProy))+'</div>'
           +(rentDevPct!==null?'<div style="font-size:12px;font-weight:700;margin-top:4px;color:'+rentDevColor+'">Neto proy: '+rentDevPct+'%</div>':'')
           +'</div></div>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">'
@@ -1275,17 +1273,17 @@ function verFichaDesarrollo(devId){
       +(dev.telefono?'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+dev.telefono+'</span></div>':'');
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:1rem 0">'
       +'<div style="background:#eff6ff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Activas</div><div style="font-size:22px;font-weight:700;color:#1e40af">'+act.length+'</div></div>'
-      +'<div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Reservadas</div><div style="font-size:22px;font-weight:700;color:#FFF000">'+res2.length+'</div></div>'
+      +'<div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Reservadas</div><div style="font-size:22px;font-weight:700;color:#FFCC00">'+res2.length+'</div></div>'
       +'<div style="background:#d1fae5;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Vendidas</div><div style="font-size:22px;font-weight:700;color:#00C853">'+vend.length+'</div></div>'
       +'<div style="background:#f3f4f6;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">'+unis.length+'</div></div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">'
       +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. generada</div><div style="font-size:18px;font-weight:700;color:#00C853">USD '+fmt(Math.round(comGen))+'</div></div>'
-      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. proyectada</div><div style="font-size:18px;font-weight:700;color:#FFF000">USD '+fmt(Math.round(comProy))+'</div></div>'
+      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px">Com. proyectada</div><div style="font-size:18px;font-weight:700;color:#FFCC00">USD '+fmt(Math.round(comProy))+'</div></div>'
       +'</div>';
     if(unis.length){
       html+='<div class="section-divider">Unidades</div><div class="table-wrap"><table><tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Condición</th></tr>';
-      unis.forEach(function(u){html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td><td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#00C853':'#FFF000')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td><td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td></tr>';});
+      unis.forEach(function(u){html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td><td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#00C853':'#FFCC00')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td><td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td></tr>';});
       html+='</table></div>';
     }
     html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem"><button class="btn" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="closeModal();verUnidades(\''+devId+'\',\''+esc(dev.nombre)+'\','+Number(dev.comision_compradora||4)+','+Number(dev.comision_vendedora||3)+')">Gestionar unidades →</button></div>';
@@ -1336,14 +1334,14 @@ function verUnidades(devId,devNombre,compPct,vendPct){
     var comProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
     var html='<div class="section-header"><div><div class="section-title">'+devNombre+'</div>'
       +'<div style="font-size:12px;color:#888;margin-top:4px">'+unis.length+' uds · '+activas+' act. · '+reservadas+' res. · '+vendidas+' vend.</div>'
-      +'<div style="display:flex;gap:12px;margin-top:6px"><span style="font-size:13px;color:#00C853;font-weight:600">Generada: USD '+fmt(Math.round(comGen))+'</span><span style="font-size:13px;color:#FFF000;font-weight:600">Proyectada: USD '+fmt(Math.round(comProy))+'</span></div>'
+      +'<div style="display:flex;gap:12px;margin-top:6px"><span style="font-size:13px;color:#00C853;font-weight:600">Generada: USD '+fmt(Math.round(comGen))+'</span><span style="font-size:13px;color:#FFCC00;font-weight:600">Proyectada: USD '+fmt(Math.round(comProy))+'</span></div>'
       +'</div><div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="loadDesarrollos()">← Volver</button><button class="btn btn-sm btn-primary" onclick="abrirModalUnidad(\''+devId+'\',\''+esc(devNombre)+'\','+compPct+','+vendPct+')">+ Nueva unidad</button></div></div>';
     if(unis.length){
       html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Unidad</th><th>Precio</th><th>Comisión</th><th>Referida</th><th>Agente</th><th>Condición</th><th></th></tr>';
       unis.forEach(function(u){
         var ref=u.referido||'no';
         html+='<tr><td style="font-weight:600">'+u.nombre+'</td><td>USD '+fmt(u.precio)+'</td>'
-          +'<td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#00C853':'#FFF000')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td>'
+          +'<td style="font-weight:600;color:'+(u.condicion==='Vendida'?'#00C853':'#FFCC00')+'">USD '+fmt(Math.round(Number(u.comision||0)))+'</td>'
           +'<td>'+(ref==='si'?'<span class="referido-tag">✓ Ref.</span>':'<span class="no-referido-tag">No</span>')+'</td>'
           +'<td style="color:#888">'+(u.agente||'').split(' ').slice(-1)[0]+'</td>'
           +'<td><span class="badge '+estadoBadge(u.condicion)+'">'+u.condicion+'</span></td>'
@@ -1540,11 +1538,11 @@ function loadFinanzas(){
             +(esLider?'<td style="color:#FF1A1A">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>':'')
             +'<td style="color:#00C853">+USD '+fmt(ivaTotal)+'</td>'
             +'<td style="font-weight:700;color:#00C853">USD '+fmt(neto)+'</td>'
-            +'<td style="font-weight:700;color:'+(netoPct>=70?'#00C853':netoPct>=50?'#FFF000':'#FF1A1A')+'">'+netoPct+'%</td>'
+            +'<td style="font-weight:700;color:'+(netoPct>=70?'#00C853':netoPct>=50?'#FFCC00':'#FF1A1A')+'">'+netoPct+'%</td>'
             +'<td style="white-space:nowrap">'+'<button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')">✏️</button> '+'<button class="btn btn-sm" style="color:#FF1A1A" onclick="eliminarOp(\''+o.id+'\')">×</button>'+'</td></tr>';
         });
         var rentTotal=totalBruta>0?Math.round((totalNeta-gastosPropUSD)/totalBruta*100):0;
-        var rentColor=rentTotal>=70?'#00C853':rentTotal>=50?'#FFF000':'#FF1A1A';
+        var rentColor=rentTotal>=70?'#00C853':rentTotal>=50?'#FFCC00':'#FF1A1A';
         html+='<tr style="background:#f8fafc;font-weight:700;border-top:2px solid #e5e7eb">'
           +'<td colspan="3" style="color:#555">TOTALES</td>'
           +'<td>USD '+fmt(totalBruta)+'</td><td colspan="3"></td>'
@@ -1822,7 +1820,7 @@ function loadObjetivos(){
           }).reduce(function(a,op){return a+Number(op.comision_total||0);},0);
         }
         var pct=Math.min(Math.round(actualReal/Number(o.meta||1)*100),100);
-        var color=pct>=100?'#00C853':pct>=50?'#FFF000':'#FF1A1A';
+        var color=pct>=100?'#00C853':pct>=50?'#FFCC00':'#FF1A1A';
         html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div>'
           +'<div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.periodo?' · '+o.periodo:'')+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
@@ -2020,14 +2018,14 @@ function loadEquipo(){
 
     // % objetivo
     var pctAnual=metaAnual>0?Math.min(Math.round(factBruta/metaAnual*100),100):null;
-    var pctAnualColor=pctAnual===null?'#888':pctAnual>=100?'#00C853':pctAnual>=50?'#FFF000':'#FF1A1A';
+    var pctAnualColor=pctAnual===null?'#888':pctAnual>=100?'#00C853':pctAnual>=50?'#FFCC00':'#FF1A1A';
 
     // % cuatrimestre
     var mesActual=new Date().getMonth()+1;
     var cuatri=mesActual<=4?1:mesActual<=8?2:3;
     var metaCuatri=metaAnual*(cuatri===1?0.25:cuatri===2?0.35:0.40);
     var pctCuatri=metaCuatri>0?Math.min(Math.round(factBruta/metaCuatri*100),100):null;
-    var pctCuatriColor=pctCuatri===null?'#888':pctCuatri>=100?'#00C853':pctCuatri>=50?'#FFF000':'#FF1A1A';
+    var pctCuatriColor=pctCuatri===null?'#888':pctCuatri>=100?'#00C853':pctCuatri>=50?'#FFCC00':'#FF1A1A';
 
     // % participación en facturación del team
     var pctParticip=brutaTotal>0?Math.round(factBruta/brutaTotal*100):0;
