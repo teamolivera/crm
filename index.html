@@ -705,7 +705,7 @@ function htmlFormProp(d,sheet,mostrarReferido){
     +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
     +'<div class="form-group"><label>Estado</label><select id="f-estado">'+estadoOpts+'</select></div></div>'
-    +'<div class="form-group"><label>Valor de cierre (USD)</label><input id="f-precio" type="number" value="'+(d.precio||d.valor_cierre||'')+'"/></div>'
+    +'<div class="form-group"><label>'+(esBusqueda?'Valor de cierre':'Valor de publicación')+' (USD)</label><input id="f-precio" type="number" value="'+(d.precio||d.valor_cierre||'')+'"/></div>'
     +referidoHtml
     +'<div class="section-divider">Cliente '+(esBusqueda?'(comprador)':'(vendedor)')+'</div>'
     +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off"/></div>'
@@ -757,7 +757,14 @@ function calcRentProp(p,gastosProp){
   var compPct=Number(p.comision_compradora||4);
   var vendPct=Number(p.comision_vendedora||3);
   var bruta=precio*(compPct+vendPct)/100;
-  var neta=bruta*0.80-(bruta*0.80*0.04);
+  // Para TM: referido Sí = 35%, referido No = 45%
+  // Para TL: siempre calcular como TL (35% + martillero)
+  var esLiderCalc=currentUser.rol==='Líder';
+  var referido=p.referido||'no';
+  var pctNeto=esLiderCalc
+    ?(referido==='si'?0.45:0.35)*(1-0.04)  // TL: 45% ref / 35% no ref, menos martillero
+    :(referido==='si'?0.35:0.45);           // TM: 35% ref / 45% no ref
+  var neta=bruta*pctNeto;
   var gastos=gastosProp.filter(function(g){return g.propiedad_id===p.id;}).reduce(function(a,g){
     if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
     return a+Number(g.monto||0);
@@ -939,8 +946,8 @@ function verFichaProp(id,sheet){
         +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
         +'<div class="section-divider">Comisiones</div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(op&&op.comision_compradora!==undefined?op.comision_compradora:p.comision_compradora||4)+'%</span></div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(op&&op.comision_vendedora!==undefined?op.comision_vendedora:p.comision_vendedora||0)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(p.comision_compradora||4)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(p.comision_vendedora||0)+'%</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
         +'<button class="btn" onclick="closeModal()">Cerrar</button>'
@@ -1429,7 +1436,7 @@ function loadFinanzas(){
     var gastosPropUSD=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosGrales=allCC.filter(function(r){return r.tipo==='gasto_tl';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
-    var gastosTeam=allCC.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var gastosTeam=allCC.filter(function(r){return r.tipo==='gasto_gonzalo'||r.tipo==='gasto_team_general';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
     var rentNeta=factNeta-gastosPropUSD-gastosOficina-gastosGrales-gastosTeam;
 
     var html='<div class="grid-metrics" style="margin-bottom:1rem">'
@@ -1527,9 +1534,22 @@ function loadFinanzas(){
     // ---- GASTOS TEAM ----
     else if(finTab==='gastos_team'){
       var tms2=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+      // Gastos generales del team (sin TM específico)
+      var gastosGeneralesTeam=allCC.filter(function(r){return r.tipo==='gasto_team_general';});
+      var totalGastosGralesTeam=gastosGeneralesTeam.reduce(function(a,r){return a+Number(r.monto||0);},0);
       html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:1rem">'
         +'<button class="btn btn-primary" onclick="abrirNuevoGastoTeam(null)">+ Gasto general team</button>'
         +'</div>';
+      if(gastosGeneralesTeam.length){
+        html+='<div class="card"><div class="card-header"><span class="card-title">Gastos generales del team</span>'
+          +'<span style="font-weight:700;color:#991b1b">USD '+fmt(Math.round(totalGastosGralesTeam))+'</span></div>'
+          +'<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
+        gastosGeneralesTeam.forEach(function(r){
+          html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
+            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td></tr>';
+        });
+        html+='</table></div></div>';
+      }
       // Por TM
       tms2.forEach(function(tm){
         var gastTM=allCC.filter(function(r){return r.tipo==='gasto_gonzalo'&&r.agente===tm;});
@@ -1740,7 +1760,7 @@ function loadObjetivos(){
     var objs=(res[0]||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
     var allOpsObj=res[1]||[];
     var anoActual=new Date().getFullYear();
-          +'<button class="btn btn-sm btn-primary" onclick="abrirModalObjetivo()">Actualizar</button>'
+    var html='<div class="section-header"><div class="section-title">Objetivos</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
     if(objs.length){
       objs.forEach(function(o){
         var actualReal=Number(o.actual||0);
@@ -1749,14 +1769,14 @@ function loadObjetivos(){
             return op.agente===o.agente&&(op.fecha_venta||op.fecha||'').startsWith(String(anoActual));
           }).reduce(function(a,op){return a+Number(op.comision_total||0);},0);
         }
-        var p=Math.min(Math.round(actualReal/Number(o.meta||1)*100),100);
-        var color=p>=100?'#059669':p>=50?'#d97706':'#CC2229';
+        var pct=Math.min(Math.round(actualReal/Number(o.meta||1)*100),100);
+        var color=pct>=100?'#059669':pct>=50?'#d97706':'#CC2229';
         html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
           +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div>'
           +'<div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.periodo?' · '+o.periodo:'')+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
           +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+fmt(Math.round(actualReal))+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div>'
-          +'<div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
-          +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+color+'"></div></div>'
+          +'<div style="font-size:12px;color:#888">'+pct+'%</div></div></div>'
+          +'<div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'
           +'<div class="obj-actions">'
           +'<button class="btn btn-sm btn-primary" onclick="abrirModalObjetivo()">Actualizar</button>'
           +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){setTimeout(function(){loadObjetivos();},1000);})">Eliminar</button>'
@@ -1787,6 +1807,22 @@ function guardarObjetivo(id){
   else{data.id=uid();addRow('Objetivos',data,function(){setTimeout(function(){loadObjetivos();},1000);});}
 }
 
+function abrirNuevoMovOficina(){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo movimiento de oficina</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Concepto</label><input id="mo-concepto" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Tipo</label><select id="mo-tipo"><option value="Gasto">Gasto</option><option value="Ingreso">Ingreso</option></select></div>'
+    +'<div class="form-group"><label>Monto USD</label><input id="mo-monto" type="number"/></div></div>'
+    +'<div class="form-group"><label>Fecha</label><input id="mo-fecha" type="date" value="'+today()+'"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="guardarMovOficina()">Guardar</button></div>';
+  openModal();
+}
+function guardarMovOficina(){
+  var data={id:uid(),fecha:v('mo-fecha'),agente:currentUser.nombre,concepto:v('mo-concepto'),monto:v('mo-monto'),tipo:v('mo-tipo')};
+  closeModal();loading();addRow('Finanzas',data,function(){setTimeout(function(){loadFinanzas();},1000);});
+}
+
 function abrirNuevoGastoGeneral(){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo gasto general</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Concepto</label><input id="gg-concepto" autocomplete="off"/></div>'
@@ -1804,21 +1840,26 @@ function guardarGastoGeneral(){
 }
 
 function abrirNuevoGastoTeam(tm){
+  // tm=null → gasto general del team (sin TM específico)
+  // tm='nombre' → gasto sobre ese TM
+  var esGeneral=(tm===null);
   var tms=allAgentes.filter(function(a){return a!==currentUser.nombre;});
-  var opsTM=tms.map(function(a){return '<option value="'+esc(a)+'"'+(a===tm?' selected':'')+'>'+a+'</option>';}).join('');
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto sobre '+(tm||'el team')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +(tm===null?'<div class="form-group"><label>Team Member</label><select id="gt-agente">'+opsTM+'</select></div>':'<input type="hidden" id="gt-agente" value="'+esc(tm)+'">')
+  var opsTM=tms.map(function(a){return '<option value="'+esc(a)+'"'+'>'+a+'</option>';}).join('');
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(esGeneral?'Gasto general del team':'Gasto sobre '+tm)+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Concepto</label><input id="gt-concepto" autocomplete="off"/></div>'
     +'<div class="row"><div class="form-group"><label>Monto USD</label><input id="gt-monto" type="number"/></div>'
     +'<div class="form-group"><label>Fecha</label><input id="gt-fecha" type="date" value="'+today()+'"/></div></div>'
     +'<div class="form-group"><label>Nota (opcional)</label><input id="gt-nota" autocomplete="off"/></div>'
+    +'<input type="hidden" id="gt-agente" value="'+(esGeneral?'__general__':esc(tm))+'">'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
     +'<button class="btn btn-primary" onclick="guardarGastoTeam()">Guardar</button></div>';
   openModal();
 }
 function guardarGastoTeam(){
-  var data={id:uid(),fecha:v('gt-fecha'),agente:v('gt-agente'),concepto:v('gt-concepto'),monto:v('gt-monto'),moneda:'USD',tipo:'gasto_gonzalo',visible_agente:'no',nota:v('gt-nota')||''};
+  var ag=v('gt-agente');
+  var esGeneral=(ag==='__general__');
+  var data={id:uid(),fecha:v('gt-fecha'),agente:esGeneral?currentUser.nombre:ag,concepto:v('gt-concepto'),monto:v('gt-monto'),moneda:'USD',tipo:esGeneral?'gasto_team_general':'gasto_gonzalo',visible_agente:'no',nota:v('gt-nota')||''};
   closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
