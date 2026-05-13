@@ -360,10 +360,16 @@ function loadDashboard(filtroAgente){
 
         allAgentes.forEach(function(ag){
           var esLiderAg=ag===currentUser.nombre;
-          // Buscar por nombre completo o nombre corto (ej: "Gonzalo Olivera" vs "Gonzalo Javier Olivera")
+          // Comparar agentes por apellido (última palabra) o coincidencia exacta
           function matchAgente(agNombre,agFiltro){
-            var a=(agNombre||'').trim();var b=(agFiltro||'').trim();
-            return a===b||a.indexOf(b)>=0||b.indexOf(a)>=0;
+            var a=(agNombre||'').trim().toLowerCase();
+            var b=(agFiltro||'').trim().toLowerCase();
+            if(a===b)return true;
+            if(a.indexOf(b)>=0||b.indexOf(a)>=0)return true;
+            // Comparar por apellido (última palabra)
+            var apA=a.split(' ').pop();
+            var apB=b.split(' ').pop();
+            return apA===apB&&apA.length>3;
           }
           var agProps=allProps.filter(function(p){return matchAgente(p.agente,ag)&&!p.desarrollo_id;});
           var agBusqs=allBusq.filter(function(b){return matchAgente(b.agente,ag);});
