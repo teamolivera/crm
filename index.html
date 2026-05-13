@@ -903,10 +903,11 @@ function verFichaProp(id,sheet){
       getSheet('Gastos',function(e3,gastosList){
       var op=(ops||[]).find(function(o){return o.propiedad_id===id;});
       var comBruta=op?Number(op.comision_total||0):0;
-      var comNetaBase=op?Number(op.neto_team_leader||op.neto_agente||0):0;
+      var esLiderFicha=currentUser.rol==='Líder';
+      var comNetaBase=op?(esLiderFicha?Number(op.neto_team_leader||0):Number(op.neto_agente||0)):0;
       var ivaTotal=op?Number(op.iva_comprador||0)+Number(op.iva_vendedor||0)+Number(op.iva_oficina||0):0;
       var fechaCierre=op?(op.fecha_venta||op.fecha||''):'-';
-      var valorCierre=p.valor_cierre||p.precio_final||0;
+      var valorCierre=op?(op.valor_cierre||op.precio_final||0):(p.valor_cierre||p.precio_final||0);
       // Gastos de esta propiedad
       var gastosProp=(gastosList||[]).filter(function(g){return g.propiedad_id===id;});
       var gastosUSD=gastosProp.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
@@ -938,13 +939,11 @@ function verFichaProp(id,sheet){
         +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
         +'<div class="section-divider">Comisiones</div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(p.comision_compradora||4)+'%</span></div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(p.comision_vendedora||3)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(op?(op.comision_compradora||p.comision_compradora||4):(p.comision_compradora||4))+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(op?(op.comision_vendedora||p.comision_vendedora||0):(p.comision_vendedora||0))+'%</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
         +'<button class="btn" onclick="closeModal()">Cerrar</button>'
-        +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\',window._editProp)">Editar</button>'
-        +(valorCierre?'<button class="btn btn-success" onclick="closeModal();abrirEditCierreProp(\''+p.id+'\',\''+sheet+'\')">✏️ Editar cierre</button>':'')
         +'</div>';
       window._editProp=p;
       openModal();
