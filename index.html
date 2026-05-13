@@ -424,19 +424,11 @@ function loadDashboard(filtroAgente){
             });
           }
 
-          var _propActivas=agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';});
-          _propActivas.forEach(function(p){
-            var comp=Number(p.comision_compradora||0);
-            var vend=Number(p.comision_vendedora||0);
-            if(comp===0&&vend===0){comp=4;vend=3;}
-            var bruta=Number(p.precio||0)*(comp+vend)/100;
-            console.log('PROP ag:['+ag+'] dir:['+p.direccion+'] precio:'+p.precio+' comp:'+p.comision_compradora+' vend:'+p.comision_vendedora+' bruta:'+bruta);
-          });
           calcStock(
-            _propActivas,
+            agTodas.filter(function(p){return (p.estado||'').trim()==='En venta';}),
             function(p){
-              var comp=Number(p.comision_compradora||0);
-              var vend=Number(p.comision_vendedora||0);
+              var comp=parseFloat(p.comision_compradora)||0;
+              var vend=parseFloat(p.comision_vendedora)||0;
               if(comp===0&&vend===0){comp=4;vend=3;}
               return Number(p.precio||0)*(comp+vend)/100;
             },
@@ -450,8 +442,8 @@ function loadDashboard(filtroAgente){
           calcStock(
             agTodas.filter(function(p){return (p.estado||'').trim()==='Reservada';}),
             function(p){
-              var comp=Number(p.comision_compradora||0);
-              var vend=Number(p.comision_vendedora||0);
+              var comp=parseFloat(p.comision_compradora)||0;
+              var vend=parseFloat(p.comision_vendedora)||0;
               if(comp===0&&vend===0){comp=4;vend=3;}
               return Number(p.precio||0)*(comp+vend)/100;
             },
