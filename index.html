@@ -1568,14 +1568,14 @@ function loadEquipo(){
     if(!agenteActual&&allAgentes.length)agenteActual=allAgentes[0];
 
     Promise.all([
-      fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-      fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-      fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();})
+      fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
     ]).then(function(res){
       var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allFins=res[4]||[],allDevs=res[5]||[],allUnis=res[6]||[],allCC=res[7]||[];
 
