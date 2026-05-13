@@ -688,6 +688,7 @@ function loadDashboard(filtroAgente){
 // ============================================================
 function htmlFormProp(d,sheet,mostrarReferido){
   d=d||{};
+  var esBusqueda=sheet==='Busquedas';
   var referidoHtml='';
   if(mostrarReferido){
     referidoHtml='<div class="form-group"><label>¿Referida por Gonzalo?</label>'
@@ -696,14 +697,17 @@ function htmlFormProp(d,sheet,mostrarReferido){
       +'<option value="si">Sí — referida por el Team Leader</option>'
       +'</select></div>';
   }
-  return '<div class="section-divider">Datos de la propiedad</div>'
+  var estadoOpts=esBusqueda
+    ?'<option>Reservada</option><option>Vendida</option>'
+    :'<option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option>';
+  return '<div class="section-divider">Datos de la '+(esBusqueda?'búsqueda':'propiedad')+'</div>'
     +'<div class="row"><div class="form-group"><label>Dirección</label><input id="f-dir" value="'+(d.direccion||'')+'" autocomplete="off"/></div>'
     +'<div class="form-group"><label>Localidad</label><input id="f-loc" value="'+(d.localidad||d.zona||'Villa Urquiza')+'" autocomplete="off"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Tipo</label><select id="f-tipo"><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
-    +'<div class="form-group"><label>Estado</label><select id="f-estado"><option>En venta</option><option>En alquiler</option><option>Reservada</option><option>Vendida</option><option>Alquilada</option></select></div></div>'
-    +'<div class="form-group"><label>Valor de publicación (USD)</label><input id="f-precio" type="number" value="'+(d.precio||'')+'"/></div>'
+    +'<div class="form-group"><label>Estado</label><select id="f-estado">'+estadoOpts+'</select></div></div>'
+    +'<div class="form-group"><label>Valor de cierre (USD)</label><input id="f-precio" type="number" value="'+(d.precio||d.valor_cierre||'')+'"/></div>'
     +referidoHtml
-    +'<div class="section-divider">Cliente (vendedor)</div>'
+    +'<div class="section-divider">Cliente '+(esBusqueda?'(comprador)':'(vendedor)')+'</div>'
     +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off"/></div>'
     +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="'+(d.telefono||'')+'" autocomplete="off"/></div>'
     +'<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="'+(d.mail||'')+'" autocomplete="off"/></div></div>'
@@ -805,7 +809,8 @@ function propCardHtml(p,sheet,mostrarReferido,gastosProp){
     +'<button class="btn btn-sm" onclick="abrirModalProp(\''+sheet+'\',window._props&&window._props[\''+p.id+'\']?window._props[\''+p.id+'\']: {id:\''+p.id+'\',direccion:\''+esc(p.direccion)+'\',localidad:\''+esc(p.localidad||p.zona||'')+'\',tipo:\''+esc(p.tipo||'')+'\',estado:\''+esc(p.estado||'')+'\',precio:\''+p.precio+'\',cliente:\''+esc(p.cliente||'')+'\',telefono:\''+esc(p.telefono||'')+'\',mail:\''+esc(p.mail||'')+'\',comision_compradora:\''+p.comision_compradora+'\',comision_vendedora:\''+p.comision_vendedora+'\',referido:\''+referido+'\'})">✏️ Editar</button>'
     +'<button class="btn btn-sm btn-primary" onclick="abrirGastos(\''+p.id+'\',\''+esc(p.direccion)+'\')">+ Gasto</button>'
     +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+referido+'\')">Reservar/Vender</button>'
-    +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')">Estado</button>'
+    +(p.estado==='Reservada'&&sheet==='Busquedas'?'<button class="btn btn-sm btn-success" onclick="guardarEstado(\''+p.id+'\',\'Busquedas\',\'Vendida\')" >Pasar a Vendida</button>':'')
+    +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')" >Estado</button>'
     +'<button class="btn btn-sm" style="color:#991b1b;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\',\''+sheet+'\')">Eliminar</button>'
     +'</div></div>';
 }
@@ -874,8 +879,8 @@ function cambiarEstado(id,sheet){
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEstado(\''+id+'\',\''+sheet+'\')" >Guardar</button></div>';
   openModal();
 }
-function guardarEstado(id,sheet){
-  var e=v('nuevo-estado');
+function guardarEstado(id,sheet,estadoForzado){
+  var e=estadoForzado||v('nuevo-estado');
   if(e==='Vendida'){
     // Redirigir al modal de cierre
     closeModal();
@@ -1030,7 +1035,7 @@ function calcCierre(referido,esAgente){
     +'<div class="distrib-row"><span>Parte Oficina ('+pctO+'%)</span><span>USD '+fmt(Math.round(parteO))+'</span></div>'
     +'<div class="distrib-sep"></div>'
     +'<div class="distrib-row" style="color:#991b1b"><span>− Martillero ('+pctM+'% s/ TL)</span><span>USD '+fmt(Math.round(martillero))+'</span></div>'
-    +'<div class="distrib-total"><span>🟢 Neto Team Leader</span><span>USD '+fmt(Math.round(netoTL))+'</span></div>'
+    +'<div class="distrib-total"><span>🟢 '+(esAgente?'Neto Team Member':'Neto Team Leader')+'</span><span>USD '+fmt(Math.round(netoTL))+'</span></div>'
     +'<div class="distrib-sep"></div>'
     +'<div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:6px">Recaudación IVA (aparte)</div>'
     +'<div class="distrib-row"><span>IVA comprador</span><span>'+ivaCm+' '+fmt(ivaC)+'</span></div>'
@@ -1472,7 +1477,7 @@ function loadFinanzas(){
         html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th></th></tr>';
         fins.forEach(function(f){
           html+='<tr><td>'+(f.fecha||'')+'</td><td>'+f.concepto+'</td><td>'+f.tipo+'</td><td style="font-weight:600;color:'+(f.tipo==='Ingreso'?'#065f46':'#991b1b')+'">USD '+fmt(f.monto)+'</td>'
-            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td></tr>';
         });
         html+='</table></div></div>';
       }else{html+='<div class="empty">Sin movimientos de oficina.</div>';}
@@ -1487,7 +1492,7 @@ function loadFinanzas(){
         html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
         gastosGral.forEach(function(r){
           html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
-            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td></tr>';
         });
         html+='</table></div></div>';
       }else{html+='<div class="empty">Sin gastos generales.</div>';}
@@ -1513,7 +1518,7 @@ function loadFinanzas(){
           html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
           gastTM.forEach(function(r){
             html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
-              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td></tr>';
           });
           html+='</table></div>';
         }else{html+='<div class="empty">Sin gastos.</div>';}
@@ -1537,7 +1542,7 @@ function loadFinanzas(){
           html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
           ccTM.forEach(function(r){
             html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="font-weight:600;color:#991b1b">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
-              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td></tr>';
           });
           html+='</table></div>';
         }else{html+='<div class="empty">Sin cargos.</div>';}
@@ -1552,7 +1557,10 @@ function loadFinanzas(){
 function eliminarOp(id){
   if(!confirm('¿Eliminar esta operación?'))return;
   loading();
-  delRow('Operaciones',id,function(){loadFinanzas();});
+  delRow('Operaciones',id,function(){
+    // Esperar 1 segundo para que SheetDB procese el delete
+    setTimeout(function(){setTimeout(function(){loadFinanzas();},1000);},1000);
+  });
 }
 
 function abrirEditCierreProp(propId,sheet){
@@ -1634,7 +1642,7 @@ function guardarEditCierre(opId,esAgente){
     iva_oficina_moneda:ivaOm,iva_total:ivaTotal,neto_agente:netoAg,neto_team_leader:netoTL
   };
   closeModal();loading();
-  updRow('Operaciones',opId,data,function(){loadFinanzas();});
+  updRow('Operaciones',opId,data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
 function abrirNuevoGastoGeneral(){
@@ -1650,7 +1658,7 @@ function abrirNuevoGastoGeneral(){
 }
 function guardarGastoGeneral(){
   var data={id:uid(),fecha:v('gg-fecha'),agente:currentUser.nombre,concepto:v('gg-concepto'),monto:v('gg-monto'),moneda:'USD',tipo:'gasto_tl',visible_agente:'no',nota:v('gg-nota')||''};
-  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
+  closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
 function abrirNuevoGastoTeam(tm){
@@ -1669,7 +1677,7 @@ function abrirNuevoGastoTeam(tm){
 }
 function guardarGastoTeam(){
   var data={id:uid(),fecha:v('gt-fecha'),agente:v('gt-agente'),concepto:v('gt-concepto'),monto:v('gt-monto'),moneda:'USD',tipo:'gasto_gonzalo',visible_agente:'no',nota:v('gt-nota')||''};
-  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
+  closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
 function abrirNuevoCC(tm){
@@ -1685,7 +1693,7 @@ function abrirNuevoCC(tm){
 }
 function guardarNuevoCC(tm){
   var data={id:uid(),fecha:v('nc-fecha'),agente:tm,concepto:v('nc-concepto'),monto:v('nc-monto'),moneda:'USD',tipo:'cuenta_corriente',visible_agente:'si',nota:v('nc-nota')||''};
-  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
+  closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
 
