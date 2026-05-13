@@ -474,7 +474,7 @@ function loadDashboard(filtroAgente){
           +'<div class="team-metric-value" style="color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
           +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#6ee7b7':'#fca5a5')+'">'+rentTeamPct+'%</div>':'')
           +'</div>'
-          +'<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:12px">Stock del team</div>'
+          +sep+'Stock del team</div>'
           +'<div class="team-metrics">'
           +'<div class="team-metric"><div class="team-metric-label">Propiedades activas</div><div class="team-metric-value">'+teamActivas+'</div></div>'
           +'<div class="team-metric"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#fcd34d">'+teamReservadas+'</div></div>'
@@ -1961,6 +1961,8 @@ function loadEquipo(){
     var ops=allOps.filter(function(o){
       return (o.agente||'').trim()===ag.trim();
     });
+    console.log('Panel Equipo - ag:['+ag+'] ops encontradas:'+ops.length+' total ops:'+allOps.length);
+    if(allOps.length>0)console.log('Primer agente en ops:['+allOps[0].agente+']');
     var gastos=allGastos.filter(function(g){return g.agente===ag;});
     var devs=allDevs.filter(function(d){return d.agente===ag;});
     var agDevIds=devs.map(function(d){return d.id;});
@@ -1974,7 +1976,7 @@ function loadEquipo(){
     var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length;
     var reservadas=todasProps.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';}).length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
     // Vendidas: usar ops cerradas como fuente de verdad
-    var vendidas=todasProps.filter(function(p){return (p.estado||'').trim().toLowerCase()==='vendida';}).length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
+    var vendidas=ops.length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
 
     var comReservasBruta=todasProps.filter(function(p){return p.estado==='Reservada';}).reduce(function(a,p){
       return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
