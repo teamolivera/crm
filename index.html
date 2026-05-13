@@ -1580,15 +1580,13 @@ function loadEquipo(){
       function toArr(x){return Array.isArray(x)?x:[];}
       var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]),allGastos=toArr(res[3]),allFins=toArr(res[4]),allDevs=toArr(res[5]),allUnis=toArr(res[6]),allCC=toArr(res[7]);
 
+      var vi=vistaActual==='individual'?' active':'';
+      var vc=vistaActual==='cuentas'?' active':'';
       var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>'
         +'<div class="tabs-secondary">'
-        +'<div class="tab-sec'+(vistaActual==='consolidado'?' active':'')+'" onclick="window._eq(\'consolidado\')">Vista consolidada</div>'
-        +'<div class="tab-sec'+(vistaActual==='individual'?' active':'')+'" onclick="window._eq(\'individual\')">Vista individual</div>'
-        +'<div class="tab-sec'+(vistaActual==='cuentas'?' active':'')+'" onclick="window._eq(\'cuentas\')">Cuenta corriente</div>'
+        +'<div class="tab-sec'+vi+'" onclick="window._eq(\'individual\')">Vista individual</div>'
+        +'<div class="tab-sec'+vc+'" onclick="window._eq(\'cuentas\')">Cuenta corriente</div>'
         +'</div>';
-
-      if(vistaActual==='consolidado'){
-        allAgentes.forEach(function(ag){
           var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
           var busqs=allBusq.filter(function(b){return b.agente===ag;});
           var todasProps=props.concat(busqs);
@@ -1638,7 +1636,7 @@ function loadEquipo(){
             +'</div></div>';
 
         });
-      }else if(vistaActual==='individual'){
+      }if(vistaActual==='individual'){
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'individual\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
         html+='</div>';
@@ -1717,7 +1715,7 @@ function loadEquipo(){
           html+='</table></div></div>';
         }
 
-      }else if(vistaActual==='cuentas'){
+      if(vistaActual==='cuentas'){
         html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
         allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'cuentas\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
         html+='</div>';
@@ -1762,13 +1760,10 @@ function loadEquipo(){
       document.getElementById('tabContent').innerHTML=html;
       window._eq=function(vista,ag){render(vista,ag);};
       window._elimCC=function(id){if(!confirm('¿Eliminar?'))return;delRow('CuentaCorriente',id,function(){render('cuentas',agenteActual);});};
-    }).catch(function(err){document.getElementById('tabContent').innerHTML='<div style="padding:2rem;color:#CC2229">Error: '+err.message+'</div>';});
   }
-  render('consolidado','');
-  render('consolidado','');
+  render('individual','');
   window._eq=function(vista,ag){render(vista,ag);};
 }
-
 // ============================================================
 // PANEL TEAM — click en widget
 // ============================================================
