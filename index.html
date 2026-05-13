@@ -296,7 +296,7 @@ function loadDashboard(filtroAgente){
     var allProps=toArr(res[0]),allBusq=toArr(res[1]),fins=toArr(res[2]),objs=toArr(res[3]);
     var allOpsDash=toArr(res[4]),allGastosDash=toArr(res[5]),allUnis=toArr(res[6]),allDevsDash=toArr(res[7]),allCC=toArr(res[8]);
     var reservas=[];
-    var ops=allOpsDash.filter(function(o){return o.agente===agente;});
+    var ops=allOpsDash.filter(function(o){return (o.agente||'').trim()===agente.trim();});
     var gastos=allGastosDash.filter(function(g){return g.agente===agente;});
 
     var props=allProps.filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
@@ -683,6 +683,8 @@ function loadDashboard(filtroAgente){
         new Chart(document.getElementById('chartMini'),{type:'bar',data:{labels:meses,datasets:[{data:dataMeses,backgroundColor:'rgba(24,95,165,0.7)',borderRadius:3}]},options:{responsive:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8}}},y:{ticks:{font:{size:8},callback:function(v){return v>0?'$'+Math.round(v/1000)+'k':'';}}}}}});
       }
     }catch(e){}
+  }).catch(function(err){
+    document.getElementById('tabContent').innerHTML='<div style="padding:2rem;color:#CC2229">Error al cargar dashboard: '+err.message+'</div>';
   });
 }
 
@@ -1941,7 +1943,7 @@ function loadEquipo(){
     var busqs=allBusq.filter(function(b){return b.agente===ag;});
     var todasProps=props.concat(busqs);
     var ops=allOps.filter(function(o){
-      return o.agente===ag;
+      return (o.agente||'').trim()===ag.trim();
     });
     var gastos=allGastos.filter(function(g){return g.agente===ag;});
     var devs=allDevs.filter(function(d){return d.agente===ag;});
