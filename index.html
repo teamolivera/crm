@@ -1451,7 +1451,7 @@ function loadFinanzas(){
             +'<td style="color:#059669">+USD '+fmt(ivaTotal)+'</td>'
             +'<td style="font-weight:700;color:#065f46">USD '+fmt(neto)+'</td>'
             +'<td style="font-weight:700;color:'+(netoPct>=70?'#059669':netoPct>=50?'#d97706':'#CC2229')+'">'+netoPct+'%</td>'
-            +'<td><button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')">✏️</button></td></tr>';
+            +'<td style="white-space:nowrap">'+'<button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')">✏️</button> '+'<button class="btn btn-sm" style="color:#991b1b" onclick="eliminarOp(\''+o.id+'\')">×</button>'+'</td></tr>';
         });
         var rentTotal=totalBruta>0?Math.round((totalNeta-gastosPropUSD)/totalBruta*100):0;
         var rentColor=rentTotal>=70?'#059669':rentTotal>=50?'#d97706':'#CC2229';
@@ -1547,6 +1547,94 @@ function loadFinanzas(){
 
     document.getElementById('tabContent').innerHTML=html;
   });
+}
+
+function eliminarOp(id){
+  if(!confirm('¿Eliminar esta operación?'))return;
+  loading();
+  delRow('Operaciones',id,function(){loadFinanzas();});
+}
+
+function abrirEditCierreProp(propId,sheet){
+  getSheet('Operaciones',function(e,ops){
+    var op=(ops||[]).find(function(o){return o.propiedad_id===propId;});
+    if(!op){alert('No se encontró la operación asociada.');return;}
+    abrirEditCierre(op.id);
+  });
+}
+
+function abrirEditCierre(opId){
+  getSheet('Operaciones',function(e,ops){
+    var op=(ops||[]).find(function(o){return o.id===opId;});
+    if(!op){alert('Operación no encontrada.');return;}
+    var esAgente=currentUser.rol!=='Líder';
+    var html='<div class="modal-header"><span class="modal-title">✏️ Editar cierre</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      +'<div class="section-divider">Valores</div>'
+      +'<div class="form-group"><label>Valor de cierre (USD)</label><input id="ec-cierre" type="number" value="'+(op.valor_cierre||op.precio_final||0)+'"/></div>'
+      +'<div class="row"><div class="form-group"><label>Fecha de carga</label><input id="ec-fecha" type="date" value="'+(op.fecha||today())+'"/></div>'
+      +'<div class="form-group"><label>Fecha de venta</label><input id="ec-fecha-venta" type="date" value="'+(op.fecha_venta||op.fecha||today())+'"/></div></div>'
+      +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="ec-comp" type="number" value="'+(op.comision_compradora||4)+'"/></div>'
+      +'<div class="form-group"><label>Com. vendedor (%)</label><input id="ec-vend" type="number" value="'+(op.comision_vendedora||3)+'"/></div></div>'
+      +'<div class="section-divider">Distribución</div>'
+      +'<div class="row">'
+      +(esAgente
+        ?'<div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="35"/></div>'
+         +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="45"/></div>'
+         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
+        :'<div class="form-group"><label>% Gonzalo</label><input id="ec-pcttl" type="number" value="80"/></div>'
+         +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
+      )+'</div>'
+      +'<div class="form-group"><label>% Martillero (sobre parte TL)</label><input id="ec-mart" type="number" value="4"/></div>'
+      +'<div class="section-divider">IVA (recaudación aparte)</div>'
+      +'<div class="row"><div class="form-group"><label>IVA comprador</label><input id="ec-ivac" type="number" value="'+(op.iva_comprador||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivac-m"><option value="USD"'+(op.iva_comprador_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_comprador_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div class="row"><div class="form-group"><label>IVA vendedor</label><input id="ec-ivav" type="number" value="'+(op.iva_vendedor||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivav-m"><option value="USD"'+(op.iva_vendedor_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_vendedor_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div class="row"><div class="form-group"><label>IVA oficina</label><input id="ec-ivao" type="number" value="'+(op.iva_oficina||0)+'"/></div>'
+      +'<div class="form-group"><label>Moneda</label><select id="ec-ivao-m"><option value="USD"'+(op.iva_oficina_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_oficina_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+      +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+      +'<button class="btn btn-success" onclick="guardarEditCierre(\''+opId+'\','+esAgente+')">Guardar cambios</button>'
+      +'</div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
+}
+
+function guardarEditCierre(opId,esAgente){
+  var cierre=Number(document.getElementById('ec-cierre').value||0);
+  var comp=Number(document.getElementById('ec-comp').value||0);
+  var vend=Number(document.getElementById('ec-vend').value||0);
+  var pctTL=Number(document.getElementById('ec-pcttl').value||0);
+  var pctAg=esAgente?Number(document.getElementById('ec-pctag').value||0):0;
+  var pctO=Number(document.getElementById('ec-pcto').value||0);
+  var pctM=Number(document.getElementById('ec-mart').value||4);
+  var ivaC=Number(document.getElementById('ec-ivac').value||0);
+  var ivaCm=document.getElementById('ec-ivac-m').value||'USD';
+  var ivaV=Number(document.getElementById('ec-ivav').value||0);
+  var ivaVm=document.getElementById('ec-ivav-m').value||'USD';
+  var ivaO=Number(document.getElementById('ec-ivao').value||0);
+  var ivaOm=document.getElementById('ec-ivao-m').value||'USD';
+  var fecha=document.getElementById('ec-fecha').value;
+  var fechaVenta=document.getElementById('ec-fecha-venta').value||fecha;
+  var comTotal=cierre*(comp+vend)/100;
+  var parteTL=comTotal*pctTL/100;
+  var parteAg=esAgente?comTotal*pctAg/100:0;
+  var parteO=comTotal*pctO/100;
+  var martillero=Math.round(parteTL*pctM/100);
+  var ivaTotal=ivaC+ivaV+ivaO;
+  var netoTL=Math.round(parteTL-martillero);
+  var netoAg=Math.round(parteAg);
+  var data={
+    fecha:fecha,fecha_venta:fechaVenta,valor_cierre:cierre,precio_final:cierre,
+    comision_total:Math.round(comTotal),comision_agente:netoAg,
+    comision_team_leader:Math.round(parteTL),parte_oficina:Math.round(parteO),
+    martillero:martillero,iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
+    iva_vendedor:ivaV,iva_vendedor_moneda:ivaVm,iva_oficina:ivaO,
+    iva_oficina_moneda:ivaOm,iva_total:ivaTotal,neto_agente:netoAg,neto_team_leader:netoTL
+  };
+  closeModal();loading();
+  updRow('Operaciones',opId,data,function(){loadFinanzas();});
 }
 
 function abrirNuevoGastoGeneral(){
