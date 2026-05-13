@@ -939,8 +939,8 @@ function verFichaProp(id,sheet){
         +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
         +'<div class="section-divider">Comisiones</div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(op?(op.comision_compradora||p.comision_compradora||4):(p.comision_compradora||4))+'%</span></div>'
-        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(op?(op.comision_vendedora||p.comision_vendedora||0):(p.comision_vendedora||0))+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(op&&op.comision_compradora!==undefined?op.comision_compradora:p.comision_compradora||4)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(op&&op.comision_vendedora!==undefined?op.comision_vendedora:p.comision_vendedora||0)+'%</span></div>'
         +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
         +'<button class="btn" onclick="closeModal()">Cerrar</button>'
@@ -1730,6 +1730,61 @@ function guardarEditCierre(opId,esAgente){
   };
   closeModal();loading();
   updRow('Operaciones',opId,data,function(){setTimeout(function(){loadFinanzas();},1000);});
+}
+
+function loadObjetivos(){
+  Promise.all([
+    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];})
+  ]).then(function(res){
+    var objs=(res[0]||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
+    var allOpsObj=res[1]||[];
+    var anoActual=new Date().getFullYear();
+          +'<button class="btn btn-sm btn-primary" onclick="abrirModalObjetivo()">Actualizar</button>'
+    if(objs.length){
+      objs.forEach(function(o){
+        var actualReal=Number(o.actual||0);
+        if(o.periodo==='Anual'&&o.unidad==='USD'){
+          actualReal=allOpsObj.filter(function(op){
+            return op.agente===o.agente&&(op.fecha_venta||op.fecha||'').startsWith(String(anoActual));
+          }).reduce(function(a,op){return a+Number(op.comision_total||0);},0);
+        }
+        var p=Math.min(Math.round(actualReal/Number(o.meta||1)*100),100);
+        var color=p>=100?'#059669':p>=50?'#d97706':'#CC2229';
+        html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+          +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div>'
+          +'<div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.periodo?' · '+o.periodo:'')+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
+          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+fmt(Math.round(actualReal))+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div>'
+          +'<div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
+          +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+color+'"></div></div>'
+          +'<div class="obj-actions">'
+          +'<button class="btn btn-sm btn-primary" onclick="abrirModalObjetivo()">Actualizar</button>'
+          +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){setTimeout(function(){loadObjetivos();},1000);})">Eliminar</button>'
+          +'</div></div>';
+      });
+    }else{html+='<div class="empty">No hay objetivos. Agregá el primero.</div>';}
+    document.getElementById('tabContent').innerHTML=html;
+  });
+}
+
+function abrirModalObjetivo(id,titulo,meta,unidad,periodo){
+  var editar=!!id;
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(editar?'Editar':'Nuevo')+' objetivo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Título</label><input id="obj-titulo" value="'+(titulo||'')+'" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Meta</label><input id="obj-meta" type="number" value="'+(meta||'')+'" /></div>'
+    +'<div class="form-group"><label>Unidad</label><select id="obj-unidad"><option value="USD"'+(unidad==='USD'?' selected':'')+'>USD</option><option value="%"'+(unidad==='%'?' selected':'')+'>%</option></select></div></div>'
+    +'<div class="form-group"><label>Período</label><select id="obj-periodo"><option value="Anual"'+(periodo==='Anual'?' selected':'')+'>Anual</option><option value="Cuatrimestral"'+(periodo==='Cuatrimestral'?' selected':'')+'>Cuatrimestral</option><option value="Mensual"'+(periodo==='Mensual'?' selected':'')+'>Mensual</option></select></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="guardarObjetivo('+(editar?'\''+id+'\'':'null')+')">Guardar</button></div>';
+  openModal();
+}
+
+function guardarObjetivo(id){
+  var data={titulo:v('obj-titulo'),meta:v('obj-meta'),unidad:v('obj-unidad'),periodo:v('obj-periodo'),agente:currentUser.nombre,actual:0};
+  closeModal();loading();
+  if(id){updRow('Objetivos',id,data,function(){setTimeout(function(){loadObjetivos();},1000);});}
+  else{data.id=uid();addRow('Objetivos',data,function(){setTimeout(function(){loadObjetivos();},1000);});}
 }
 
 function abrirNuevoGastoGeneral(){
