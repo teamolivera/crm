@@ -898,32 +898,58 @@ function verFichaProp(id,sheet){
     var p=(props||[]).find(function(x){return x.id===id;});if(!p)return;
     var referido=p.referido||'no';
     var esAgente=currentUser.rol!=='Líder';
-    document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Ficha</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-      +'<div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span>'
-      +(esAgente?(referido==='si'?'<span class="referido-tag">✓ Referida por TL</span>':'<span class="no-referido-tag">Sin referido</span>'):'')
-      +'</div>'
-      +'<div class="section-divider">Propiedad</div>'
-      +'<div class="ficha-row"><span class="ficha-label">Dirección</span><span class="ficha-value">'+p.direccion+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Localidad</span><span class="ficha-value">'+(p.localidad||'-')+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Tipo</span><span class="ficha-value">'+(p.tipo||'-')+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Valor publicación</span><span class="ficha-value" style="color:#185FA5">USD '+fmt(p.precio)+'</span></div>'
-      +(p.precio_final?'<div class="ficha-row"><span class="ficha-label">Valor cierre</span><span class="ficha-value" style="color:#065f46">USD '+fmt(p.precio_final)+'</span></div>':'')
-      +(function(){var d=diasEnMercado(p.fecha,p.precio_final?p.fecha_venta:null);return d!==null?'<div class="ficha-row"><span class="ficha-label">'+(p.valor_cierre?'Días en mercado':'Días en cartera')+'</span><span class="ficha-value">'+d+' días</span></div>':'';})();
-      +'<div class="section-divider">Cliente</div>'
-      +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
-      +'<div class="section-divider">Comisiones</div>'
-      +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(p.comision_compradora||4)+'%</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(p.comision_vendedora||3)+'%</span></div>'
-      +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
-      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
-      +'<button class="btn" onclick="closeModal()">Cerrar</button>'
-      +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\',window._editProp)">Editar</button>'
-      +(p.valor_cierre?'<button class="btn btn-success" onclick="closeModal();abrirEditCierreProp(\''+p.id+'\',\''+sheet+'\')" >✏️ Editar cierre</button>':'')
-      +'</div>';
-    window._editProp=p;
-    openModal();
+    // Buscar operación y gastos asociados
+    getSheet('Operaciones',function(e2,ops){
+      getSheet('Gastos',function(e3,gastosList){
+      var op=(ops||[]).find(function(o){return o.propiedad_id===id;});
+      var comBruta=op?Number(op.comision_total||0):0;
+      var comNetaBase=op?Number(op.neto_team_leader||op.neto_agente||0):0;
+      var ivaTotal=op?Number(op.iva_comprador||0)+Number(op.iva_vendedor||0)+Number(op.iva_oficina||0):0;
+      var fechaCierre=op?(op.fecha_venta||op.fecha||''):'-';
+      var valorCierre=p.valor_cierre||p.precio_final||0;
+      // Gastos de esta propiedad
+      var gastosProp=(gastosList||[]).filter(function(g){return g.propiedad_id===id;});
+      var gastosUSD=gastosProp.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
+      var gastosARS=gastosProp.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+      var comNeta=comNetaBase-gastosUSD;
+      var dias=diasEnMercado(p.fecha,valorCierre?fechaCierre:null);
+      document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Ficha</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+        +'<div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center"><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span>'
+        +(esAgente?(referido==='si'?'<span class="referido-tag">✓ Referida por TL</span>':'<span class="no-referido-tag">Sin referido</span>'):'')
+        +'</div>'
+        +'<div class="section-divider">Propiedad</div>'
+        +'<div class="ficha-row"><span class="ficha-label">Dirección</span><span class="ficha-value">'+p.direccion+'</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Localidad</span><span class="ficha-value">'+(p.localidad||'-')+'</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Tipo</span><span class="ficha-value">'+(p.tipo||'-')+'</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Valor publicación</span><span class="ficha-value" style="color:#185FA5">USD '+fmt(p.precio)+'</span></div>'
+        +(dias!==null?'<div class="ficha-row"><span class="ficha-label">'+(valorCierre?'Días en mercado':'Días en cartera')+'</span><span class="ficha-value">'+dias+' días</span></div>':'')
+        +(valorCierre?'<div class="section-divider">Cierre</div>':'')
+        +(valorCierre?'<div class="ficha-row"><span class="ficha-label">Fecha de cierre</span><span class="ficha-value">'+fechaCierre+'</span></div>':'')
+        +(valorCierre?'<div class="ficha-row"><span class="ficha-label">Valor de cierre</span><span class="ficha-value" style="color:#065f46;font-weight:700">USD '+fmt(valorCierre)+'</span></div>':'')
+        +(comBruta?'<div class="ficha-row"><span class="ficha-label">Comisión bruta</span><span class="ficha-value" style="color:#185FA5;font-weight:700">USD '+fmt(Math.round(comBruta))+'</span></div>':'')
+        +(comNeta||gastosUSD?'<div class="ficha-row"><span class="ficha-label">Comisión neta</span><span class="ficha-value" style="color:#065f46;font-weight:700">USD '+fmt(Math.round(comNetaBase))+'</span></div>':'')
+        +(gastosUSD?'<div class="ficha-row"><span class="ficha-label">Gastos USD</span><span class="ficha-value" style="color:#991b1b">− USD '+fmt(Math.round(gastosUSD))+'</span></div>':'')
+        +(gastosARS?'<div class="ficha-row"><span class="ficha-label">Gastos ARS</span><span class="ficha-value" style="color:#991b1b">− $ '+fmt(Math.round(gastosARS))+'</span></div>':'')
+        +(gastosUSD||comNetaBase?'<div class="ficha-row" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:4px"><span class="ficha-label" style="font-weight:700">Neto ajustado</span><span class="ficha-value" style="color:#065f46;font-weight:800">USD '+fmt(Math.round(comNeta))+'</span></div>':'')
+        +(comBruta>0?'<div class="ficha-row"><span class="ficha-label" style="font-weight:700">Rentabilidad neta</span><span class="ficha-value" style="font-weight:800;color:'+(comNeta/comBruta>=0.5?'#059669':comNeta/comBruta>=0.3?'#d97706':'#CC2229')+'">'+Math.round(comNeta/comBruta*100)+'%</span></div>':'')
+        +(ivaTotal?'<div class="ficha-row"><span class="ficha-label">IVA recaudado</span><span class="ficha-value">USD '+fmt(Math.round(ivaTotal))+'</span></div>':'')
+        +'<div class="section-divider">Cliente</div>'
+        +'<div class="ficha-row"><span class="ficha-label">Nombre</span><span class="ficha-value">'+(p.cliente||'-')+'</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Teléfono</span><span class="ficha-value">'+(p.telefono||'-')+'</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Mail</span><span class="ficha-value">'+(p.mail||'-')+'</span></div>'
+        +'<div class="section-divider">Comisiones</div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. comprador</span><span class="ficha-value">'+(p.comision_compradora||4)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. vendedor</span><span class="ficha-value">'+(p.comision_vendedora||3)+'%</span></div>'
+        +'<div class="ficha-row"><span class="ficha-label">Com. proyectada</span><span class="ficha-value" style="color:#065f46">USD '+fmt(Math.round(Number(p.precio||0)*(Number(p.comision_compradora||4)+Number(p.comision_vendedora||3))/100))+'</span></div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
+        +'<button class="btn" onclick="closeModal()">Cerrar</button>'
+        +'<button class="btn btn-primary" onclick="closeModal();abrirModalProp(\''+sheet+'\',window._editProp)">Editar</button>'
+        +(valorCierre?'<button class="btn btn-success" onclick="closeModal();abrirEditCierreProp(\''+p.id+'\',\''+sheet+'\')">✏️ Editar cierre</button>':'')
+        +'</div>';
+      window._editProp=p;
+      openModal();
+    });
+    });
   });
 }
 
@@ -1440,6 +1466,7 @@ function loadFinanzas(){
         var totalBruta=0,totalNeta=0;
         html+='<div class="card" style="padding:0"><div class="table-wrap"><table>';
         html+='<tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'+(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')+(esLider?'<th>Martillero</th>':'')+'<th>IVA</th><th>Neto</th><th>Neto %</th><th></th></tr>';
+      ops.sort(function(a,b){var fa=a.fecha_venta||a.fecha||'';var fb=b.fecha_venta||b.fecha||'';return fb.localeCompare(fa);});
         ops.forEach(function(o){
           var ivaTotal=Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0));
           var comTotal=Math.round(Number(o.comision_total||0));
@@ -1562,13 +1589,30 @@ function verFichaDesdeOp(opId){
     var propId=op.propiedad_id||op.unidad_id;
     if(!sheet||!propId)return;
     if(op.unidad_id){
-      // Para unidades abrir ficha del desarrollo
+      // Para unidades mostrar ficha de esa unidad específica
       getSheet('Unidades',function(e2,unis){
         var u=(unis||[]).find(function(x){return x.id===propId;});
         if(!u)return;
         getSheet('Desarrollos',function(e3,devs){
-          var d=(devs||[]).find(function(x){return x.id===u.desarrollo_id;});
-          if(d)verFichaDesarrollo(d.id);
+          var dev=(devs||[]).find(function(x){return x.id===u.desarrollo_id;});
+          // Buscar operación de esta unidad
+          var comBruta=Number(op.comision_total||0);
+          var comNeta=Number(op.neto_team_leader||op.neto_agente||0);
+          var ivaTotal=Number(op.iva_comprador||0)+Number(op.iva_vendedor||0)+Number(op.iva_oficina||0);
+          var html='<div class="modal-header"><span class="modal-title">'+(dev?dev.nombre+' · ':'')+u.nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+            +'<div class="section-divider">Unidad</div>'
+            +'<div class="ficha-row"><span class="ficha-label">Desarrollo</span><span class="ficha-value">'+(dev?dev.direccion+' · '+dev.nombre:'')+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Unidad</span><span class="ficha-value" style="font-weight:700">'+u.nombre+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Condición</span><span class="ficha-value"><span class="badge badge-green">'+u.condicion+'</span></span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Precio</span><span class="ficha-value" style="color:#185FA5;font-weight:700">USD '+fmt(u.precio)+'</span></div>'
+            +'<div class="section-divider">Cierre</div>'
+            +'<div class="ficha-row"><span class="ficha-label">Fecha de cierre</span><span class="ficha-value">'+(op.fecha_venta||op.fecha||'-')+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Valor de cierre</span><span class="ficha-value" style="color:#065f46;font-weight:700">USD '+fmt(op.valor_cierre||op.precio_final||0)+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Comisión bruta</span><span class="ficha-value" style="color:#185FA5;font-weight:700">USD '+fmt(Math.round(comBruta))+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">Comisión neta</span><span class="ficha-value" style="color:#065f46;font-weight:700">USD '+fmt(Math.round(comNeta))+'</span></div>'
+            +'<div class="ficha-row"><span class="ficha-label">IVA total recaudado</span><span class="ficha-value">USD '+fmt(Math.round(ivaTotal))+'</span></div>';
+          document.getElementById('modalBox').innerHTML=html;
+          openModal();
         });
       });
     }else{
@@ -1609,7 +1653,7 @@ function abrirEditCierre(opId){
     var pctMCalc=op.comision_team_leader&&op.martillero?Math.round(Number(op.martillero)/Number(op.comision_team_leader)*100):4;
     var esRefTL=op.referido==='si';
     var distribHtml=esAgente
-      ?'<div class="form-group"><label>Referido TL</label><select id="ec-ref" onchange="calcDistribRef()"><option value="no"'+(esRefTL?'':' selected')+'>No — TM 45% / TL 35%</option><option value="si"'+(esRefTL?' selected':'')+'>Sí — TM 35% / TL 45%</option></select></div>'
+      ?'<div class="form-group"><label>Referido TL</label><select id="ec-ref" onchange="calcDistribRef()"><option value="no"'+(esRefTL?'':' selected')+'>No</option><option value="si"'+(esRefTL?' selected':'')+'>Sí</option></select></div>'
          +'<div class="row"><div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="'+pctAgCalc+'"/></div>'
          +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="'+pctTLCalc+'"/></div>'
          +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="'+pctOCalc+'"/></div></div>'
@@ -1645,6 +1689,8 @@ function calcDistribRef(){
   var refEl=document.getElementById('ec-ref');
   if(!refEl)return;
   var esRef=refEl.value==='si';
+  // Referido TL Sí: TM 35% / TL 45%
+  // Referido TL No: TM 45% / TL 35%
   var pctAg=document.getElementById('ec-pctag');
   var pctTL=document.getElementById('ec-pcttl');
   if(pctAg)pctAg.value=esRef?35:45;
