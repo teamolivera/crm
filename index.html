@@ -1357,588 +1357,380 @@ function eliminarUnidad(id,devId,devNombre,compPct,vendPct){
 // FINANZAS
 // ============================================================
 function loadFinanzas(){
-  var finTab=window._finTab||'operaciones';
+  var finTab=window._finTab||'cierres';
+  loading();
   Promise.all([
-    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
+    function toArr(x){return Array.isArray(x)?x:[];}
+    var allOps=toArr(res[0]),allGastos=toArr(res[1]),allFins=toArr(res[2]);
+    var allCC=toArr(res[3]),allProps=toArr(res[4]),allBusq=toArr(res[5]);
+    var allUnis=toArr(res[6]),allDevs=toArr(res[7]);
     var esLider=currentUser.rol==='Líder';
-    var fins=(res[0]||[]).filter(function(f){return f.agente===currentUser.nombre;});
-    var gastos=(res[1]||[]).filter(function(g){return g.agente===currentUser.nombre;});
-    var ops=(res[2]||[]).filter(function(o){return o.agente===currentUser.nombre;});
-    var allPropsFin=res[3]||[];
-    var allBusqFin=res[4]||[];
-    var allUnisFin=res[5]||[];
-    var allDevsFin=res[6]||[];
-    var allCCFin=res[7]||[];
-    function getDireccionOp(o){
+
+    // Filtrar por agente logueado
+    var ops=allOps.filter(function(o){return o.agente===currentUser.nombre;});
+    var gastos=allGastos.filter(function(g){return g.agente===currentUser.nombre;});
+    var fins=allFins.filter(function(f){return f.agente===currentUser.nombre;});
+
+    // Función para obtener dirección de una operación
+    function getDirOp(o){
       if(o.propiedad_id){
-        var p=allPropsFin.find(function(x){return x.id===o.propiedad_id;})||allBusqFin.find(function(x){return x.id===o.propiedad_id;});
-        return p?p.direccion:o.propiedad_id;
+        var p=allProps.find(function(x){return x.id===o.propiedad_id;})||allBusq.find(function(x){return x.id===o.propiedad_id;});
+        return p?p.direccion:'-';
       }
       if(o.unidad_id){
-        var u=allUnisFin.find(function(x){return x.id===o.unidad_id;});
-        if(u){
-          var d=allDevsFin.find(function(x){return x.id===u.desarrollo_id;});
-          return (d?d.direccion+' · ':'')+u.nombre;
-        }
-        return o.unidad_id;
+        var u=allUnis.find(function(x){return x.id===o.unidad_id;});
+        if(u){var d=allDevs.find(function(x){return x.id===u.desarrollo_id;});return (d?d.direccion+' · ':'')+u.nombre;}
       }
-      return '—';
+      return '-';
     }
+
+    // Resumen financiero
+    var factBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var factNeta=ops.reduce(function(a,o){return a+Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0));},0);
+    var gastosPropUSD=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-    var gastosPropUSD=gastos.reduce(function(a,g){
-      if((g.moneda||'USD')==='ARS')return a+Number(g.equiv_usd||0);
-      return a+Number(g.monto||0);
-    },0);
-    var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
-    var gastosTeamCC=allCCFin.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
-    var gastosTLProp=allCCFin.filter(function(r){return r.tipo==='gasto_tl';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
-    var facturacion=ops.reduce(function(a,o){
-      if(esLider)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
-      return a+Number(o.neto_agente||o.comision_total||0);
-    },0);
-    var rentabilidad=facturacion-gastosPropUSD-gastosOficina-gastosTLProp-gastosTeamCC;
-    // Solapas de finanzas
-    var html='<div class="tabs-secondary" style="margin-bottom:1rem">';
-    var t1=finTab==='operaciones'?' active':'';
-    var t2=finTab==='gastos'?' active':'';
-    var t3=finTab==='team'?' active':'';
-    html+='<div class="tab-sec'+t1+'" onclick="window._finTab=\'operaciones\';loadFinanzas()">Operaciones</div>';
-    html+='<div class="tab-sec'+t2+'" onclick="window._finTab=\'gastos\';loadFinanzas()">Gastos</div>';
-    if(esLider)html+='<div class="tab-sec'+t3+'" onclick="window._finTab=\'team\';loadFinanzas()">Gastos team</div>';
-    html+='</div>';
-    // Resumen siempre visible
-    html+='<div class="grid-metrics">'
-      +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
+    var gastosGrales=allCC.filter(function(r){return r.tipo==='gasto_tl';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var gastosTeam=allCC.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var rentNeta=factNeta-gastosPropUSD-gastosOficina-gastosGrales-gastosTeam;
+
+    var html='<div class="grid-metrics" style="margin-bottom:1rem">'
+      +'<div class="metric"><div class="metric-label">Fact. bruta</div><div class="metric-value blue">USD '+fmt(Math.round(factBruta))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Fact. neta</div><div class="metric-value green">USD '+fmt(Math.round(factNeta))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Gastos propiedades</div><div class="metric-value red">USD '+fmt(Math.round(gastosPropUSD))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos propios</div><div class="metric-value red">USD '+fmt(Math.round(gastosTLProp))+'</div></div>'
-      +(esLider?'<div class="metric"><div class="metric-label">Gastos team</div><div class="metric-value red">USD '+fmt(Math.round(gastosTeamCC))+'</div></div>':'')
       +'<div class="metric"><div class="metric-label">Gastos oficina</div><div class="metric-value red">USD '+fmt(Math.round(gastosOficina))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidad))+'</div></div>'
+      +(esLider?'<div class="metric"><div class="metric-label">Gastos generales</div><div class="metric-value red">USD '+fmt(Math.round(gastosGrales))+'</div></div>':'')
+      +(esLider?'<div class="metric"><div class="metric-label">Gastos team</div><div class="metric-value red">USD '+fmt(Math.round(gastosTeam))+'</div></div>':'')
+      +'<div class="metric"><div class="metric-label">Rent. neta</div><div class="metric-value '+(rentNeta>=0?'green':'red')+'">USD '+fmt(Math.round(rentNeta))+'</div></div>'
       +'</div>';
-    if(finTab==='operaciones'){
-    html+='<div class="section-header" style="margin-top:1rem"><div class="section-title">Operaciones cerradas</div></div>';
-    if(ops.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'
-        +(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')
-        +'<th>Martillero</th><th>IVA</th><th>Neto</th><th>Neto %</th><th></th></tr>';
-      var totalBruta=0,totalNeto=0;
-      ops.forEach(function(o){
-        var ivaTotal=Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0));
-        var comTotal=Math.round(Number(o.comision_total||0));
-        var neto=Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0)));
-        var netoPct=comTotal>0?Math.round(neto/comTotal*100):0;
-        totalBruta+=comTotal; totalNeto+=neto;
-        html+='<tr>'
-          +'<td style="font-weight:500">'+getDireccionOp(o)+'</td>'
-          +'<td>'+(o.fecha_venta||o.fecha||'')+'</td>'
-          +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
-          +'<td>USD '+fmt(comTotal)+'</td>'
-          +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
-          +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
-          +'<td style="color:#059669">+USD '+fmt(ivaTotal)+'</td>'
-          +'<td style="font-weight:700;color:#065f46">USD '+fmt(neto)+'</td>'
-          +'<td style="font-weight:700;color:'+(netoPct>=70?'#059669':netoPct>=50?'#d97706':'#CC2229')+'">'+netoPct+'%</td>'
-          +'<td><button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')">&#9999;&#65039;</button></td></tr>';
+
+    // Solapas
+    var t1=finTab==='cierres'?' active':'';
+    var t2=finTab==='gastos_oficina'?' active':'';
+    var t3=finTab==='gastos_generales'?' active':'';
+    var t4=finTab==='gastos_team'?' active':'';
+    var t5=finTab==='cuenta_corriente'?' active':'';
+
+    html+='<div class="tabs-secondary">';
+    html+='<div class="tab-sec'+t1+'" onclick="window._finTab=\'cierres\';loadFinanzas()">Cierres</div>';
+    html+='<div class="tab-sec'+t2+'" onclick="window._finTab=\'gastos_oficina\';loadFinanzas()">Gastos oficina</div>';
+    if(esLider){
+      html+='<div class="tab-sec'+t3+'" onclick="window._finTab=\'gastos_generales\';loadFinanzas()">Gastos generales</div>';
+      html+='<div class="tab-sec'+t4+'" onclick="window._finTab=\'gastos_team\';loadFinanzas()">Gastos team</div>';
+      html+='<div class="tab-sec'+t5+'" onclick="window._finTab=\'cuenta_corriente\';loadFinanzas()">Cuenta corriente</div>';
+    }
+    html+='</div>';
+
+    // ---- CIERRES ----
+    if(finTab==='cierres'){
+      if(ops.length){
+        var totalBruta=0,totalNeta=0;
+        html+='<div class="card" style="padding:0"><div class="table-wrap"><table>';
+        html+='<tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'+(esLider?'<th>Com. TL</th>':'<th>Com. Agente</th>')+'<th>Martillero</th><th>IVA</th><th>Neto</th><th>Neto %</th><th></th></tr>';
+        ops.forEach(function(o){
+          var ivaTotal=Math.round(Number(o.iva_comprador||0)+Number(o.iva_vendedor||0)+Number(o.iva_oficina||0));
+          var comTotal=Math.round(Number(o.comision_total||0));
+          var neto=Math.round(Number(esLider?(o.neto_team_leader||0):(o.neto_agente||0)));
+          var netoPct=comTotal>0?Math.round(neto/comTotal*100):0;
+          totalBruta+=comTotal; totalNeta+=neto;
+          html+='<tr>'
+            +'<td style="font-weight:500">'+getDirOp(o)+'</td>'
+            +'<td>'+(o.fecha_venta||o.fecha||'')+'</td>'
+            +'<td>'+(o.referido==='si'?'<span class="referido-tag">Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td>'
+            +'<td>USD '+fmt(comTotal)+'</td>'
+            +(esLider?'<td>USD '+fmt(Math.round(Number(o.comision_team_leader||0)))+'</td>':'<td>USD '+fmt(Math.round(Number(o.comision_agente||0)))+'</td>')
+            +'<td style="color:#991b1b">−USD '+fmt(Math.round(Number(o.martillero||0)))+'</td>'
+            +'<td style="color:#059669">+USD '+fmt(ivaTotal)+'</td>'
+            +'<td style="font-weight:700;color:#065f46">USD '+fmt(neto)+'</td>'
+            +'<td style="font-weight:700;color:'+(netoPct>=70?'#059669':netoPct>=50?'#d97706':'#CC2229')+'">'+netoPct+'%</td>'
+            +'<td><button class="btn btn-sm" onclick="abrirEditCierre(\''+o.id+'\')">✏️</button></td></tr>';
+        });
+        var rentTotal=totalBruta>0?Math.round((totalNeta-gastosPropUSD)/totalBruta*100):0;
+        var rentColor=rentTotal>=70?'#059669':rentTotal>=50?'#d97706':'#CC2229';
+        html+='<tr style="background:#f8fafc;font-weight:700;border-top:2px solid #e5e7eb">'
+          +'<td colspan="3" style="color:#555">TOTALES</td>'
+          +'<td>USD '+fmt(totalBruta)+'</td><td colspan="3"></td>'
+          +'<td style="color:#065f46">USD '+fmt(totalNeta)+'</td>'
+          +'<td style="color:'+rentColor+'">'+rentTotal+'%</td><td></td></tr>';
+        html+='</table></div></div>';
+      }else{html+='<div class="empty">No hay operaciones cerradas.</div>';}
+    }
+
+    // ---- GASTOS OFICINA ----
+    else if(finTab==='gastos_oficina'){
+      html+='<div style="display:flex;justify-content:flex-end;margin-bottom:1rem">'
+        +'<button class="btn btn-primary" onclick="abrirNuevoMovOficina()">+ Agregar</button></div>';
+      if(fins.length){
+        html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th></th></tr>';
+        fins.forEach(function(f){
+          html+='<tr><td>'+(f.fecha||'')+'</td><td>'+f.concepto+'</td><td>'+f.tipo+'</td><td style="font-weight:600;color:'+(f.tipo==='Ingreso'?'#065f46':'#991b1b')+'">USD '+fmt(f.monto)+'</td>'
+            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+        });
+        html+='</table></div></div>';
+      }else{html+='<div class="empty">Sin movimientos de oficina.</div>';}
+    }
+
+    // ---- GASTOS GENERALES ----
+    else if(finTab==='gastos_generales'){
+      html+='<div style="display:flex;justify-content:flex-end;margin-bottom:1rem">'
+        +'<button class="btn btn-primary" onclick="abrirNuevoGastoGeneral()">+ Agregar</button></div>';
+      var gastosGral=allCC.filter(function(r){return r.tipo==='gasto_tl';});
+      if(gastosGral.length){
+        html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
+        gastosGral.forEach(function(r){
+          html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
+            +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+        });
+        html+='</table></div></div>';
+      }else{html+='<div class="empty">Sin gastos generales.</div>';}
+    }
+
+    // ---- GASTOS TEAM ----
+    else if(finTab==='gastos_team'){
+      var tms2=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+      html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:1rem">'
+        +'<button class="btn btn-primary" onclick="abrirNuevoGastoTeam(null)">+ Gasto general team</button>'
+        +'</div>';
+      // Por TM
+      tms2.forEach(function(tm){
+        var gastTM=allCC.filter(function(r){return r.tipo==='gasto_gonzalo'&&r.agente===tm;});
+        var totalTM=gastTM.reduce(function(a,r){return a+Number(r.monto||0);},0);
+        html+='<div class="card"><div class="card-header">'
+          +'<span class="card-title">'+tm+'</span>'
+          +'<div style="display:flex;align-items:center;gap:12px">'
+          +'<span style="font-weight:700;color:#991b1b">USD '+fmt(Math.round(totalTM))+'</span>'
+          +'<button class="btn btn-sm btn-primary" onclick="abrirNuevoGastoTeam(\''+esc(tm)+'\')">+ Gasto</button>'
+          +'</div></div>';
+        if(gastTM.length){
+          html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
+          gastTM.forEach(function(r){
+            html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
+              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+          });
+          html+='</table></div>';
+        }else{html+='<div class="empty">Sin gastos.</div>';}
+        html+='</div>';
       });
-      var gastosSoloProps=gastos.filter(function(g){return(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
-      var rentTotal=totalBruta>0?Math.round((totalNeto-gastosSoloProps)/totalBruta*100):0;
-      var rentColor=rentTotal>=70?'#059669':rentTotal>=50?'#d97706':'#CC2229';
-      html+='<tr style="background:#f8fafc;font-weight:700;border-top:2px solid #e5e7eb">'
-        +'<td colspan="3" style="color:#555">TOTALES</td>'
-        +'<td>USD '+fmt(totalBruta)+'</td>'
-        +'<td colspan="3"></td>'
-        +'<td style="color:#065f46">USD '+fmt(totalNeto)+'</td>'
-        +'<td style="color:'+rentColor+'">'+rentTotal+'%<div style="font-size:10px;font-weight:400;color:#888">neto−gastos/bruta</div></td>'
-        +'<td></td></tr>';
-      html+='</table></div></div>';
-    }else{html+='<div class="empty">No hay operaciones cerradas.</div>';}
-    html+='<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Movimientos de oficina</div><button class="btn btn-primary btn-sm" onclick="abrirModalFinanza()">+ Agregar</button></div>';
-    if(fins.length){
-      html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th><th></th></tr>';
-      fins.forEach(function(f){html+='<tr><td>'+f.fecha+'</td><td><span class="badge '+(f.tipo==='Ingreso'?'badge-green':'badge-red')+'">'+f.tipo+'</span></td><td>'+f.concepto+'</td><td style="font-weight:600;color:'+(f.tipo==='Ingreso'?'#065f46':'#991b1b')+'">USD '+fmt(f.monto)+'</td><td><button class="btn btn-sm" onclick="delRow(\'Finanzas\',\''+f.id+'\',function(){loadFinanzas();})">×</button></td></tr>';});
-      html+='</table></div></div>';
-    }else{html+='<div class="empty">No hay movimientos.</div>';}
-    if(gastos.length){
-      html+='<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Gastos por propiedad</div></div>'
-        +'<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Moneda</th><th>Monto</th></tr>';
-      gastos.forEach(function(g){html+='<tr><td>'+g.fecha+'</td><td>'+g.concepto+'</td><td>'+(g.moneda||'USD')+'</td><td style="color:#991b1b;font-weight:600">'+(g.moneda==='ARS'?'$':'USD ')+fmt(g.monto)+'</td></tr>';});
-      html+='</table></div></div>';
     }
+
+    // ---- CUENTA CORRIENTE ----
+    else if(finTab==='cuenta_corriente'){
+      var tms3=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+      tms3.forEach(function(tm){
+        var ccTM=allCC.filter(function(r){return r.tipo==='cuenta_corriente'&&r.agente===tm;});
+        var totalCC=ccTM.reduce(function(a,r){return a+Number(r.monto||0);},0);
+        html+='<div class="card"><div class="card-header">'
+          +'<span class="card-title">CC · '+tm+'</span>'
+          +'<div style="display:flex;align-items:center;gap:12px">'
+          +'<span style="font-weight:700;color:'+(totalCC>0?'#991b1b':'#065f46')+'">USD '+fmt(Math.round(totalCC))+'</span>'
+          +'<button class="btn btn-sm btn-success" onclick="abrirNuevoCC(\''+esc(tm)+'\')">+ Cargo</button>'
+          +'</div></div>';
+        if(ccTM.length){
+          html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th><th></th></tr>';
+          ccTM.forEach(function(r){
+            html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="font-weight:600;color:#991b1b">USD '+fmt(r.monto)+'</td><td style="color:#888">'+(r.nota||'-')+'</td>'
+              +'<td><button class="btn btn-sm" style="color:#991b1b" onclick="delRow(\'CuentaCorriente\',\''+r.id+'\',function(){loadFinanzas();})">×</button></td></tr>';
+          });
+          html+='</table></div>';
+        }else{html+='<div class="empty">Sin cargos.</div>';}
+        html+='</div>';
+      });
     }
+
     document.getElementById('tabContent').innerHTML=html;
   });
 }
-function abrirModalFinanza(){
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo movimiento</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="row"><div class="form-group"><label>Tipo</label><select id="ff-tipo"><option>Ingreso</option><option>Gasto</option></select></div>'
-    +'<div class="form-group"><label>Fecha</label><input id="ff-fecha" type="date" value="'+today()+'"/></div></div>'
-    +'<div class="form-group"><label>Concepto</label><input id="ff-concepto" autocomplete="off"/></div>'
-    +'<div class="form-group"><label>Monto (USD)</label><input id="ff-monto" type="number"/></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarFinanza()">Guardar</button></div>';
-  openModal();
-}
-function guardarFinanza(){var data={id:uid(),fecha:v('ff-fecha'),tipo:v('ff-tipo'),concepto:v('ff-concepto'),monto:v('ff-monto'),agente:currentUser.nombre};closeModal();loading();addRow('Finanzas',data,function(){loadFinanzas();});}
 
-// ============================================================
-// OBJETIVOS
-// ============================================================
-function loadObjetivos(){
-  Promise.all([
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();})
-  ]).then(function(res){
-    var objs=(res[0]||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
-    var allOpsObj=res[1]||[];
-    var anoActual=new Date().getFullYear();
-    var html='<div class="section-header"><div class="section-title">Objetivos</div><button class="btn btn-primary btn-sm" onclick="abrirModalObjetivo()">+ Agregar</button></div>';
-    if(objs.length){
-      objs.forEach(function(o){
-        // Para objetivos anuales en USD, calcular progreso real desde operaciones
-        var actualReal=Number(o.actual||0);
-        if(o.periodo==='Anual'&&o.unidad==='USD'){
-          actualReal=allOpsObj.filter(function(op){
-            return op.agente===o.agente&&op.fecha_venta&&op.fecha_venta.startsWith(String(anoActual));
-          }).reduce(function(a,op){return a+Number(op.comision_total||0);},0);
-        }
-        var p=pct(actualReal,o.meta);
-        html+='<div class="obj-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
-          +'<div><div style="font-weight:600;font-size:14px">'+o.titulo+'</div><div style="font-size:12px;color:#888;margin-top:3px">'+o.agente+(o.vencimiento?' · Vence '+o.vencimiento:'')+'</div></div>'
-          +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">'+fmt(Math.round(actualReal))+' <span style="font-size:13px;color:#888;font-weight:400">/ '+o.meta+' '+o.unidad+'</span></div><div style="font-size:12px;color:#888">'+p+'%</div></div></div>'
-          +'<div class="progress-bar"><div class="progress-fill" style="width:'+p+'%;background:'+progColor(p)+'"></div></div>'
-          +'<div class="obj-actions"><button class="btn btn-sm btn-primary" onclick="actualizarProgreso(\''+o.id+'\',\''+esc(o.titulo)+'\','+actualReal+','+o.meta+',\''+esc(o.unidad)+'\')">Actualizar</button>'
-          +'<button class="btn btn-sm" onclick="delRow(\'Objetivos\',\''+o.id+'\',function(){loadObjetivos();})">Eliminar</button></div></div>';
-      });
-    }else{html+='<div class="empty">No hay objetivos.</div>';}
-    document.getElementById('tabContent').innerHTML=html;
-  });
-}
-function abrirModalObjetivo(){
-  var agentesOpts=currentUser.rol==='Líder'?'<option>Equipo</option>'+allAgentes.map(function(a){return '<option>'+a+'</option>';}).join(''):'<option>'+currentUser.nombre+'</option>';
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo objetivo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="form-group"><label>Título</label><input id="fo-titulo" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Meta</label><input id="fo-meta" type="number"/></div><div class="form-group"><label>Unidad</label><input id="fo-unidad" placeholder="ventas, USD..." autocomplete="off"/></div></div>'
-    +'<div class="row"><div class="form-group"><label>Período</label><select id="fo-periodo"><option>Mensual</option><option>Anual</option></select></div><div class="form-group"><label>Vencimiento</label><input id="fo-venc" type="date"/></div></div>'
-    +'<div class="form-group"><label>Agente</label><select id="fo-agente">'+agentesOpts+'</select></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarObjetivo()">Guardar</button></div>';
+function abrirNuevoGastoGeneral(){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo gasto general</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Concepto</label><input id="gg-concepto" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Monto USD</label><input id="gg-monto" type="number"/></div>'
+    +'<div class="form-group"><label>Fecha</label><input id="gg-fecha" type="date" value="'+today()+'"/></div></div>'
+    +'<div class="form-group"><label>Nota (opcional)</label><input id="gg-nota" autocomplete="off"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="guardarGastoGeneral()">Guardar</button></div>';
   openModal();
 }
-function guardarObjetivo(){var data={id:uid(),titulo:v('fo-titulo'),meta:v('fo-meta'),actual:0,unidad:v('fo-unidad'),periodo:v('fo-periodo'),agente:v('fo-agente'),vencimiento:v('fo-venc')};closeModal();loading();addRow('Objetivos',data,function(){loadObjetivos();});}
-function actualizarProgreso(id,titulo,actual,meta,unidad){
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Actualizar progreso</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div style="font-size:14px;margin-bottom:1rem;font-weight:500">'+titulo+'</div>'
-    +'<div class="form-group"><label>Progreso actual (de '+meta+' '+unidad+')</label><input id="upd-actual" type="number" value="'+actual+'"/></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarProgreso(\''+id+'\')">Guardar</button></div>';
-  openModal();
+function guardarGastoGeneral(){
+  var data={id:uid(),fecha:v('gg-fecha'),agente:currentUser.nombre,concepto:v('gg-concepto'),monto:v('gg-monto'),moneda:'USD',tipo:'gasto_tl',visible_agente:'no',nota:v('gg-nota')||''};
+  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
 }
-function guardarProgreso(id){var a=v('upd-actual');closeModal();loading();updRow('Objetivos',id,{actual:a},function(){loadObjetivos();});}
 
-// ============================================================
-// PANEL EQUIPO
-// ============================================================
+function abrirNuevoGastoTeam(tm){
+  var tms=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+  var opsTM=tms.map(function(a){return '<option value="'+esc(a)+'"'+(a===tm?' selected':'')+'>'+a+'</option>';}).join('');
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto sobre '+(tm||'el team')+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +(tm===null?'<div class="form-group"><label>Team Member</label><select id="gt-agente">'+opsTM+'</select></div>':'<input type="hidden" id="gt-agente" value="'+esc(tm)+'">')
+    +'<div class="form-group"><label>Concepto</label><input id="gt-concepto" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Monto USD</label><input id="gt-monto" type="number"/></div>'
+    +'<div class="form-group"><label>Fecha</label><input id="gt-fecha" type="date" value="'+today()+'"/></div></div>'
+    +'<div class="form-group"><label>Nota (opcional)</label><input id="gt-nota" autocomplete="off"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="guardarGastoTeam()">Guardar</button></div>';
+  openModal();
+}
+function guardarGastoTeam(){
+  var data={id:uid(),fecha:v('gt-fecha'),agente:v('gt-agente'),concepto:v('gt-concepto'),monto:v('gt-monto'),moneda:'USD',tipo:'gasto_gonzalo',visible_agente:'no',nota:v('gt-nota')||''};
+  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
+}
+
+function abrirNuevoCC(tm){
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cargo CC · '+tm+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Concepto</label><input id="nc-concepto" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Monto USD</label><input id="nc-monto" type="number"/></div>'
+    +'<div class="form-group"><label>Fecha</label><input id="nc-fecha" type="date" value="'+today()+'"/></div></div>'
+    +'<div class="form-group"><label>Nota (opcional)</label><input id="nc-nota" autocomplete="off"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-success" onclick="guardarNuevoCC(\''+esc(tm)+'\')">Guardar</button></div>';
+  openModal();
+}
+function guardarNuevoCC(tm){
+  var data={id:uid(),fecha:v('nc-fecha'),agente:tm,concepto:v('nc-concepto'),monto:v('nc-monto'),moneda:'USD',tipo:'cuenta_corriente',visible_agente:'si',nota:v('nc-nota')||''};
+  closeModal();loading();addRow('CuentaCorriente',data,function(){loadFinanzas();});
+}
+
+
 function loadEquipo(){
   if(currentUser.rol!=='Líder'){
-    getSheet('CuentaCorriente',function(e,rows){
-      rows=(rows||[]).filter(function(r){return r.agente===currentUser.nombre&&r.visible_agente==='si';});
-      var total=rows.reduce(function(a,r){return a+Number(r.monto||0);},0);
-      var html='<div class="section-title" style="margin-bottom:1.5rem">Mi cuenta corriente</div>'
-        +'<div class="metric" style="max-width:240px;margin-bottom:1.5rem"><div class="metric-label">Saldo a rendir</div><div class="metric-value '+(total>0?'red':'green')+'">USD '+fmt(Math.round(total))+'</div></div>';
-      if(rows.length){
-        html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr>';
-        rows.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="font-weight:600;color:#991b1b">USD '+fmt(r.monto)+'</td></tr>';});
-        html+='</table></div></div>';
-      }else{html+='<div class="empty">Sin movimientos en tu cuenta corriente.</div>';}
-      document.getElementById('tabContent').innerHTML=html;
-    });
+    document.getElementById('tabContent').innerHTML='<div class="empty">Sin acceso.</div>';
     return;
   }
-
-  var vistaActual='consolidado',agenteActual='';
-
-  function render(vista,agente){
-    vistaActual=vista;
-    if(agente!==undefined)agenteActual=agente;
-    if(!agenteActual&&allAgentes.length)agenteActual=allAgentes[0];
-
-    Promise.all([
-      fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
-    ]).then(function(res){
-      function toArr(x){return Array.isArray(x)?x:[];}
-      var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]),allGastos=toArr(res[3]),allFins=toArr(res[4]),allDevs=toArr(res[5]),allUnis=toArr(res[6]),allCC=toArr(res[7]);
-
-      var vi=vistaActual==='individual'?' active':'';
-      var vc=vistaActual==='cuentas'?' active':'';
-      var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>'
-        +'<div class="tabs-secondary">'
-        +'<div class="tab-sec'+vi+'" onclick="window._eq(\'individual\')">Vista individual</div>'
-        +'<div class="tab-sec'+vc+'" onclick="window._eq(\'cuentas\')">Cuenta corriente</div>'
-        +'</div>';
-          var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
-          var busqs=allBusq.filter(function(b){return b.agente===ag;});
-          var todasProps=props.concat(busqs);
-          var ops=allOps.filter(function(o){return o.agente===ag;});
-          var gastos=allGastos.filter(function(g){return g.agente===ag;});
-          var fins=allFins.filter(function(f){return f.agente===ag;});
-          var devs=allDevs.filter(function(d){return d.agente===ag;});
-          var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
-          var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
-          var pventa=todasProps.filter(function(p){return p.estado==='En venta';}).length;
-          var preserv=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
-          var pvend=todasProps.filter(function(p){return p.estado==='Vendida';}).length
-            +unis.filter(function(u){return u.condicion==='Vendida';}).length;
-          var uact=unis.filter(function(u){return u.condicion==='Activa';}).length;
-          var ures=unis.filter(function(u){return u.condicion==='Reservada';}).length;
-          var uvend=unis.filter(function(u){return u.condicion==='Vendida';}).length;
-          var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-          var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-          var propComGen=todasProps.filter(function(p){return p.estado==='Vendida';}).reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
-          var comGenTotal=propComGen+uComGen;
-          var esPropio=ag===currentUser.nombre;
-          var facturacionBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-          var facturacionNeta=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
-          var gastosT=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0)+fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
-          html+='<div class="card"><div class="card-header"><span class="card-title">'+ag+'</span><span class="rol-badge">'+(ag===currentUser.nombre?currentUser.rol:'Agente')+'</span></div>'
-            +'<div class="section-divider" style="margin-top:0">Propiedades y búsquedas</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
-            +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue" style="font-size:18px">'+pventa+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+preserv+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+pvend+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. bruta gen.</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComGen))+'</div></div>'
-            +'</div>'
-            +'<div class="section-divider">Desarrollos ('+devs.length+' activos · '+unis.length+' unidades en total)</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0.75rem;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
-            +'<div class="metric"><div class="metric-label">Activas</div><div class="metric-value blue" style="font-size:18px">'+uact+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber" style="font-size:18px">'+ures+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green" style="font-size:18px">'+uvend+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. generada</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(uComGen))+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. proyectada</div><div class="metric-value amber" style="font-size:13px">USD '+fmt(Math.round(uComProy))+'</div></div>'
-            +'</div>'
-            +'<div class="section-divider">Financiero (mi parte)</div>'
-            +'<div class="grid-metrics" style="margin-bottom:0;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">'
-            +'<div class="metric"><div class="metric-label">Com. bruta total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(facturacionBruta))+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Com. neta TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(facturacionNeta))+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:15px">USD '+fmt(Math.round(gastosT))+'</div></div>'
-            +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value" style="font-size:18px">'+ops.length+'</div></div>'
-            +'</div></div>';
-
-        });
-      }if(vistaActual==='individual'){
-        html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
-        allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'individual\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
-        html+='</div>';
-        var ag=agenteActual;
-        var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
-        var busqs=allBusq.filter(function(b){return b.agente===ag;});
-        var todasProps=props.concat(busqs);
-        var ops=allOps.filter(function(o){return o.agente===ag;});
-        var gastos=allGastos.filter(function(g){return g.agente===ag;});
-        var devs=allDevs.filter(function(d){return d.agente===ag;});
-        var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
-        var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
-        var uComGen=unis.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        var uComProy=unis.filter(function(u){return u.condicion==='Activa'||u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-        var netoTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
-        var esPropio=ag===currentUser.nombre;
-        // Com bruta y neta de props+busquedas vendidas
-        var propVend=todasProps.filter(function(p){return p.estado==='Vendida';});
-        var propComBruta=propVend.reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0);
-        var propComNeta=esPropio
-          ?propComBruta*0.76
-          :ops.filter(function(o){return !o.unidad_id;}).reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
-        var propComNetaAgente=ops.filter(function(o){return !o.unidad_id;}).reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
-        // Com bruta y neta total (props+busquedas+unidades)
-        var comBrutaTotal=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-        var comNetaTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
-        var comNetaAgente=ops.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
-        var gastosAg=allGastos.filter(function(g){return g.agente===ag;}).reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
-        var rentAgPct=comBrutaTotal>0?Math.round((comNetaTL-gastosAg)/comBrutaTotal*100):null;
-        var rentColor=rentAgPct===null?'#888':rentAgPct>=50?'#065f46':'#991b1b';
-
-        html+='<div class="grid-metrics">'
-          +'<div class="metric"><div class="metric-label">Props. en venta</div><div class="metric-value blue">'+todasProps.filter(function(p){return p.estado==='En venta';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+todasProps.filter(function(p){return p.estado==='Reservada';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Props. vendidas</div><div class="metric-value green">'+propVend.length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. bruta props</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(propComBruta))+'</div></div>'
-          +(esPropio
-            ?'<div class="metric"><div class="metric-label">Com. neta props</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComNeta))+'</div></div>'
-            :'<div class="metric"><div class="metric-label">Com. neta TL props</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(propComNeta))+'</div></div>'
-             +'<div class="metric"><div class="metric-label">Com. neta agente props</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(propComNetaAgente))+'</div></div>'
-          )
-          +'</div>'
-          +'<div class="section-divider">Desarrollos</div>'
-          +'<div class="grid-metrics">'
-          +'<div class="metric"><div class="metric-label">Desarrollos</div><div class="metric-value">'+devs.length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Uds. activas</div><div class="metric-value blue">'+unis.filter(function(u){return u.condicion==='Activa';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Uds. vendidas</div><div class="metric-value green">'+unis.filter(function(u){return u.condicion==='Vendida';}).length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. gen. desarro.</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(uComGen))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. proy. desarro.</div><div class="metric-value amber" style="font-size:13px">USD '+fmt(Math.round(uComProy))+'</div></div>'
-          +'</div>'
-          +'<div class="section-divider">Financiero total</div>'
-          +'<div class="grid-metrics">'
-          +'<div class="metric"><div class="metric-label">Com. bruta total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comBrutaTotal))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Com. neta TL total</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comNetaTL))+'</div></div>'
-          +(esPropio?''
-            :'<div class="metric"><div class="metric-label">Com. neta agente total</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comNetaAgente))+'</div></div>'
-          )
-          +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:13px">USD '+fmt(Math.round(gastosAg))+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Operaciones</div><div class="metric-value">'+ops.length+'</div></div>'
-          +'<div class="metric"><div class="metric-label">Rentabilidad TL</div><div class="metric-value" style="color:'+rentColor+'">'+(rentAgPct!==null?rentAgPct+'%':'—')+'</div></div>'
-          +'</div>';
-        html+='<div class="card"><div class="card-header"><span class="card-title">Propiedades y búsquedas</span></div>';
-        if(todasProps.length){
-          html+='<div class="table-wrap"><table><tr><th>Dirección</th><th>Tipo</th><th>Referida</th><th>Estado</th><th>Precio</th></tr>';
-          todasProps.forEach(function(p){html+='<tr><td>'+p.direccion+'</td><td>'+(p.tipo||'')+'</td><td>'+(p.referido==='si'?'<span class="referido-tag">✓ Ref.</span>':'<span class="no-referido-tag">—</span>')+'</td><td><span class="badge '+estadoBadge(p.estado)+'">'+p.estado+'</span></td><td>USD '+fmt(p.precio)+'</td></tr>';});
-          html+='</table></div>';
-        }else{html+='<div class="empty">Sin propiedades.</div>';}
-        html+='</div>';
-        if(devs.length){
-          html+='<div class="card"><div class="card-header"><span class="card-title">Desarrollos</span></div><div class="table-wrap"><table><tr><th>Nombre</th><th>Total uds.</th><th>Activas</th><th>Vendidas</th><th>Com. generada</th></tr>';
-          devs.forEach(function(d){
-            var du=allUnis.filter(function(u){return u.desarrollo_id===d.id;});
-            var dc=du.filter(function(u){return u.condicion==='Vendida';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
-            html+='<tr><td style="font-weight:600">'+d.nombre+'</td><td>'+du.length+'</td><td>'+du.filter(function(u){return u.condicion==='Activa';}).length+'</td><td>'+du.filter(function(u){return u.condicion==='Vendida';}).length+'</td><td style="color:#065f46;font-weight:600">USD '+fmt(Math.round(dc))+'</td></tr>';
-          });
-          html+='</table></div></div>';
-        }
-
-      if(vistaActual==='cuentas'){
-        html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
-        allAgentes.forEach(function(a){html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._eq(\'cuentas\',\''+esc(a)+'\')">'+chipLabel(a)+'</div>';});
-        html+='</div>';
-        var esViendoMismo=agenteActual===currentUser.nombre;
-        // Vista YO: bloque1=gastos propios TL, bloque2=gastos sobre el team
-        // Vista agente: bloque1=gastos TL sobre ese agente, bloque2=cuenta corriente del agente
-        var bloque1=esViendoMismo
-          ?allCC.filter(function(r){return r.tipo==='gasto_tl';})
-          :allCC.filter(function(r){return r.agente===agenteActual&&r.tipo==='gasto_gonzalo';});
-        var bloque2=esViendoMismo
-          ?allCC.filter(function(r){return r.tipo==='gasto_gonzalo';})
-          :allCC.filter(function(r){return r.agente===agenteActual&&r.tipo==='cuenta_corriente';});
-        var misGastos=bloque1;
-        var ccDeuda=bloque2;
-        html+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:1rem">'
-          +(esViendoMismo
-            ?'<button class="btn btn-sm btn-primary" onclick="window._nuevoCC(\'gasto_tl\',\''+esc(agenteActual)+'\')">+ Mi gasto propio</button>'
-             +'<button class="btn btn-sm btn-success" onclick="window._nuevoCC(\'gasto_gonzalo\',\''+esc(agenteActual)+'\')">+ Mi gasto sobre el team</button>'
-            :'<button class="btn btn-sm btn-primary" onclick="window._nuevoCC(\'gasto_gonzalo\',\''+esc(agenteActual)+'\')">+ Mi gasto sobre '+agenteActual.split(' ')[0]+'</button>'
-             +'<button class="btn btn-sm btn-success" onclick="window._nuevoCC(\'cuenta_corriente\',\''+esc(agenteActual)+'\')">+ Cargo cuenta corriente</button>'
-          )+'</div>';
-        var titulo1=esViendoMismo?'Mis gastos':'Mis gastos sobre '+agenteActual;
-        var totalMG2=bloque1.reduce(function(a,r){return a+Number(r.monto||0);},0);
-        html+='<div class="cc-section"><div class="cc-section-title"><span>🔒 '+titulo1+' <span style="font-size:11px;color:#888;font-weight:400">(solo vos lo ves)</span></span><span style="color:#991b1b;font-weight:700">USD '+fmt(Math.round(totalMG2))+'</span></div>';
-        if(bloque1.length){
-          html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th></th></tr>';
-          bloque1.forEach(function(r){html+='<tr><td>'+r.fecha+'</td><td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td><td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});
-          html+='</table></div>';
-        }else{html+='<div class="empty">Sin registros.</div>';}
-        html+='</div>';
-        var titulo2=esViendoMismo?'Mis gastos sobre el team':'Cuenta corriente · '+agenteActual;
-        var totalCC2=bloque2.reduce(function(a,r){return a+Number(r.monto||0);},0);
-        html+='<div class="cc-section"><div class="cc-section-title"><span>'+(esViendoMismo?'👥':'💳')+' '+titulo2+'</span><span style="font-weight:700;color:'+(totalCC2>0?'#991b1b':'#065f46')+'">USD '+fmt(Math.round(totalCC2))+'</span></div>';
-        if(bloque2.length){
-          var cols2=esViendoMismo?'<th>Agente</th>':'';
-          html+='<div class="table-wrap"><table><tr><th>Fecha</th>'+cols2+'<th>Concepto</th><th>Monto</th>'+(esViendoMismo?'':'<th>Nota</th>')+'<th></th></tr>';
-          bloque2.forEach(function(r){html+='<tr><td>'+r.fecha+'</td>'+(esViendoMismo?'<td style="color:#888;font-size:12px">'+r.agente+'</td>':'')+'<td>'+r.concepto+'</td><td style="color:#991b1b;font-weight:600">USD '+fmt(r.monto)+'</td>'+(esViendoMismo?'':'<td style="color:#888">'+(r.nota||'-')+'</td>')+'<td><button class="btn btn-sm" onclick="window._elimCC(\''+r.id+'\')">×</button></td></tr>';});
-          html+='</table></div>';
-        }else{html+='<div class="empty">'+(esViendoMismo?'Sin gastos sobre el team.':'Sin cargos.')+'</div>';}
-        html+='</div>';
-      }
-      document.getElementById('tabContent').innerHTML=html;
-      window._eq=function(vista,ag){render(vista,ag);};
-      window._elimCC=function(id){if(!confirm('¿Eliminar?'))return;delRow('CuentaCorriente',id,function(){render('cuentas',agenteActual);});};
-  }
-  render('individual','');
-  window._eq=function(vista,ag){render(vista,ag);};
-}
-// ============================================================
-// PANEL TEAM — click en widget
-// ============================================================
-function abrirPanelTeam(){
+  loading();
   Promise.all([
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();})
+    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
-    var allProps=res[0]||[],allBusq=res[1]||[],allOps=res[2]||[],allGastos=res[3]||[],allDevs=res[4]||[],allUnis=res[5]||[];
+    function toArr(x){return Array.isArray(x)?x:[];}
+    var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]);
+    var allGastos=toArr(res[3]),allDevs=toArr(res[4]),allUnis=toArr(res[5]),allObjs=toArr(res[6]);
+
+    // Agentes = todos menos el TL
+    var tms=allAgentes.filter(function(a){return a!==currentUser.nombre;});
+    var agenteActual=window._equipoTM||tms[0]||'';
+    window._equipoTM=agenteActual;
+
     var anoActual=new Date().getFullYear();
-    var agentes=allAgentes.filter(function(a){return a!==currentUser.nombre;});
 
-    var html='<div class="modal-header"><span class="modal-title">Team Olivera · Detalle por agente</span><button class="close-btn" onclick="closeModal()">×</button></div>';
-    html+='<div class="table-wrap"><table>'
-      +'<tr>'
-      +'<th>Agente</th>'
-      +'<th>Captaciones</th>'
-      +'<th>Reservas activas</th>'
-      +'<th>Com. proy. reservas</th>'
-      +'<th>Ops. '+anoActual+'</th>'
-      +'<th>Fact. bruta</th>'
-      +'<th>Rent. neta</th>'
-      +'</tr>';
+    // Facturación bruta total del team para % participación
+    var brutaTotal=allOps.filter(function(o){
+      var fv=o.fecha_venta||o.fecha||'';
+      return fv.startsWith(String(anoActual));
+    }).reduce(function(a,o){return a+Number(o.comision_total||0);},0);
 
-    agentes.forEach(function(ag){
-      var agProps=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
-      var agBusqs=allBusq.filter(function(b){return b.agente===ag;});
-      var agDevIds=allDevs.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
-      var agUnis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
-      var agOps=allOps.filter(function(o){return o.agente===ag&&o.fecha&&o.fecha.startsWith(String(anoActual));});
-      var agGastos=allGastos.filter(function(g){return g.agente===ag&&(g.moneda||'USD')==='USD';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var html='<div class="section-title" style="margin-bottom:1rem">Panel del Equipo</div>';
 
-      // Captaciones: propiedades sueltas (sin búsquedas)
-      var captaciones=agProps.length+agUnis.length;
-
-      // Reservas activas: props reservadas + búsquedas reservadas + unidades reservadas
-      var propsReservadas=agProps.filter(function(p){return p.estado==='Reservada';}).length;
-      var busqReservadas=agBusqs.filter(function(b){return b.estado==='Reservada';}).length;
-      var unisReservadas=agUnis.filter(function(u){return u.condicion==='Reservada';}).length;
-      var totalReservas=propsReservadas+busqReservadas+unisReservadas;
-
-      // Comisión proyectada reservas: props + búsquedas + unidades reservadas
-      var comPrReservas=agProps.filter(function(p){return p.estado==='Reservada';})
-        .reduce(function(a,p){return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;},0)
-        +agBusqs.filter(function(b){return b.estado==='Reservada';})
-        .reduce(function(a,b){return a+Number(b.precio||0)*(Number(b.comision_compradora||0)+Number(b.comision_vendedora||0))/100;},0)
-        +agUnis.filter(function(u){return u.condicion==='Reservada';})
-        .reduce(function(a,u){return a+Number(u.comision||0);},0);
-
-      // Facturación bruta año
-      var brutaAno=agOps.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-
-      // Neta para mí (TL) de operaciones cerradas
-      var netaTL=agOps.reduce(function(a,o){return a+Number(o.comision_team_leader||0)-Number(o.martillero||0);},0);
-
-      // Rentabilidad = (neta TL - gastos) / bruta * 100
-      var rentNeta=netaTL-agGastos;
-      var rentPct=brutaAno>0?Math.round(rentNeta/brutaAno*100):null;
-      var rentColor=rentPct===null?'#888':rentPct>=50?'#065f46':'#991b1b';
-
-      html+='<tr>'
-        +'<td style="font-weight:600">'+ag.split(' ').slice(0,2).join(' ')+'</td>'
-        +'<td style="text-align:center">'+captaciones+'</td>'
-        +'<td style="text-align:center">'+totalReservas+'</td>'
-        +'<td style="color:#92400e;font-weight:600">USD '+fmt(Math.round(comPrReservas))+'</td>'
-        +'<td style="text-align:center">'+agOps.length+'</td>'
-        +'<td style="font-weight:600;color:#185FA5">USD '+fmt(Math.round(brutaAno))+'</td>'
-        +'<td style="font-weight:700;color:'+rentColor+'">'+(rentPct!==null?rentPct+'%':'—')+'</td>'
-        +'</tr>';
+    // Selector de TM
+    html+='<div class="agente-selector"><span style="font-size:12px;color:#888;font-weight:500">Agente:</span>';
+    tms.forEach(function(a){
+      html+='<div class="agente-chip'+(a===agenteActual?' active':'')+'" onclick="window._equipoTM=\''+esc(a)+'\';loadEquipo()">'+a.split(' ').slice(-1)[0]+'</div>';
     });
+    html+='</div>';
 
-    html+='</table></div>';
-    document.getElementById('modalBox').innerHTML=html;
-    openModal();
-  });
-}
+    if(!agenteActual){
+      document.getElementById('tabContent').innerHTML=html+'<div class="empty">No hay Team Members cargados.</div>';
+      return;
+    }
 
-// ============================================================
-// EDITAR CIERRE DE OPERACIÓN
-// ============================================================
-function abrirEditCierreProp(propId,sheet){
-  getSheet('Operaciones',function(e,ops){
-    var op=(ops||[]).find(function(o){return o.propiedad_id===propId;});
-    if(!op){alert('No se encontró la operación asociada.');return;}
-    abrirEditCierre(op.id);
-  });
-}
+    var ag=agenteActual;
+    var props=allProps.filter(function(p){return p.agente===ag&&!p.desarrollo_id;});
+    var busqs=allBusq.filter(function(b){return b.agente===ag;});
+    var todasProps=props.concat(busqs);
+    var ops=allOps.filter(function(o){
+      var fv=o.fecha_venta||o.fecha||'';
+      return o.agente===ag&&fv.startsWith(String(anoActual));
+    });
+    var gastos=allGastos.filter(function(g){return g.agente===ag;});
+    var devs=allDevs.filter(function(d){return d.agente===ag;});
+    var agDevIds=devs.map(function(d){return d.id;});
+    var unis=allUnis.filter(function(u){return agDevIds.indexOf(u.desarrollo_id)>=0;});
 
-function abrirEditCierre(opId){
-  getSheet('Operaciones',function(e,ops){
-    var op=(ops||[]).find(function(o){return o.id===opId;});
-    if(!op){alert('Operación no encontrada.');return;}
-    var esAgente=currentUser.rol!=='Líder';
-    var html='<div class="modal-header"><span class="modal-title">✏️ Editar cierre</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-      +'<div class="section-divider">Valores</div>'
-      +'<div class="row"><div class="form-group"><label>Valor de cierre (USD)</label><input id="ec-cierre" type="number" value="'+(op.precio_final||0)+'"/></div>'
-      +'<div class="form-group"><label>Fecha de carga</label><input id="ec-fecha" type="date" value="'+(op.fecha||today())+'"/></div>'
-      +'<div class="form-group"><label>Fecha de venta</label><input id="ec-fecha-venta" type="date" value="'+(op.fecha_venta||op.fecha||today())+'"/></div></div>'
-      +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="ec-comp" type="number" value="'+(op.comision_compradora||4)+'"/></div>'
-      +'<div class="form-group"><label>Com. vendedor (%)</label><input id="ec-vend" type="number" value="'+(op.comision_vendedora||3)+'"/></div></div>'
-      +'<div class="section-divider">Distribución</div>'
-      +'<div class="row">'
-      +(esAgente
-        ?'<div class="form-group"><label>% Agente</label><input id="ec-pctag" type="number" value="'+(op.comision_agente&&op.comision_total?Math.round(op.comision_agente/op.comision_total*100):35)+'"/></div>'
-        +'<div class="form-group"><label>% Team Leader</label><input id="ec-pcttl" type="number" value="'+(op.comision_team_leader&&op.comision_total?Math.round(op.comision_team_leader/op.comision_total*100):45)+'"/></div>'
-        +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="'+(op.parte_oficina&&op.comision_total?Math.round(op.parte_oficina/op.comision_total*100):20)+'"/></div>'
-        :'<div class="form-group"><label>% Gonzalo</label><input id="ec-pcttl" type="number" value="80"/></div>'
-        +'<div class="form-group"><label>% Oficina</label><input id="ec-pcto" type="number" value="20"/></div>'
-      )+'</div>'
-      +'<div class="form-group"><label>% Martillero (sobre parte TL)</label><input id="ec-mart" type="number" value="'+(op.martillero&&op.comision_team_leader?Math.round(op.martillero/op.comision_team_leader*100):4)+'"/></div>'
-      +'<div class="section-divider">IVA (recaudación aparte)</div>'
-      +'<div class="row"><div class="form-group"><label>IVA comprador</label><input id="ec-ivac" type="number" value="'+(op.iva_comprador||0)+'"/></div>'
-      +'<div class="form-group"><label>Moneda</label><select id="ec-ivac-m"><option value="USD"'+(op.iva_comprador_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_comprador_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
-      +'<div class="row"><div class="form-group"><label>IVA vendedor</label><input id="ec-ivav" type="number" value="'+(op.iva_vendedor||0)+'"/></div>'
-      +'<div class="form-group"><label>Moneda</label><select id="ec-ivav-m"><option value="USD"'+(op.iva_vendedor_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_vendedor_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
-      +'<div class="row"><div class="form-group"><label>IVA oficina</label><input id="ec-ivao" type="number" value="'+(op.iva_oficina||0)+'"/></div>'
-      +'<div class="form-group"><label>Moneda</label><select id="ec-ivao-m"><option value="USD"'+(op.iva_oficina_moneda==='USD'?' selected':'')+'>USD</option><option value="ARS"'+(op.iva_oficina_moneda==='ARS'?' selected':'')+'>ARS</option></select></div></div>'
-      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem">'
-      +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-      +'<button class="btn btn-success" onclick="guardarEditCierre(\''+opId+'\','+esAgente+')">Guardar cambios</button>'
+    // Objetivos
+    var objAnual=allObjs.find(function(o){return o.agente===ag&&o.periodo==='Anual'&&o.unidad==='USD';});
+    var metaAnual=objAnual?Number(objAnual.meta||0):0;
+
+    // Cálculos
+    var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length;
+    var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
+    var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
+
+    var comReservasBruta=todasProps.filter(function(p){return p.estado==='Reservada';}).reduce(function(a,p){
+      return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
+    },0)+unis.filter(function(u){return u.condicion==='Reservada';}).reduce(function(a,u){return a+Number(u.comision||0);},0);
+    var comReservasNetaTM=comReservasBruta*0.45;
+    var comReservasNetaTL=comReservasBruta*0.35;
+
+    var unisActivas=unis.filter(function(u){return u.condicion==='Activa';}).length;
+    var unisVendidas=unis.filter(function(u){return u.condicion==='Vendida';}).length;
+
+    var factBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var factNetaTM=ops.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
+    var factNetaTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+    var gastosTotal=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
+    var rentNetaTL=factNetaTL-gastosTotal;
+
+    // % objetivo
+    var pctAnual=metaAnual>0?Math.min(Math.round(factBruta/metaAnual*100),100):null;
+    var pctAnualColor=pctAnual===null?'#888':pctAnual>=100?'#059669':pctAnual>=50?'#d97706':'#CC2229';
+
+    // % cuatrimestre
+    var mesActual=new Date().getMonth()+1;
+    var cuatri=mesActual<=4?1:mesActual<=8?2:3;
+    var metaCuatri=metaAnual*(cuatri===1?0.25:cuatri===2?0.35:0.40);
+    var pctCuatri=metaCuatri>0?Math.min(Math.round(factBruta/metaCuatri*100),100):null;
+    var pctCuatriColor=pctCuatri===null?'#888':pctCuatri>=100?'#059669':pctCuatri>=50?'#d97706':'#CC2229';
+
+    // % participación en facturación del team
+    var pctParticip=brutaTotal>0?Math.round(factBruta/brutaTotal*100):0;
+
+    html+='<div class="grid-metrics" style="margin-bottom:1rem">'
+      +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+enVenta+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. brutas s/reservas</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comReservasBruta))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. neta s/reservas TM</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comReservasNetaTM))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Com. neta s/reservas TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comReservasNetaTL))+'</div></div>'
       +'</div>';
-    document.getElementById('modalBox').innerHTML=html;
-    openModal();
+    html+='<div class="section-divider">Desarrollos y unidades</div>'
+      +'<div class="grid-metrics" style="margin-bottom:1rem">'
+      +'<div class="metric"><div class="metric-label">Desarrollos</div><div class="metric-value">'+devs.length+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Uds. activas</div><div class="metric-value blue">'+unisActivas+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Uds. vendidas</div><div class="metric-value green">'+unisVendidas+'</div></div>'
+      +'</div>';
+    html+='<div class="section-divider">Financiero '+anoActual+'</div>'
+      +'<div class="grid-metrics" style="margin-bottom:1rem">'
+      +'<div class="metric"><div class="metric-label">Fact. bruta</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(factBruta))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Fact. neta TM</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(factNetaTM))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Fact. neta TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(factNetaTL))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos</div><div class="metric-value red" style="font-size:13px">USD '+fmt(Math.round(gastosTotal))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Rent. neta TL</div><div class="metric-value '+(rentNetaTL>=0?'green':'red')+'" style="font-size:13px">USD '+fmt(Math.round(rentNetaTL))+'</div></div>'
+      +'</div>';
+    html+='<div class="section-divider">Objetivos y participación</div>'
+      +'<div class="grid-metrics">'
+      +'<div class="metric"><div class="metric-label">% Objetivo anual</div><div class="metric-value" style="color:'+pctAnualColor+';font-size:20px">'+(pctAnual!==null?pctAnual+'%':'Sin objetivo')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">% Objetivo cuatrimestral</div><div class="metric-value" style="color:'+pctCuatriColor+';font-size:20px">'+(pctCuatri!==null?pctCuatri+'%':'Sin objetivo')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">% Participación en el team</div><div class="metric-value blue" style="font-size:20px">'+pctParticip+'%</div></div>'
+      +'</div>';
+
+    document.getElementById('tabContent').innerHTML=html;
   });
 }
 
-function guardarEditCierre(opId,esAgente){
-  var cierre=Number(document.getElementById('ec-cierre').value||0);
-  var comp=Number(document.getElementById('ec-comp').value||0);
-  var vend=Number(document.getElementById('ec-vend').value||0);
-  var pctTL=Number(document.getElementById('ec-pcttl').value||0);
-  var pctAg=esAgente?Number(document.getElementById('ec-pctag').value||0):0;
-  var pctO=Number(document.getElementById('ec-pcto').value||0);
-  var pctM=Number(document.getElementById('ec-mart').value||4);
-  var ivaC=Number(document.getElementById('ec-ivac').value||0);
-  var ivaCm=document.getElementById('ec-ivac-m').value||'USD';
-  var ivaV=Number(document.getElementById('ec-ivav').value||0);
-  var ivaVm=document.getElementById('ec-ivav-m').value||'USD';
-  var ivaO=Number(document.getElementById('ec-ivao').value||0);
-  var ivaOm=document.getElementById('ec-ivao-m').value||'USD';
-  var fecha=document.getElementById('ec-fecha').value;
-  var fechaVenta=document.getElementById('ec-fecha-venta').value||fecha;
-  var comTotal=cierre*(comp+vend)/100;
-  var parteTL=comTotal*pctTL/100;
-  var parteAg=esAgente?comTotal*pctAg/100:0;
-  var parteO=comTotal*pctO/100;
-  var martillero=Math.round(parteTL*pctM/100);
-  var ivaTotal=ivaC+ivaV+ivaO;
-  var netoTL=Math.round(parteTL-martillero);
-  var netoAg=Math.round(parteAg);
-  var data={
-    fecha:fecha,fecha_venta:fechaVenta,precio_final:cierre,
-    comision_total:Math.round(comTotal),
-    comision_agente:netoAg,comision_team_leader:Math.round(parteTL),
-    parte_oficina:Math.round(parteO),martillero:martillero,
-    iva_comprador:ivaC,iva_comprador_moneda:ivaCm,
-    iva_vendedor:ivaV,iva_vendedor_moneda:ivaVm,
-    iva_oficina:ivaO,iva_oficina_moneda:ivaOm,
-    iva_total:ivaTotal,neto_agente:netoAg,neto_team_leader:netoTL
-  };
-  closeModal();loading();
-  updRow('Operaciones',opId,data,function(){loadFinanzas();});
-}
-
-// ============================================================
-// DOCUMENTOS
-// ============================================================
-var AGENTES_DATOS={
-  'golivera':{nombre:'Gonzalo Javier Olivera',dni:'31.694.160'},
-  'gquintana':{nombre:'Gonzalo Ariel Quintana',dni:'28.031.147'}
-};
 
 function loadDocumentos(){
   var html='<div class="section-title" style="margin-bottom:1.5rem">Documentos</div>'
