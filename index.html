@@ -312,8 +312,9 @@ function loadDashboard(filtroAgente){
     // Combinar props sueltas + búsquedas para stock
     var todasProps=props.concat(busqs);
     var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length+unis.filter(function(u){return u.condicion==='Activa';}).length;
-    var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length+unis.filter(function(u){return u.condicion==='Reservada';}).length;
-    var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
+    var reservadas=todasProps.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';}).length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
+    // Vendidas = operaciones cerradas del agente (misma lógica que el dashboard)
+    var vendidas=ops.length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
 
     var gastosOficina=fins.filter(function(f){return f.tipo==='Gasto';}).reduce(function(a,f){return a+Number(f.monto||0);},0);
     var gastosProp=gastos.reduce(function(a,g){return a+Number(g.monto||0);},0);
@@ -351,6 +352,8 @@ function loadDashboard(filtroAgente){
         var opsAgBruta=0,opsAgNeta=0;   // Solo agentes (neto TL de ops de agentes)
         var opsAgNetoTM=0; // neto que les queda a los agentes
         var gastosTeamUSD=0;
+        // Contadores globales team
+        var teamReservadas=0,teamActivas=0,teamCerradas=0;
         // Gastos del TL sobre sus TM (gasto_gonzalo de CuentaCorriente)
         var gastosTMCC=allCC.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
 
@@ -361,6 +364,12 @@ function loadDashboard(filtroAgente){
           var agDevIds2=allDevsDash.filter(function(d){return d.agente===ag;}).map(function(d){return d.id;});
           var agUnis=allUnis.filter(function(u){return agDevIds2.indexOf(u.desarrollo_id)>=0;});
           var agTodas=agProps.concat(agBusqs);
+          teamReservadas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';}).length
+            +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
+          teamActivas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='en venta';}).length
+            +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='activa';}).length;
+          teamCerradas+=agTodas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='vendida';}).length
+            +agUnis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
 
           // Gastos de agentes
           if(!esLiderAg){
@@ -464,6 +473,12 @@ function loadDashboard(filtroAgente){
           +'<div class="team-metric"><div class="team-metric-label">Rentabilidad team</div>'
           +'<div class="team-metric-value" style="color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#6ee7b7':'#fca5a5')+'">USD '+fmt(Math.round(rentTeam))+'</div>'
           +(opsAgBruta>0?'<div style="font-size:11px;margin-top:3px;font-weight:600;color:'+(rentTeamPct>=RENT_TEAM_UMBRAL?'#6ee7b7':'#fca5a5')+'">'+rentTeamPct+'%</div>':'')
+          +'</div>'
+          +'<div style="font-size:11px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:12px">Stock del team</div>'
+          +'<div class="team-metrics">'
+          +'<div class="team-metric"><div class="team-metric-label">Propiedades activas</div><div class="team-metric-value">'+teamActivas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Reservadas</div><div class="team-metric-value" style="color:#fcd34d">'+teamReservadas+'</div></div>'
+          +'<div class="team-metric"><div class="team-metric-label">Cerradas</div><div class="team-metric-value" style="color:#6ee7b7">'+teamCerradas+'</div></div>'
           +'</div>'
           +'</div></div>';
       }
@@ -1957,9 +1972,9 @@ function loadEquipo(){
 
     // Cálculos
     var enVenta=todasProps.filter(function(p){return p.estado==='En venta';}).length;
-    var reservadas=todasProps.filter(function(p){return p.estado==='Reservada';}).length;
+    var reservadas=todasProps.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';}).length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='reservada';}).length;
     // Vendidas: usar ops cerradas como fuente de verdad
-    var vendidas=todasProps.filter(function(p){return p.estado==='Vendida';}).length+unis.filter(function(u){return u.condicion==='Vendida';}).length;
+    var vendidas=todasProps.filter(function(p){return (p.estado||'').trim().toLowerCase()==='vendida';}).length+unis.filter(function(u){return (u.condicion||'').trim().toLowerCase()==='vendida';}).length;
 
     var comReservasBruta=todasProps.filter(function(p){return p.estado==='Reservada';}).reduce(function(a,p){
       return a+Number(p.precio||0)*(Number(p.comision_compradora||0)+Number(p.comision_vendedora||0))/100;
