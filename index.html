@@ -1357,6 +1357,7 @@ function eliminarUnidad(id,devId,devNombre,compPct,vendPct){
 // FINANZAS
 // ============================================================
 function loadFinanzas(){
+  var finTab=window._finTab||'operaciones';
   Promise.all([
     fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Gastos').then(function(r){return r.json();}),
@@ -1364,7 +1365,8 @@ function loadFinanzas(){
     fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
     fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
     fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})
+    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),
+    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
   ]).then(function(res){
     var esLider=currentUser.rol==='Líder';
     var fins=(res[0]||[]).filter(function(f){return f.agente===currentUser.nombre;});
@@ -1374,6 +1376,7 @@ function loadFinanzas(){
     var allBusqFin=res[4]||[];
     var allUnisFin=res[5]||[];
     var allDevsFin=res[6]||[];
+    var allCCFin=res[7]||[];
     function getDireccionOp(o){
       if(o.propiedad_id){
         var p=allPropsFin.find(function(x){return x.id===o.propiedad_id;})||allBusqFin.find(function(x){return x.id===o.propiedad_id;});
@@ -1395,18 +1398,32 @@ function loadFinanzas(){
       return a+Number(g.monto||0);
     },0);
     var gastosPropARS=gastos.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+    var gastosTeamCC=allCCFin.filter(function(r){return r.tipo==='gasto_gonzalo';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var gastosTLProp=allCCFin.filter(function(r){return r.tipo==='gasto_tl';}).reduce(function(a,r){return a+Number(r.monto||0);},0);
     var facturacion=ops.reduce(function(a,o){
       if(esLider)return a+Number(o.neto_team_leader||o.neto_agente||o.comision_total||0);
       return a+Number(o.neto_agente||o.comision_total||0);
     },0);
-    var rentabilidad=facturacion-gastosPropUSD-gastosOficina;
-    var html='<div class="grid-metrics">'
+    var rentabilidad=facturacion-gastosPropUSD-gastosOficina-gastosTLProp-gastosTeamCC;
+    // Solapas de finanzas
+    var html='<div class="tabs-secondary" style="margin-bottom:1rem">';
+    var t1=finTab==='operaciones'?' active':'';
+    var t2=finTab==='gastos'?' active':'';
+    var t3=finTab==='team'?' active':'';
+    html+='<div class="tab-sec'+t1+'" onclick="window._finTab=\'operaciones\';loadFinanzas()">Operaciones</div>';
+    html+='<div class="tab-sec'+t2+'" onclick="window._finTab=\'gastos\';loadFinanzas()">Gastos</div>';
+    if(esLider)html+='<div class="tab-sec'+t3+'" onclick="window._finTab=\'team\';loadFinanzas()">Gastos team</div>';
+    html+='</div>';
+    // Resumen siempre visible
+    html+='<div class="grid-metrics">'
       +'<div class="metric"><div class="metric-label">Facturación neta</div><div class="metric-value green">USD '+fmt(Math.round(facturacion))+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos prop. USD</div><div class="metric-value red">USD '+fmt(gastosPropUSD)+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos prop. ARS</div><div class="metric-value red">$ '+fmt(gastosPropARS)+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Gastos oficina</div><div class="metric-value red">USD '+fmt(gastosOficina)+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos propiedades</div><div class="metric-value red">USD '+fmt(Math.round(gastosPropUSD))+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Gastos propios</div><div class="metric-value red">USD '+fmt(Math.round(gastosTLProp))+'</div></div>'
+      +(esLider?'<div class="metric"><div class="metric-label">Gastos team</div><div class="metric-value red">USD '+fmt(Math.round(gastosTeamCC))+'</div></div>':'')
+      +'<div class="metric"><div class="metric-label">Gastos oficina</div><div class="metric-value red">USD '+fmt(Math.round(gastosOficina))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Rentabilidad neta</div><div class="metric-value '+(rentabilidad>=0?'green':'red')+'">USD '+fmt(Math.round(rentabilidad))+'</div></div>'
       +'</div>';
+    if(finTab==='operaciones'){
     html+='<div class="section-header" style="margin-top:1rem"><div class="section-title">Operaciones cerradas</div></div>';
     if(ops.length){
       html+='<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Dirección</th><th>Fecha venta</th><th>Ref.</th><th>Com. total</th>'
@@ -1454,6 +1471,7 @@ function loadFinanzas(){
         +'<div class="card" style="padding:0"><div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Moneda</th><th>Monto</th></tr>';
       gastos.forEach(function(g){html+='<tr><td>'+g.fecha+'</td><td>'+g.concepto+'</td><td>'+(g.moneda||'USD')+'</td><td style="color:#991b1b;font-weight:600">'+(g.moneda==='ARS'?'$':'USD ')+fmt(g.monto)+'</td></tr>';});
       html+='</table></div></div>';
+    }
     }
     document.getElementById('tabContent').innerHTML=html;
   });
