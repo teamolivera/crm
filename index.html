@@ -1501,7 +1501,7 @@ function loadFinanzas(){
       +'<div class="metric"><div class="metric-label">Gastos oficina</div><div class="metric-value red">USD '+fmt(Math.round(gastosOficina))+'</div></div>'
       +(esLider?'<div class="metric"><div class="metric-label">Gastos generales</div><div class="metric-value red">USD '+fmt(Math.round(gastosGrales))+'</div></div>':'')
       +(esLider?'<div class="metric"><div class="metric-label">Gastos team</div><div class="metric-value red">USD '+fmt(Math.round(gastosTeam))+'</div></div>':'')
-      +'<div class="metric"><div class="metric-label">Rent. neta</div><div class="metric-value '+(rentNeta>=0?'green':'red')+'">USD '+fmt(Math.round(rentNeta))+'</div>'+(factNeta>0?'<div style="font-size:12px;font-weight:700;color:'+(rentNeta>=0?'#00C853':'#FF1A1A')+'">'+Math.round(rentNeta/factNeta*100)+'%</div>':'')+'</div></div>'
+      +'<div class="metric"><div class="metric-label">Rent. neta</div><div class="metric-value '+(rentNeta>=0?'green':'red')+'">USD '+fmt(Math.round(rentNeta))+'</div>'+(factBruta>0?'<div style="font-size:12px;font-weight:700;color:'+(rentNeta>=0?'#00C853':'#FF1A1A')+'">'+Math.round(rentNeta/factBruta*100)+'%</div>':'')+'</div></div>'
       +'</div>';
 
     // Solapas
