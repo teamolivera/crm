@@ -170,10 +170,29 @@ var API='https://sheetdb.io/api/v1/8al8hyqbj13qm';
 var currentUser=null;
 var allAgentes=[];
 
-function getSheet(s,cb){fetch(API+'?sheet='+s).then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});}
-function addRow(s,data,cb){fetch(API+'?sheet='+s,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[data]})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
-function delRow(s,id,cb){fetch(API+'/id/'+id+'?sheet='+s,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
-function updRow(s,id,data,cb){fetch(API+'/id/'+id+'?sheet='+s,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:data})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+// Cache global de sheets — se llena al inicio y se invalida al guardar/editar
+var _cache={};
+var _cacheTs={};
+var CACHE_TTL=300000; // 5 minutos
+
+function clearCache(sheet){
+  if(sheet){delete _cache[sheet];delete _cacheTs[sheet];}
+  else{_cache={};_cacheTs={};}
+}
+
+function getSheet(s,cb){
+  var now=Date.now();
+  if(_cache[s]&&(now-(_cacheTs[s]||0))<CACHE_TTL){
+    return cb(null,_cache[s]);
+  }
+  fetch(API+'?sheet='+s).then(function(r){return r.json();}).then(function(d){
+    _cache[s]=d;_cacheTs[s]=Date.now();
+    cb(null,d);
+  }).catch(function(e){cb(e,null);});
+}
+function addRow(s,data,cb){clearCache(s);fetch(API+'?sheet='+s,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[data]})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function delRow(s,id,cb){clearCache(s);fetch(API+'/id/'+id+'?sheet='+s,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function updRow(s,id,data,cb){clearCache(s);fetch(API+'/id/'+id+'?sheet='+s,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:data})}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
 function fmt(n){return Number(n||0).toLocaleString('es-AR');}
 function chipLabel(n){return n===currentUser.nombre?'Yo':n.split(' ').slice(-1)[0];}
 function v(id){return document.getElementById(id)?document.getElementById(id).value:'';}
@@ -223,9 +242,28 @@ function getDistrib(referido){
   return{agente:45,tl:35,oficina:20};
 }
 
+function fetchCached(s){
+  var now=Date.now();
+  if(_cache[s]&&(now-(_cacheTs[s]||0))<CACHE_TTL)return Promise.resolve(_cache[s]);
+  return fetch(API+'?sheet='+s).then(function(r){return r.json();}).then(function(d){
+    _cache[s]=d;_cacheTs[s]=Date.now();return d;
+  });
+}
+
+function precargarSheets(){
+  // Cargar todos los sheets de una sola vez al inicio
+  var sheets=['Propiedades','Busquedas','Operaciones','Gastos','Finanzas','Objetivos','Desarrollos','Unidades','CuentaCorriente','Usuarios'];
+  sheets.forEach(function(s){
+    fetch(API+'?sheet='+s).then(function(r){return r.json();}).then(function(d){
+      _cache[s]=d;_cacheTs[s]=Date.now();
+    }).catch(function(){});
+  });
+}
+
 function mostrarApp(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('mainApp').style.display='block';
+  precargarSheets();
   document.getElementById('avatarTop').textContent=currentUser.initials;
   document.getElementById('userNameTop').textContent=currentUser.nombre;
   document.getElementById('userRolTop').textContent=currentUser.rol;
@@ -240,7 +278,7 @@ function doLogin(){
   var err=document.getElementById('loginError');
   var btn=document.getElementById('loginBtn');
   err.classList.add('hidden');btn.textContent='Entrando...';btn.disabled=true;
-  fetch(API+'?sheet=Usuarios').then(function(r){return r.json();}).then(function(rows){
+  fetchCached('Usuarios').then(function(rows){
     btn.textContent='Entrar';btn.disabled=false;
     var user=null;
     for(var i=0;i<rows.length;i++){if(rows[i].usuario===u&&rows[i].password===p){user=rows[i];break;}}
@@ -282,15 +320,15 @@ function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
   var esLider=currentUser.rol==='Líder';
   Promise.all([
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
+    fetchCached('Propiedades').catch(function(){return[];}),
+    fetchCached('Busquedas').catch(function(){return[];}),
+    fetchCached('Finanzas').catch(function(){return[];}),
+    fetchCached('Objetivos').catch(function(){return[];}),
+    fetchCached('Operaciones').catch(function(){return[];}),
+    fetchCached('Gastos').catch(function(){return[];}),
+    fetchCached('Unidades').catch(function(){return[];}),
+    fetchCached('Desarrollos').catch(function(){return[];}),
+    fetchCached('CuentaCorriente').catch(function(){return[];})
   ]).then(function(res){
     function toArr(x){return Array.isArray(x)?x:[];}
     var allProps=toArr(res[0]),allBusq=toArr(res[1]),fins=toArr(res[2]),objs=toArr(res[3]);
@@ -783,8 +821,8 @@ function getPropData(extra){
 // ============================================================
 function loadPropiedades(){
   Promise.all([
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();})
+    fetchCached('Propiedades'),
+    fetchCached('Gastos')
   ]).then(function(res){
     var props=(res[0]||[]).filter(function(p){return p.agente===currentUser.nombre&&!p.desarrollo_id;});
     var gastosProp=res[1]||[];
@@ -1034,8 +1072,8 @@ function guardarGasto(propId){
 // ============================================================
 function loadBusquedas(){
   Promise.all([
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();})
+    fetchCached('Busquedas'),
+    fetchCached('Gastos')
   ]).then(function(res){
     var busqs=(res[0]||[]).filter(function(b){return b.agente===currentUser.nombre;});
     var gastosProp=res[1]||[];
@@ -1211,9 +1249,9 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
 // ============================================================
 function loadDesarrollos(){
   Promise.all([
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];})
+    fetchCached('Desarrollos').catch(function(){return[];}),
+    fetchCached('Unidades').catch(function(){return[];}),
+    fetchCached('Gastos').catch(function(){return[];})
   ]).then(function(res){
     var devs=(res[0]||[]).filter(function(d){return d.agente===currentUser.nombre||currentUser.rol==='Líder';});
     var allUnis=res[1]||[];
@@ -1262,8 +1300,8 @@ function loadDesarrollos(){
 }
 
 function verFichaDesarrollo(devId){
-  Promise.all([fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}),fetch(API+'?sheet=Unidades').then(function(r){return r.json();}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();})]).then(function(res){
+  Promise.all([fetchCached('Desarrollos'),fetchCached('Unidades'),
+    fetchCached('Desarrollos')]).then(function(res){
     var dev=(res[0]||[]).find(function(d){return d.id===devId;});if(!dev)return;
     var unis=(res[1]||[]).filter(function(u){return u.desarrollo_id===devId;});
     var act=unis.filter(function(u){return u.condicion==='Activa';});
@@ -1452,14 +1490,14 @@ function loadFinanzas(){
   var finTab=window._finTab||'cierres';
   loading();
   Promise.all([
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Finanzas').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];})
+    fetchCached('Operaciones').catch(function(){return[];}),
+    fetchCached('Gastos').catch(function(){return[];}),
+    fetchCached('Finanzas').catch(function(){return[];}),
+    fetchCached('CuentaCorriente').catch(function(){return[];}),
+    fetchCached('Propiedades').catch(function(){return[];}),
+    fetchCached('Busquedas').catch(function(){return[];}),
+    fetchCached('Unidades').catch(function(){return[];}),
+    fetchCached('Desarrollos').catch(function(){return[];})
   ]).then(function(res){
     function toArr(x){return Array.isArray(x)?x:[];}
     var allOps=toArr(res[0]),allGastos=toArr(res[1]),allFins=toArr(res[2]);
@@ -1850,8 +1888,8 @@ function guardarEditCierre(opId,esAgente){
 
 function loadObjetivos(){
   Promise.all([
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];})
+    fetchCached('Objetivos').catch(function(){return[];}),
+    fetchCached('Operaciones').catch(function(){return[];})
   ]).then(function(res){
     var objs=(res[0]||[]).filter(function(o){return o.agente===currentUser.nombre||o.agente==='Equipo';});
     var allOpsObj=res[1]||[];
@@ -1987,14 +2025,14 @@ function loadEquipo(){
   }
   loading();
   Promise.all([
-    fetch(API+'?sheet=Propiedades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Busquedas').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Operaciones').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Gastos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Desarrollos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Unidades').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=Objetivos').then(function(r){return r.json();}).catch(function(){return[];}),
-    fetch(API+'?sheet=CuentaCorriente').then(function(r){return r.json();}).catch(function(){return[];})
+    fetchCached('Propiedades').catch(function(){return[];}),
+    fetchCached('Busquedas').catch(function(){return[];}),
+    fetchCached('Operaciones').catch(function(){return[];}),
+    fetchCached('Gastos').catch(function(){return[];}),
+    fetchCached('Desarrollos').catch(function(){return[];}),
+    fetchCached('Unidades').catch(function(){return[];}),
+    fetchCached('Objetivos').catch(function(){return[];}),
+    fetchCached('CuentaCorriente').catch(function(){return[];})
   ]).then(function(res){
     function toArr(x){return Array.isArray(x)?x:[];}
     var allProps=toArr(res[0]),allBusq=toArr(res[1]),allOps=toArr(res[2]);
