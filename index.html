@@ -1507,6 +1507,7 @@ function loadFinanzas(){
     // Solapas
     var t1=finTab==='cierres'?' active':'';
     var t2=finTab==='gastos_oficina'?' active':'';
+    var t2b=finTab==='gastos_propiedades'?' active':'';
     var t3=finTab==='gastos_generales'?' active':'';
     var t4=finTab==='gastos_team'?' active':'';
     var t5=finTab==='cuenta_corriente'?' active':'';
@@ -1514,6 +1515,7 @@ function loadFinanzas(){
     html+='<div class="tabs-secondary">';
     html+='<div class="tab-sec'+t1+'" onclick="window._finTab=\'cierres\';loadFinanzas()">Cierres</div>';
     html+='<div class="tab-sec'+t2+'" onclick="window._finTab=\'gastos_oficina\';loadFinanzas()">Gastos oficina</div>';
+    html+='<div class="tab-sec'+t2b+'" onclick="window._finTab=\'gastos_propiedades\';loadFinanzas()">Gastos propiedades</div>';
     if(esLider){
       html+='<div class="tab-sec'+t3+'" onclick="window._finTab=\'gastos_generales\';loadFinanzas()">Gastos generales</div>';
       html+='<div class="tab-sec'+t4+'" onclick="window._finTab=\'gastos_team\';loadFinanzas()">Gastos team</div>';
@@ -1569,6 +1571,41 @@ function loadFinanzas(){
         });
         html+='</table></div></div>';
       }else{html+='<div class="empty">Sin movimientos de oficina.</div>';}
+    }
+
+    // ---- GASTOS PROPIEDADES ----
+    else if(finTab==='gastos_propiedades'){
+      var allGastosProp=allGastos.filter(function(g){return (g.agente||'').trim().toLowerCase().split(' ').pop()===currentUser.nombre.trim().toLowerCase().split(' ').pop();});
+      var totalUSD=allGastosProp.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
+      var totalARS=allGastosProp.filter(function(g){return g.moneda==='ARS';}).reduce(function(a,g){return a+Number(g.monto||0);},0);
+      html+='<div class="grid-metrics" style="margin-bottom:1rem">'
+        +'<div class="metric"><div class="metric-label">Total USD</div><div class="metric-value red">USD '+fmt(Math.round(totalUSD))+'</div></div>'
+        +(totalARS>0?'<div class="metric"><div class="metric-label">Total ARS</div><div class="metric-value red">$ '+fmt(Math.round(totalARS))+'</div></div>':'')
+        +'</div>';
+      if(allGastosProp.length){
+        html+='<div class="card" style="padding:0"><div class="table-wrap"><table>';
+        html+='<tr><th>Fecha</th><th>Propiedad/Desarrollo</th><th>Agente</th><th>Concepto</th><th>Monto</th><th>Moneda</th><th>Equiv. USD</th><th></th></tr>';
+        allGastosProp.forEach(function(g){
+          // Obtener dirección de la propiedad
+          var dir=g.propiedad_id||g.desarrollo_id||'-';
+          var prop=allPropsFin.find(function(p){return p.id===g.propiedad_id;})||allBusqFin.find(function(p){return p.id===g.propiedad_id;});
+          var dev=allDevsFin.find(function(d){return d.id===g.desarrollo_id;});
+          if(prop)dir=prop.direccion;
+          else if(dev)dir=dev.nombre||dev.direccion;
+          var montoUSD=g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0);
+          html+='<tr>'
+            +'<td>'+(g.fecha||'-')+'</td>'
+            +'<td style="font-weight:500">'+dir+'</td>'
+            +'<td style="color:#888;font-size:12px">'+(g.agente||'-')+'</td>'
+            +'<td>'+(g.concepto||'-')+'</td>'
+            +'<td style="color:#FF1A1A;font-weight:600">'+(g.moneda==='ARS'?'$ '+fmt(g.monto):'USD '+fmt(g.monto))+'</td>'
+            +'<td>'+(g.moneda||'USD')+'</td>'
+            +'<td style="color:#FF1A1A">'+(montoUSD>0?'USD '+fmt(Math.round(montoUSD)):'-')+'</td>'
+            +'<td><button class="btn btn-sm" style="color:#FF1A1A" onclick="delRow(\'Gastos\',\''+g.id+'\',function(){setTimeout(function(){loadFinanzas();},1000);})">×</button></td>'
+            +'</tr>';
+        });
+        html+='</table></div></div>';
+      }else{html+='<div class="empty">Sin gastos cargados.</div>';}
     }
 
     // ---- GASTOS GENERALES ----
