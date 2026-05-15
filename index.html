@@ -1587,11 +1587,15 @@ function loadFinanzas(){
         html+='<tr><th>Fecha</th><th>Propiedad/Desarrollo</th><th>Agente</th><th>Concepto</th><th>Monto</th><th>Moneda</th><th>Equiv. USD</th><th></th></tr>';
         allGastosProp.forEach(function(g){
           // Obtener dirección de la propiedad
-          var dir=g.propiedad_id||g.desarrollo_id||'-';
-          var prop=allProps.find(function(p){return p.id===g.propiedad_id;})||allBusq.find(function(p){return p.id===g.propiedad_id;});
-          var dev=allDevs.find(function(d){return d.id===g.desarrollo_id;});
-          if(prop)dir=prop.direccion;
-          else if(dev)dir=dev.nombre||dev.direccion;
+          var dir='-';
+          if(g.propiedad_id){
+            var prop=allProps.find(function(p){return p.id===g.propiedad_id;})||allBusq.find(function(p){return p.id===g.propiedad_id;});
+            if(prop)dir=prop.direccion||prop.id;
+          }else if(g.desarrollo_id){
+            var dev=allDevs.find(function(d){return d.id===g.desarrollo_id;});
+            if(dev)dir=(dev.nombre?dev.nombre+' · ':'')+dev.direccion;
+            else dir=g.desarrollo_id;
+          }
           var montoUSD=g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0);
           html+='<tr>'
             +'<td>'+(g.fecha||'-')+'</td>'
