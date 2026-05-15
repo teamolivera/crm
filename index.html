@@ -1588,8 +1588,8 @@ function loadFinanzas(){
         allGastosProp.forEach(function(g){
           // Obtener dirección de la propiedad
           var dir=g.propiedad_id||g.desarrollo_id||'-';
-          var prop=allPropsFin.find(function(p){return p.id===g.propiedad_id;})||allBusqFin.find(function(p){return p.id===g.propiedad_id;});
-          var dev=allDevsFin.find(function(d){return d.id===g.desarrollo_id;});
+          var prop=allProps.find(function(p){return p.id===g.propiedad_id;})||allBusq.find(function(p){return p.id===g.propiedad_id;});
+          var dev=allDevs.find(function(d){return d.id===g.desarrollo_id;});
           if(prop)dir=prop.direccion;
           else if(dev)dir=dev.nombre||dev.direccion;
           var montoUSD=g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0);
