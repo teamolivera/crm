@@ -1626,13 +1626,14 @@ function loadFinanzas(){
         allGastosProp.forEach(function(g){
           // Obtener dirección de la propiedad
           var dir='-';
-          if(g.propiedad_id){
-            var prop=allProps.find(function(p){return p.id===g.propiedad_id;})||allBusq.find(function(p){return p.id===g.propiedad_id;});
-            if(prop)dir=prop.direccion||prop.id;
-          }else if(g.desarrollo_id){
-            var dev=allDevs.find(function(d){return String(d.id)===String(g.desarrollo_id);});
-            if(dev)dir=(dev.nombre||dev.Nombre||dev.direccion||g.desarrollo_id);
-            else dir=g.desarrollo_id||'-';
+          if(g.propiedad_id||g.desarrollo_id){
+            var _pid=g.propiedad_id||g.desarrollo_id;
+            var prop=allProps.find(function(p){return String(p.id)===String(_pid);})||
+                     allBusq.find(function(p){return String(p.id)===String(_pid);});
+            var dev=allDevs.find(function(d){return String(d.id)===String(_pid);});
+            if(prop)dir=prop.direccion||_pid;
+            else if(dev)dir=dev.nombre||dev.Nombre||dev.direccion||_pid;
+            else dir=_pid;
           }
           var montoUSD=g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0);
           html+='<tr>'
