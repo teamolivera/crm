@@ -1132,7 +1132,7 @@ function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
     +'<div class="row"><div class="form-group"><label>Fecha de carga</label><input id="rc-fecha" type="date" value="'+today()+'"/></div>'
     +'<div class="form-group"><label>Fecha de venta</label><input id="rc-fecha-venta" type="date" value="'+today()+'"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+','+esBusqueda+')"/></div>'
-    +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+','+esBusqueda+')"/></div></div>'
+    +'<div id="rc-vend-wrap" class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+','+esBusqueda+')"/></div></div>'
     +'<div class="section-divider">Distribución interna</div>'
     +'<div class="row">'
     +(esAgente
@@ -1172,11 +1172,20 @@ function calcCierre(referido,esAgente,esBusqueda){
   var comNuestra=0, descripcionTipo='';
 
   var otraWrap=document.getElementById('rc-pct-otra-wrap');
+  var vendWrap=document.getElementById('rc-vend-wrap');
   if(otraWrap){
     if(!esBusqueda){
       otraWrap.style.display=(tipoOp==='otra_inmo')?'block':'none';
     }else{
       otraWrap.style.display=(tipoOp==='busq_otra_inmo')?'block':'none';
+    }
+  }
+  // En búsqueda + otra inmo: ocultar com. vendedora (no aplica)
+  if(vendWrap){
+    vendWrap.style.display=(esBusqueda&&tipoOp==='busq_otra_inmo')?'none':'block';
+    if(esBusqueda&&tipoOp==='busq_otra_inmo'){
+      document.getElementById('rc-vend').value=0;
+      vend=0;
     }
   }
 
@@ -1190,15 +1199,16 @@ function calcCierre(referido,esAgente,esBusqueda){
     }else if(tipoOp==='otra_inmo'){
       var pctCompNuestro=Math.max(0,comp-pctOtra);
       comNuestra=comVendedor+(c*pctCompNuestro/100);
-      descripcionTipo='Otra inmo trae comprador: punta vendedor + '+(comp)+'% − '+pctOtra+'pts cedidos = '+pctCompNuestro+'% nuestro de punta compradora';
+      descripcionTipo='Otra inmo trae comprador: punta vendedor + '+comp+'% − '+pctOtra+'pts cedidos = '+pctCompNuestro+'% nuestro de punta compradora';
     }
   }else{
     if(tipoOp==='busq_remax'){
       comNuestra=comBrutaTotal*0.50;
-      descripcionTipo='Otro RE/MAX tiene vendedor: 50% de com. total';
+      descripcionTipo='Otro RE/MAX tiene vendedor: 50% de com. total (comprador + vendedor)';
     }else if(tipoOp==='busq_otra_inmo'){
-      comNuestra=comComprador+(c*pctOtra/100);
-      descripcionTipo='Otra inmo tiene vendedor: punta compradora + '+pctOtra+'pts de punta vendedora';
+      // La otra inmo cobra al comprador su com. y nos cede pctOtra puntos sobre ese precio
+      comNuestra=c*pctOtra/100;
+      descripcionTipo='Otra inmo nos cede '+pctOtra+'pts sobre el precio de cierre (de la com. que cobra al comprador)';
     }
   }
 
@@ -1252,7 +1262,7 @@ function confirmarCierre(origen,sheet,id,referido,esAgente,esBusqueda){
     else if(tipoOp==='otra_inmo') comNuestra=comVendedor+(c*Math.max(0,comp-pctOtra)/100);
   }else{
     if(tipoOp==='busq_remax') comNuestra=comBrutaTotal*0.50;
-    else if(tipoOp==='busq_otra_inmo') comNuestra=comComprador+(c*pctOtra/100);
+    else if(tipoOp==='busq_otra_inmo') comNuestra=c*pctOtra/100;
   }
   var pctTL=Number(v('rc-pcttl')||0);
   var pctAg=esAgente?Number(v('rc-pctag')||0):0;
