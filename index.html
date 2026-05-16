@@ -2104,9 +2104,11 @@ function loadEquipo(){
     var unisActivas=unis.filter(function(u){return u.condicion==='Activa';}).length;
     var unisVendidas=unis.filter(function(u){return u.condicion==='Vendida';}).length;
 
-    var factBruta=ops.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
-    var factNetaTM=ops.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
-    var factNetaTL=ops.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
+    var anoActualEq=new Date().getFullYear();
+    var opsAnoEq=ops.filter(function(o){var fv=o.fecha_venta||o.fecha||'';return fv.startsWith(String(anoActualEq));});
+    var factBruta=opsAnoEq.reduce(function(a,o){return a+Number(o.comision_total||0);},0);
+    var factNetaTM=opsAnoEq.reduce(function(a,o){return a+Number(o.neto_agente||0);},0);
+    var factNetaTL=opsAnoEq.reduce(function(a,o){return a+Number(o.neto_team_leader||0);},0);
     var gastosTotal=gastos.reduce(function(a,g){return a+(g.moneda==='ARS'?Number(g.equiv_usd||0):Number(g.monto||0));},0);
     var gastosCC=allCC.filter(function(r){return r.tipo==='gasto_gonzalo'&&(r.agente||'').trim()===ag.trim();}).reduce(function(a,r){return a+Number(r.monto||0);},0);
     var rentNetaTL=factNetaTL-gastosTotal-gastosCC;
@@ -2126,9 +2128,9 @@ function loadEquipo(){
     var pctParticip=brutaTotal>0?Math.round(factBruta/brutaTotal*100):0;
 
     html+='<div class="grid-metrics" style="margin-bottom:1rem">'
-      +'<div class="metric"><div class="metric-label">En venta</div><div class="metric-value blue">'+enVenta+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div></div>'
-      +'<div class="metric"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div></div>'
+      +'<div class="metric" style="cursor:pointer" onclick="verPropsPanelEquipo(\'en_venta\',\''+esc(ag)+'\')"><div class="metric-label">En venta</div><div class="metric-value blue">'+enVenta+'</div><div style="font-size:10px;color:#185FA5;margin-top:4px">Ver detalle →</div></div>'
+      +'<div class="metric" style="cursor:pointer" onclick="verPropsPanelEquipo(\'reservadas\',\''+esc(ag)+'\')"><div class="metric-label">Reservadas</div><div class="metric-value amber">'+reservadas+'</div><div style="font-size:10px;color:#FFCC00;margin-top:4px">Ver detalle →</div></div>'
+      +'<div class="metric" style="cursor:pointer" onclick="verPropsPanelEquipo(\'vendidas\',\''+esc(ag)+'\')"><div class="metric-label">Vendidas</div><div class="metric-value green">'+vendidas+'</div><div style="font-size:10px;color:#00C853;margin-top:4px">Ver detalle →</div></div>'
       +'<div class="metric"><div class="metric-label">Com. brutas s/reservas</div><div class="metric-value blue" style="font-size:13px">USD '+fmt(Math.round(comReservasBruta))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Com. neta s/reservas TM</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comReservasNetaTM))+'</div></div>'
       +'<div class="metric"><div class="metric-label">Com. neta s/reservas TL</div><div class="metric-value green" style="font-size:13px">USD '+fmt(Math.round(comReservasNetaTL))+'</div></div>'
@@ -2477,6 +2479,78 @@ function generarDocRefuerzo(){
   if(window.JSZip){procesar();}else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=procesar;document.head.appendChild(s);}
 }
 
+
+function verPropsPanelEquipo(tipo,agente){
+  Promise.all([
+    fetchCached('Propiedades'),
+    fetchCached('Busquedas'),
+    fetchCached('Operaciones'),
+    fetchCached('Unidades'),
+    fetchCached('Desarrollos')
+  ]).then(function(res){
+    var props=(res[0]||[]).filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
+    var busqs=(res[1]||[]).filter(function(b){return b.agente===agente;});
+    var ops=(res[2]||[]).filter(function(o){return (o.agente||'').trim()===agente.trim();});
+    var todas=props.concat(busqs);
+    var titulo='';
+    var items=[];
+    if(tipo==='en_venta'){
+      titulo='En venta';
+      items=todas.filter(function(p){return (p.estado||'').trim()==='En venta';});
+    }else if(tipo==='reservadas'){
+      titulo='Reservadas';
+      items=todas.filter(function(p){return (p.estado||'').trim().toLowerCase()==='reservada';});
+    }else{
+      titulo='Vendidas';
+      items=ops;
+    }
+    var html='<div class="modal-header"><span class="modal-title">'+titulo+' · '+agente.split(' ').pop()+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    if(!items.length){html+='<div class="empty">Sin registros.</div>';}
+    else if(tipo==='vendidas'){
+      html+='<div class="table-wrap"><table>'
+        +'<tr><th>Dirección</th><th>Fecha cierre</th><th>Cierre USD</th><th>Com.%</th><th>Com. bruta</th><th>Neto TM</th><th>Neto TL</th></tr>';
+      items.forEach(function(o){
+        var compPct=Number(o.comision_compradora||4);
+        var vendPct=Number(o.comision_vendedora||3);
+        html+='<tr>'
+          +'<td style="font-weight:600">'+(o.direccion||o.propiedad_id||'-')+'</td>'
+          +'<td>'+(o.fecha_venta||o.fecha||'-')+'</td>'
+          +'<td>USD '+fmt(Number(o.valor_cierre||o.precio_final||0))+'</td>'
+          +'<td>'+compPct+'% + '+vendPct+'%</td>'
+          +'<td style="color:#185FA5;font-weight:700">USD '+fmt(Math.round(Number(o.comision_total||0)))+'</td>'
+          +'<td style="color:#00C853;font-weight:700">USD '+fmt(Math.round(Number(o.neto_agente||0)))+'</td>'
+          +'<td style="color:#00C853;font-weight:700">USD '+fmt(Math.round(Number(o.neto_team_leader||0)))+'</td>'
+          +'</tr>';
+      });
+      html+='</table></div>';
+    }else{
+      html+='<div class="table-wrap"><table>'
+        +'<tr><th>Dirección</th><th>Localidad</th><th>Precio USD</th><th>Com.%</th><th>Com. bruta</th><th>Neto TM</th><th>Neto TL</th></tr>';
+      items.forEach(function(p){
+        var compPct=Number(p.comision_compradora||4);
+        var vendPct=Number(p.comision_vendedora||3);
+        var bruta=Number(p.precio||0)*(compPct+vendPct)/100;
+        var ref=p.referido||'no';
+        var d=getDistrib(ref);
+        var netoTM=bruta*d.agente/100;
+        var netoTL=bruta*d.tl/100-bruta*0.8*0.04;
+        html+='<tr>'
+          +'<td style="font-weight:600">'+(p.direccion||'-')+'</td>'
+          +'<td>'+(p.localidad||p.zona||'-')+'</td>'
+          +'<td>USD '+fmt(Number(p.precio||0))+'</td>'
+          +'<td>'+compPct+'% + '+vendPct+'%</td>'
+          +'<td style="color:#185FA5;font-weight:700">USD '+fmt(Math.round(bruta))+'</td>'
+          +'<td style="color:#00C853;font-weight:700">USD '+fmt(Math.round(netoTM))+'</td>'
+          +'<td style="color:#00C853;font-weight:700">USD '+fmt(Math.round(netoTL))+'</td>'
+          +'</tr>';
+      });
+      html+='</table></div>';
+    }
+    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
+}
 
 function verMovimientosCC(agente){
   fetchCached('CuentaCorriente').then(function(allCC){
