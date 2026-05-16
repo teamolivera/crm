@@ -639,11 +639,11 @@ function loadDashboard(filtroAgente){
       ccSaldo=ccItems.reduce(function(a,r){return a+Number(r.monto||0);},0);
       var saldoColor=ccSaldo<0?'#FF1A1A':'#00C853';
       var saldoLabel=ccSaldo<0?'Saldo a rendir':'Saldo a favor';
-      ccWidgetHtml='<div style="background:'+(ccSaldo<0?'#fff5f5':'#f0fdf4')+';border:2px solid '+(ccSaldo<0?'#fecaca':'#bbf7d0')+';border-radius:14px;padding:16px 20px;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center">'
+      ccWidgetHtml='<div onclick="verMovimientosCC(\''+esc(agente)+'\')" style="cursor:pointer;background:'+(ccSaldo<0?'#fff5f5':'#f0fdf4')+';border:2px solid '+(ccSaldo<0?'#fecaca':'#bbf7d0')+';border-radius:14px;padding:16px 20px;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center">'
         +'<div style="display:flex;align-items:center;gap:12px">'
         +'<div style="width:40px;height:40px;border-radius:10px;background:'+(ccSaldo<0?'#FF1A1A15':'#00C85315')+';display:flex;align-items:center;justify-content:center;font-size:20px">'+(ccSaldo<0?'⚠️':'✅')+'</div>'
         +'<div><div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px">Cuenta corriente</div>'
-        +'<div style="font-size:13px;color:#555;margin-top:2px">'+saldoLabel+'</div></div>'
+        +'<div style="font-size:13px;color:#555;margin-top:2px">'+saldoLabel+' · <span style="color:#185FA5;font-size:12px">Ver movimientos</span></div></div>'
         +'</div>'
         +'<div style="font-size:28px;font-weight:900;color:'+saldoColor+'">USD '+fmt(Math.round(Math.abs(ccSaldo)))+'</div>'
         +'</div>';
@@ -2476,6 +2476,32 @@ function generarDocRefuerzo(){
   if(window.JSZip){procesar();}else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=procesar;document.head.appendChild(s);}
 }
 
+
+function verMovimientosCC(agente){
+  fetchCached('CuentaCorriente').then(function(allCC){
+    var items=(allCC||[]).filter(function(r){return r.agente===agente&&r.visible_agente==='si';});
+    var saldo=items.reduce(function(a,r){return a+Number(r.monto||0);},0);
+    var saldoColor=saldo<0?'#FF1A1A':'#00C853';
+    var saldoLabel=saldo<0?'Saldo a rendir':'Saldo a favor';
+    var html='<div class="modal-header"><span class="modal-title">Cuenta corriente</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    html+='<div style="background:'+(saldo<0?'#fff5f5':'#f0fdf4')+';border:1px solid '+(saldo<0?'#fecaca':'#bbf7d0')+';border-radius:10px;padding:14px 18px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:600;color:#555">'+saldoLabel+'</div><div style="font-size:22px;font-weight:900;color:'+saldoColor+'">USD '+fmt(Math.round(Math.abs(saldo)))+'</div></div>';
+    if(items.length){
+      html+='<div class="table-wrap"><table><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Nota</th></tr>';
+      items.slice().sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');}).forEach(function(r){
+        var m=Number(r.monto||0);
+        var color=m<0?'#FF1A1A':'#00C853';
+        var signo=m<0?'u2212':'';
+        html+='<tr><td>'+(r.fecha||'-')+'</td><td>'+(r.concepto||'-')+'</td><td style="font-weight:700;color:'+color+'">'+signo+'USD '+fmt(Math.abs(Math.round(m)))+'</td><td style="color:#888">'+(r.nota||'-')+'</td></tr>';
+      });
+      html+='</table></div>';
+    }else{
+      html+='<div class="empty">Sin movimientos.</div>';
+    }
+    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
+}
 if('serviceWorker' in navigator){
   // Escuchar mensaje de recarga del Service Worker
   navigator.serviceWorker.addEventListener('message', function(e){
