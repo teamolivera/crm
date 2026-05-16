@@ -1999,7 +1999,8 @@ function guardarGastoTeam(){
 }
 
 function abrirNuevoCC(tm){
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Cargo CC · '+tm+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">CC · '+tm+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Tipo</label><select id="nc-tipo"><option value="cargo">Cargo (el TM te debe)</option><option value="abono">Abono (saldo a favor del TM)</option></select></div>'
     +'<div class="form-group"><label>Concepto</label><input id="nc-concepto" autocomplete="off"/></div>'
     +'<div class="row"><div class="form-group"><label>Monto USD</label><input id="nc-monto" type="number"/></div>'
     +'<div class="form-group"><label>Fecha</label><input id="nc-fecha" type="date" value="'+today()+'"/></div></div>'
@@ -2010,7 +2011,11 @@ function abrirNuevoCC(tm){
   openModal();
 }
 function guardarNuevoCC(tm){
-  var data={id:uid(),fecha:v('nc-fecha'),agente:tm,concepto:v('nc-concepto'),monto:v('nc-monto'),moneda:'USD',tipo:'cuenta_corriente',visible_agente:'si',nota:v('nc-nota')||''};
+  var monto=Number(v('nc-monto')||0);
+  var tipo=v('nc-tipo');
+  if(tipo==='cargo') monto=-Math.abs(monto);
+  else monto=Math.abs(monto);
+  var data={id:uid(),fecha:v('nc-fecha'),agente:tm,concepto:v('nc-concepto'),monto:monto,moneda:'USD',tipo:'cuenta_corriente',visible_agente:'si',nota:v('nc-nota')||''};
   closeModal();loading();addRow('CuentaCorriente',data,function(){setTimeout(function(){loadFinanzas();},1000);});
 }
 
