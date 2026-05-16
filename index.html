@@ -1099,15 +1099,24 @@ function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
   document.getElementById('modalBox').innerHTML=
     '<div class="modal-header"><span class="modal-title">Cerrar operación</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div style="font-size:13px;color:#555;margin-bottom:1rem;font-weight:500">📍 '+dir+'</div>'
-    +(esAgente?'<div style="font-size:12px;margin-bottom:1rem;padding:8px 12px;border-radius:8px;background:'+(referido==='si'?'#f0fdf4;color:#00C853;border:1px solid #bbf7d0':'#f9fafb;color:#555;border:1px solid #eee')+'">'+
-      (referido==='si'?'✓ Referida por TL — TL: '+d.tl+'% / Agente: '+d.agente+'% / Oficina: '+d.oficina+'%':'Sin referido — Agente: '+d.agente+'% / TL: '+d.tl+'% / Oficina: '+d.oficina+'%')+'</div>':'')
+    +'<div class="section-divider">Tipo de operación</div>'
+    +'<div class="form-group"><label>¿Cómo es esta operación?</label>'
+    +'<select id="rc-tipo-op" onchange="calcCierre(\''+referido+'\','+esAgente+')">'
+    +'<option value="dos_puntas">Dos puntas (tenemos comprador y vendedor)</option>'
+    +'<option value="una_punta_venta">Una punta — solo vendedor (comprador de otra inmo)</option>'
+    +'<option value="una_punta_compra">Una punta — solo comprador / búsqueda (vendedor de otra inmo)</option>'
+    +'<option value="remax">Compartida con agente RE/MAX (50% de com. total)</option>'
+    +'<option value="otra_inmo_comprador">Otra inmo trae comprador — compartimos punta compradora</option>'
+    +'<option value="otra_inmo_vendedor">Otra inmo tiene vendedor — compartimos punta vendedora</option>'
+    +'</select></div>'
     +'<div class="section-divider">Valores de la operación</div>'
     +'<div class="form-group"><label>Valor de cierre (USD)</label><input id="rc-cierre" type="number" value="'+precio+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
     +'<div class="row"><div class="form-group"><label>Fecha de carga</label><input id="rc-fecha" type="date" value="'+today()+'"/></div>'
     +'<div class="form-group"><label>Fecha de venta</label><input id="rc-fecha-venta" type="date" value="'+today()+'"/></div></div>'
     +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="rc-comp" type="number" value="'+compPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
     +'<div class="form-group"><label>Com. vendedor (%)</label><input id="rc-vend" type="number" value="'+vendPct+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div></div>'
-    +'<div class="section-divider">Distribución</div>'
+    +'<div class="form-group" id="rc-pct-otra-wrap" style="display:none"><label>% que recibimos de la punta compartida</label><input id="rc-pct-otra" type="number" value="50" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
+    +'<div class="section-divider">Distribución interna</div>'
     +'<div class="row">'
     +(esAgente
       ?'<div class="form-group"><label>% Agente</label><input id="rc-pctag" type="number" value="'+d.agente+'" oninput="calcCierre(\''+referido+'\','+esAgente+')"/></div>'
@@ -1138,6 +1147,44 @@ function abrirCierre(origen,sheet,id,dir,precio,compPct,vendPct,referido){
 function calcCierre(referido,esAgente){
   var c=Number(v('rc-cierre')||0);
   var comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
+  var tipoOp=v('rc-tipo-op')||'dos_puntas';
+  var pctOtra=Number(v('rc-pct-otra')||50);
+
+  // Mostrar/ocultar % de punta compartida
+  var otraWrap=document.getElementById('rc-pct-otra-wrap');
+  if(otraWrap){
+    var mostrarOtra=(tipoOp==='otra_inmo_comprador'||tipoOp==='otra_inmo_vendedor');
+    otraWrap.style.display=mostrarOtra?'block':'none';
+  }
+
+  // Calcular comisión bruta nuestra según tipo de operación
+  var comBrutaTotal=c*(comp+vend)/100;
+  var comComprador=c*comp/100;
+  var comVendedor=c*vend/100;
+  var comNuestra=0;
+  var descripcionTipo='';
+  if(tipoOp==='dos_puntas'){
+    comNuestra=comBrutaTotal;
+    descripcionTipo='Dos puntas: com. comprador + vendedor';
+  }else if(tipoOp==='una_punta_venta'){
+    comNuestra=comVendedor;
+    descripcionTipo='Una punta vendedor: solo com. vendedor';
+  }else if(tipoOp==='una_punta_compra'){
+    comNuestra=comComprador;
+    descripcionTipo='Una punta comprador / búsqueda: solo com. comprador';
+  }else if(tipoOp==='remax'){
+    comNuestra=comBrutaTotal*0.50;
+    descripcionTipo='Compartida RE/MAX: 50% de com. total';
+  }else if(tipoOp==='otra_inmo_comprador'){
+    // Otra inmo trae comprador → compartimos la punta compradora con ellos
+    comNuestra=comVendedor+(comComprador*pctOtra/100);
+    descripcionTipo='Otra inmo trae comprador: tenemos vendedor + '+pctOtra+'% de punta compradora';
+  }else if(tipoOp==='otra_inmo_vendedor'){
+    // Otra inmo tiene vendedor → compartimos punta vendedora con ellos
+    comNuestra=comComprador+(comVendedor*pctOtra/100);
+    descripcionTipo='Otra inmo tiene vendedor: tenemos comprador + '+pctOtra+'% de punta vendedora';
+  }
+
   var pctTL=Number(v('rc-pcttl')||0);
   var pctAg=esAgente?Number(v('rc-pctag')||0):0;
   var pctO=Number(v('rc-pcto')||0);
@@ -1145,23 +1192,24 @@ function calcCierre(referido,esAgente){
   var ivaC=Number(v('rc-ivac')||0),ivaCm=v('rc-ivac-m')||'USD';
   var ivaV=Number(v('rc-ivav')||0),ivaVm=v('rc-ivav-m')||'USD';
   var ivaO=Number(v('rc-ivao')||0),ivaOm=v('rc-ivao-m')||'USD';
-  var comTotal=c*(comp+vend)/100;
-  var parteTL=comTotal*pctTL/100;
-  var parteAg=esAgente?comTotal*pctAg/100:0;
-  var parteO=comTotal*pctO/100;
+  var parteTL=comNuestra*pctTL/100;
+  var parteAg=esAgente?comNuestra*pctAg/100:0;
+  var parteO=comNuestra*pctO/100;
   var martillero=parteTL*pctM/100;
-  // IVA es recaudación aparte, NO se descuenta del neto
   var ivaTotal=ivaC+ivaV+ivaO;
   var netoTL=parteTL-martillero;
   var el=document.getElementById('rc-preview');if(!el)return;
   el.innerHTML='<div class="distrib-box">'
-    +'<div class="distrib-row"><span>Comisión total ('+comp+'%+'+vend+'%)</span><span style="font-weight:600">USD '+fmt(Math.round(comTotal))+'</span></div>'
+    +'<div class="distrib-row" style="font-size:11px;color:#888;margin-bottom:4px"><span>'+descripcionTipo+'</span></div>'
+    +'<div class="distrib-row"><span>Com. bruta total operación</span><span style="font-weight:600">USD '+fmt(Math.round(comBrutaTotal))+'</span></div>'
+    +'<div class="distrib-row" style="font-weight:700;color:#185FA5"><span>Com. nuestra</span><span>USD '+fmt(Math.round(comNuestra))+'</span></div>'
+    +'<div class="distrib-sep"></div>'
     +(esAgente?'<div class="distrib-row"><span>Parte Agente ('+pctAg+'%)</span><span>USD '+fmt(Math.round(parteAg))+'</span></div>':'')
     +'<div class="distrib-row"><span>Parte Team Leader ('+pctTL+'%)</span><span>USD '+fmt(Math.round(parteTL))+'</span></div>'
     +'<div class="distrib-row"><span>Parte Oficina ('+pctO+'%)</span><span>USD '+fmt(Math.round(parteO))+'</span></div>'
     +'<div class="distrib-sep"></div>'
     +'<div class="distrib-row" style="color:#FF1A1A"><span>− Martillero ('+pctM+'% s/ TL)</span><span>USD '+fmt(Math.round(martillero))+'</span></div>'
-    +'<div class="distrib-total"><span>🟢 '+(esAgente?'Neto Team Member':'Neto Team Leader')+'</span><span>USD '+fmt(Math.round(netoTL))+'</span></div>'
+    +'<div class="distrib-total"><span>🟢 '+(esAgente?'Neto Team Member':'Neto Team Leader')+'</span><span>USD '+fmt(Math.round(esAgente?netoTL:netoTL))+'</span></div>'
     +'<div class="distrib-sep"></div>'
     +'<div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:6px">Recaudación IVA (aparte)</div>'
     +'<div class="distrib-row"><span>IVA comprador</span><span>'+ivaCm+' '+fmt(ivaC)+'</span></div>'
@@ -1174,6 +1222,18 @@ function calcCierre(referido,esAgente){
 function confirmarCierre(origen,sheet,id,referido,esAgente){
   var c=Number(v('rc-cierre')||0);
   var comp=Number(v('rc-comp')||0),vend=Number(v('rc-vend')||0);
+  var tipoOp=v('rc-tipo-op')||'dos_puntas';
+  var pctOtra=Number(v('rc-pct-otra')||50);
+  var comBrutaTotal=c*(comp+vend)/100;
+  var comComprador=c*comp/100;
+  var comVendedor=c*vend/100;
+  var comNuestra=0;
+  if(tipoOp==='dos_puntas') comNuestra=comBrutaTotal;
+  else if(tipoOp==='una_punta_venta') comNuestra=comVendedor;
+  else if(tipoOp==='una_punta_compra') comNuestra=comComprador;
+  else if(tipoOp==='remax') comNuestra=comBrutaTotal*0.50;
+  else if(tipoOp==='otra_inmo_comprador') comNuestra=comVendedor+(comComprador*pctOtra/100);
+  else if(tipoOp==='otra_inmo_vendedor') comNuestra=comComprador+(comVendedor*pctOtra/100);
   var pctTL=Number(v('rc-pcttl')||0);
   var pctAg=esAgente?Number(v('rc-pctag')||0):0;
   var pctO=Number(v('rc-pcto')||0);
@@ -1182,13 +1242,11 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
   var ivaV=Number(v('rc-ivav')||0),ivaVm=v('rc-ivav-m')||'USD';
   var ivaO=Number(v('rc-ivao')||0),ivaOm=v('rc-ivao-m')||'USD';
   var fecha=v('rc-fecha'),estado=v('rc-estado');
-  var comTotal=c*(comp+vend)/100;
-  var parteTL=comTotal*pctTL/100;
-  var parteAg=esAgente?comTotal*pctAg/100:0;
-  var parteO=comTotal*pctO/100;
+  var parteTL=comNuestra*pctTL/100;
+  var parteAg=esAgente?comNuestra*pctAg/100:0;
+  var parteO=comNuestra*pctO/100;
   var martillero=Math.round(parteTL*pctM/100);
   var ivaTotal=ivaC+ivaV+ivaO;
-  // IVA es recaudacion aparte, no se descuenta del neto
   var netoTL=Math.round(parteTL-martillero);
   var netoAg=Math.round(parteAg);
   closeModal();loading();
@@ -1198,7 +1256,9 @@ function confirmarCierre(origen,sheet,id,referido,esAgente){
   var fechaStr="'"+fecha;
   var fechaVentaStr="'"+fechaVenta;
   var opData={id:uid(),fecha:fechaStr,fecha_venta:fechaVentaStr,referido:referido,precio_final:c,
-    comision_total:Math.round(comTotal),
+    tipo_operacion:tipoOp,
+    comision_bruta_total:Math.round(comBrutaTotal),
+    comision_total:Math.round(comNuestra),
     comision_agente:netoAg,
     comision_team_leader:Math.round(parteTL),
     parte_oficina:Math.round(parteO),
@@ -2488,9 +2548,14 @@ function verPropsPanelEquipo(tipo,agente){
     fetchCached('Unidades'),
     fetchCached('Desarrollos')
   ]).then(function(res){
-    var props=(res[0]||[]).filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
-    var busqs=(res[1]||[]).filter(function(b){return b.agente===agente;});
+    var allProps=res[0]||[];
+    var allBusqs=res[1]||[];
+    var props=allProps.filter(function(p){return p.agente===agente&&!p.desarrollo_id;});
+    var busqs=allBusqs.filter(function(b){return b.agente===agente;});
     var ops=(res[2]||[]).filter(function(o){return (o.agente||'').trim()===agente.trim();});
+    // mapa id->direccion para cruzar operaciones
+    var dirMap={};
+    allProps.concat(allBusqs).forEach(function(p){if(p.id)dirMap[p.id]=p.direccion||p.id;});
     var todas=props.concat(busqs);
     var titulo='';
     var items=[];
@@ -2513,7 +2578,7 @@ function verPropsPanelEquipo(tipo,agente){
         var compPct=Number(o.comision_compradora||4);
         var vendPct=Number(o.comision_vendedora||3);
         html+='<tr>'
-          +'<td style="font-weight:600">'+(o.direccion||o.propiedad_id||'-')+'</td>'
+          +'<td style="font-weight:600">'+(o.direccion||dirMap[o.propiedad_id]||o.propiedad_id||'-')+'</td>'
           +'<td>'+(o.fecha_venta||o.fecha||'-')+'</td>'
           +'<td>USD '+fmt(Number(o.valor_cierre||o.precio_final||0))+'</td>'
           +'<td>'+compPct+'% + '+vendPct+'%</td>'
