@@ -1099,7 +1099,7 @@ function analizarConGemini(base64,mimeType,tipoProp){
   var mediaType=mimeType||'application/pdf';
   var contentType=mediaType.startsWith('image/')?'image':'document';
   var body={
-    model:'claude-sonnet-4-20250514',
+    model:'claude-sonnet-4-5',
     max_tokens:2048,
     messages:[{role:'user',content:[
       {type:contentType,source:{type:'base64',media_type:mediaType,data:base64}},
