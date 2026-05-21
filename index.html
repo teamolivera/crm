@@ -1054,8 +1054,19 @@ function verFichaProp(id,sheet){
   });
 }
 
-var GEMINI_KEY='AIzaSyB9hvcgIIUya9LtF-DD1QAz2KLQMLosWpw';
-var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+GEMINI_KEY;
+var GEMINI_KEY=(function(){
+  return localStorage.getItem('crm_gemini_key')||'';
+})();
+var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=';
+
+function getGeminiUrl(){
+  var k=localStorage.getItem('crm_gemini_key')||'';
+  if(!k){
+    k=prompt('Ingresá la API key de Gemini para análisis de documentos:');
+    if(k)localStorage.setItem('crm_gemini_key',k.trim());
+  }
+  return GEMINI_URL+(k||'');
+}
 
 var DOC_TIPOS={
   escritura:{label:'Escritura / Boleto / Adhesión fideicomiso',icon:'📜',accept:'.pdf'},
@@ -1091,7 +1102,7 @@ function analizarConGemini(base64,mimeType,tipoProp){
     ]}],
     generationConfig:{temperature:0,maxOutputTokens:2048}
   };
-  return fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  return fetch(getGeminiUrl(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json();})
     .then(function(d){
       var texto=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts[0].text||'{}';
@@ -1118,6 +1129,15 @@ function guardarDocAnalisis(propId,tipo,analisis,datos){
   return new Promise(function(resolve){
     addRow('DocumentacionProp',row,function(){resolve(row);});
   });
+}
+
+function configurarGeminiKey(){
+  var actual=localStorage.getItem('crm_gemini_key')||'';
+  var nueva=prompt('API key de Gemini:'+(actual?'\n(actual: ...'+actual.slice(-6)+')':''));
+  if(nueva&&nueva.trim()){
+    localStorage.setItem('crm_gemini_key',nueva.trim());
+    alert('✅ Key guardada correctamente.');
+  }
 }
 
 function abrirDocumentacion(propId,dir){
