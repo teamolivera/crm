@@ -1066,8 +1066,8 @@ var DOC_TIPOS={
 };
 
 var DOC_PROMPTS={
-  escritura:'Analizá esta escritura inmobiliaria escaneada. Extraé y devolvé SOLO un JSON con estos campos: {"titulares":[{"nombre":"...","dni":"..."}],"matricula":"...","fecha_inscripcion":"...","gravamenes":["..."],"servidumbres":["..."],"impedimentos":["..."],"alertas":["..."],"resumen":"..."} Si no encontrás algún dato, dejá el campo vacío o array vacío. Las alertas deben incluir cualquier gravamen, hipoteca, usufructo, embargo o restricción que encuentres.',
-  dni:'Analizá este DNI argentino (puede ser foto o PDF). Extraé SOLO un JSON: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","sexo":"...","alertas":[]} Si es el frente y dorso del mismo DNI, extraé los datos del frente. Si no podés leer algún dato, dejá el campo vacío.',
+  escritura:'Analizá esta escritura o título de propiedad inmobiliaria escaneada. Extraé y devolvé SOLO un JSON con estos campos exactos: {"titulares":[{"nombre":"...","estado_civil":"..."}],"domicilio_inmueble":"...","unidad_funcional":"...","m2_cubiertos":"...","m2_totales":"...","matricula_fr":"...","fecha_inscripcion_reglamento":"...","gravamenes":["..."],"hipotecas":["..."],"usufructos":["..."],"servidumbres":["..."],"otros_impedimentos":["..."],"alertas":["..."],"resumen":"..."} Instrucciones: 1) titulares son los dueños actuales del inmueble según la escritura, con nombre completo y estado civil (soltero/a, casado/a, divorciado/a, viudo/a). 2) domicilio_inmueble es la dirección exacta de la propiedad. 3) unidad_funcional es el número de UF si aplica. 4) m2_cubiertos y m2_totales son los metros cuadrados según escritura o reglamento. 5) matricula_fr es la matrícula del Registro de la Propiedad (formato FR-XXXX/XX o similar). 6) fecha_inscripcion_reglamento es la fecha de inscripción del reglamento de copropiedad si existe. 7) En gravamenes, hipotecas, usufructos, servidumbres y otros_impedimentos listá CUALQUIER restricción al dominio que encuentres, si no hay dejá array vacío []. 8) alertas debe incluir CUALQUIER restricción, deuda, embargo, inhibición o irregularidad. 9) Si no encontrás algún dato poné cadena vacía. Respondé ÚNICAMENTE con el JSON, sin texto adicional.',
+  dni:'Analizá este DNI argentino (puede ser foto o PDF escaneado, frente y/o dorso). Extraé SOLO un JSON con estos campos: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","domicilio":"...","alertas":[]} Instrucciones: 1) nombre y apellido del titular tal como figura en el documento. 2) dni es el número sin puntos ni espacios. 3) fecha_nacimiento en formato DD/MM/AAAA. 4) domicilio es el domicilio real que figura en el DNI (dorso). 5) Si hay frente y dorso en el mismo archivo, combiná la información de ambos. 6) Si no podés leer algún dato dejá el campo vacío. Respondé ÚNICAMENTE con el JSON, sin texto adicional.',
   autorizacion:'Analizá esta autorización de venta inmobiliaria. Extraé SOLO un JSON: {"firmantes":[{"nombre":"...","dni":"..."}],"propiedad":"...","fecha_firma":"...","vencimiento":"...","exclusividad":"...","alertas":["..."],"resumen":"..."} Las alertas deben incluir cualquier incongruencia o dato faltante importante.',
   expensas:'Analizá esta liquidación de expensas. Extraé SOLO un JSON: {"unidad_funcional":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"juicios":["..."],"gastos_extraordinarios":["..."],"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true y deuda_total el monto en pesos. Las alertas deben incluir deudas, juicios o gastos extraordinarios importantes.',
   abl:'Analizá esta boleta de ABL (Alumbrado, Barrido y Limpieza) de CABA o impuesto inmobiliario provincial. Extraé SOLO un JSON: {"titular":"...","partida":"...","direccion":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"cuotas_adeudadas":0,"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true.'
@@ -1109,7 +1109,7 @@ function guardarDocAnalisis(propId,tipo,analisis,datos){
     analisis:JSON.stringify(analisis),
     titulares:JSON.stringify(datos.titulares||datos.firmantes||[]),
     gravamenes:JSON.stringify(datos.gravamenes||[]),
-    matricula:datos.matricula||datos.partida||'',
+    matricula:datos.matricula_fr||datos.matricula||datos.partida||'',
     deuda_expensas:datos.tiene_deuda?String(datos.deuda_total||0):'0',
     deuda_abl:datos.tiene_deuda?String(datos.deuda_total||0):'0',
     alertas:JSON.stringify(datos.alertas||[]),
@@ -1190,14 +1190,26 @@ function renderResumenDoc(tipo,doc){
   if(tipo==='escritura'){
     var tits=[];try{tits=JSON.parse(doc.titulares||'[]');}catch(e){}
     var gravs=[];try{gravs=JSON.parse(doc.gravamenes||'[]');}catch(e){}
-    if(tits.length)html+='<div><span style="color:#888">Titulares:</span> '+tits.map(function(t){return(t.nombre||t)+(t.dni?' (DNI '+t.dni+')':'');}).join(', ')+'</div>';
-    if(doc.matricula)html+='<div><span style="color:#888">Matrícula:</span> '+doc.matricula+'</div>';
-    if(data.fecha_inscripcion)html+='<div><span style="color:#888">Inscripción:</span> '+data.fecha_inscripcion+'</div>';
-    if(gravs.length)html+='<div style="color:#FF1A1A"><span style="color:#888">Gravámenes:</span> '+gravs.join(', ')+'</div>';
-    else html+='<div style="color:#00C853">Sin gravámenes registrados</div>';
+    var hips=data.hipotecas||[];
+    var usuf=data.usufructos||[];
+    var serv=data.servidumbres||[];
+    var otros=data.otros_impedimentos||[];
+    var todosGrav=gravs.concat(hips).concat(usuf).concat(serv).concat(otros).filter(function(g){return g&&String(g).trim();});
+    if(tits.length)html+='<div style="margin-bottom:4px"><span style="color:#888">Titulares:</span> '+tits.map(function(t){return'<strong>'+(t.nombre||t)+'</strong>'+(t.estado_civil?' ('+t.estado_civil+')':'');}).join(' / ')+'</div>';
+    if(data.domicilio_inmueble)html+='<div style="margin-bottom:4px"><span style="color:#888">Inmueble:</span> '+data.domicilio_inmueble+'</div>';
+    if(data.unidad_funcional)html+='<div style="margin-bottom:4px"><span style="color:#888">Unidad funcional:</span> '+data.unidad_funcional+'</div>';
+    if(data.m2_cubiertos)html+='<div style="margin-bottom:4px"><span style="color:#888">m² cubiertos:</span> '+data.m2_cubiertos+'</div>';
+    if(data.m2_totales)html+='<div style="margin-bottom:4px"><span style="color:#888">m² totales:</span> '+data.m2_totales+'</div>';
+    if(doc.matricula||data.matricula_fr)html+='<div style="margin-bottom:4px"><span style="color:#888">Matrícula FR:</span> <strong>'+(data.matricula_fr||doc.matricula)+'</strong></div>';
+    if(data.fecha_inscripcion_reglamento)html+='<div style="margin-bottom:4px"><span style="color:#888">Inscripción reglamento:</span> '+data.fecha_inscripcion_reglamento+'</div>';
+    if(todosGrav.length)html+='<div style="margin-top:6px;padding:6px 10px;background:#fff5f5;border-radius:6px;color:#FF1A1A"><span style="font-weight:700">⚠️ Gravámenes/Restricciones:</span> '+todosGrav.join(' · ')+'</div>';
+    else html+='<div style="color:#00C853;font-weight:600">✅ Sin gravámenes ni restricciones registrados</div>';
   }else if(tipo==='dni'){
     try{data=JSON.parse(doc.analisis||'{}');}catch(e){}
-    if(data.nombre)html+='<div><span style="color:#888">Titular:</span> '+data.apellido+', '+data.nombre+' — DNI '+data.dni+'</div>';
+    if(data.nombre||data.apellido)html+='<div style="margin-bottom:4px"><span style="color:#888">Titular:</span> <strong>'+(data.apellido||'')+', '+(data.nombre||'')+'</strong></div>';
+    if(data.dni)html+='<div style="margin-bottom:4px"><span style="color:#888">DNI:</span> '+data.dni+'</div>';
+    if(data.fecha_nacimiento)html+='<div style="margin-bottom:4px"><span style="color:#888">Nacimiento:</span> '+data.fecha_nacimiento+'</div>';
+    if(data.domicilio)html+='<div style="margin-bottom:4px"><span style="color:#888">Domicilio:</span> '+data.domicilio+'</div>';
   }else if(tipo==='autorizacion'){
     var firms=[];try{firms=JSON.parse(doc.titulares||'[]');}catch(e){}
     if(firms.length)html+='<div><span style="color:#888">Firmantes:</span> '+firms.map(function(f){return(f.nombre||f);}).join(', ')+'</div>';
@@ -1238,7 +1250,7 @@ function subirDocumento(input,propId,tipo,dir){
       analisis:JSON.stringify(datos),
       titulares:JSON.stringify(datos.titulares||datos.firmantes||[]),
       gravamenes:JSON.stringify(datos.gravamenes||[]),
-      matricula:datos.matricula||datos.partida||'',
+      matricula:datos.matricula_fr||datos.matricula||datos.partida||'',
       deuda_expensas:deudaExp,
       deuda_abl:deudaAbl,
       alertas:JSON.stringify(datos.alertas||[]),
