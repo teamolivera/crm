@@ -1225,7 +1225,7 @@ function renderPanelDoc(propId,dir,propDocs){
       +(docExistente?'<div style="font-size:11px;color:#888;margin-top:2px">Cargado el '+docExistente.fecha_carga+(tieneAlerta?' · <span style="color:#FF1A1A;font-weight:600">⚠️ Con alertas</span>':'')+'</div>':'<div style="font-size:11px;color:#aaa;margin-top:2px">Sin cargar</div>')
       +'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center">'
-      +(docExistente?'<button class="btn btn-sm" onclick="verAnalisis('"+propId+"','"+tipo+"','"+esc(dir)+"')">Ver análisis</button>':'')
+      +(docExistente?'<button class="btn btn-sm" onclick="verAnalisis(\''+propId+'\',\''+tipo+'\',\''+esc(dir)+'\')">Ver análisis</button>':'')
       +'<label style="background:#185FA5;color:#fff;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">'
       +(docExistente?'Reemplazar':'Subir')
       +'<input type="file" accept="'+info.accept+'" style="display:none" onchange="subirDocumento(this,\''+propId+'\',\''+tipo+'\',\''+esc(dir)+'\')" /></label>'
