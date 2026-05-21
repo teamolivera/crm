@@ -1262,7 +1262,6 @@ function subirDocumento(input,propId,tipo,dir){
     return analizarConGemini(b64,mimeType,tipo);
   }).then(function(datos){
     clearCache('DocumentacionProp');
-    // Determinar qué campos de deuda guardar según tipo
     var deudaExp='0',deudaAbl='0';
     if(tipo==='expensas')deudaExp=datos.tiene_deuda?String(datos.deuda_total||0):'0';
     if(tipo==='abl')deudaAbl=datos.tiene_deuda?String(datos.deuda_total||0):'0';
@@ -1277,7 +1276,23 @@ function subirDocumento(input,propId,tipo,dir){
       alertas:JSON.stringify(datos.alertas||[]),
       matching_status:''
     };
-    return new Promise(function(resolve){addRow('DocumentacionProp',row,function(){resolve(datos);});});
+    // Primero borrar registros anteriores del mismo tipo para esta propiedad
+    return new Promise(function(resolve){
+      getSheet('DocumentacionProp',function(e,allDocs){
+        var viejos=(allDocs||[]).filter(function(d){return d.propiedad_id===propId&&d.tipo_doc===tipo;});
+        var pendiente=viejos.length;
+        if(pendiente===0){
+          addRow('DocumentacionProp',row,function(){resolve(datos);});
+        }else{
+          viejos.forEach(function(v){
+            delRow('DocumentacionProp',v.id,function(){
+              pendiente--;
+              if(pendiente===0){addRow('DocumentacionProp',row,function(){resolve(datos);});}
+            });
+          });
+        }
+      });
+    });
   }).then(function(){
     clearCache('DocumentacionProp');
     fetchCached('DocumentacionProp').then(function(docs){
