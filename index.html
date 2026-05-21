@@ -1252,8 +1252,22 @@ function subirDocumento(input,propId,tipo,dir){
       renderPanelDoc(propId,dir,propDocs);
     });
   }).catch(function(e){
-    alert('Error al analizar el documento: '+e.message);
-    abrirDocumentacion(propId,dir);
+    clearCache('DocumentacionProp');
+    fetchCached('DocumentacionProp').then(function(docs){
+      var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
+      renderPanelDoc(propId,dir,propDocs);
+      setTimeout(function(){
+        var box=document.getElementById('modalBox');
+        if(box){
+          var errDiv=document.createElement('div');
+          errDiv.style.cssText='background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin:0 0 1rem;font-size:13px;color:#FF1A1A';
+          errDiv.textContent='⚠️ Error al analizar el documento: '+(e.message||'Intentá de nuevo');
+          box.insertBefore(errDiv,box.children[1]);
+        }
+      },100);
+    }).catch(function(){
+      loadPropiedades();
+    });
   });
 }
 
