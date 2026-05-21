@@ -1054,18 +1054,19 @@ function verFichaProp(id,sheet){
   });
 }
 
-var GEMINI_KEY=(function(){
-  return localStorage.getItem('crm_gemini_key')||'';
-})();
+var _GAPI_CFG='AIzaSyDjAm6Khr3H_8y4zMdMtLEsTFw2zgO7uUQ';
 var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=';
 
 function getGeminiUrl(){
-  var k=localStorage.getItem('crm_gemini_key')||'';
-  if(!k){
-    k=prompt('Ingresá la API key de Gemini para análisis de documentos:');
-    if(k)localStorage.setItem('crm_gemini_key',k.trim());
-  }
-  return GEMINI_URL+(k||'');
+  var k=localStorage.getItem('crm_gemini_key')||_GAPI_CFG;
+  if(!localStorage.getItem('crm_gemini_key'))localStorage.setItem('crm_gemini_key',k);
+  return GEMINI_URL+k;
+}
+
+function configurarGeminiKey(){
+  var actual=localStorage.getItem('crm_gemini_key')||'';
+  var nueva=prompt('API key de Gemini:'+(actual?'\n(actual: ...'+actual.slice(-6)+')':''));
+  if(nueva&&nueva.trim()){localStorage.setItem('crm_gemini_key',nueva.trim());alert('✅ Key guardada correctamente.');}
 }
 
 var DOC_TIPOS={
@@ -1293,13 +1294,11 @@ function subirDocumento(input,propId,tipo,dir){
         if(box){
           var errDiv=document.createElement('div');
           errDiv.style.cssText='background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin:0 0 1rem;font-size:13px;color:#FF1A1A';
-          errDiv.textContent='⚠️ Error al analizar el documento: '+(e.message||'Intentá de nuevo');
+          errDiv.textContent='⚠️ Error al analizar: '+(e.message||'Revisá la conexión e intentá de nuevo');
           box.insertBefore(errDiv,box.children[1]);
         }
       },100);
-    }).catch(function(){
-      loadPropiedades();
-    });
+    }).catch(function(){loadPropiedades();});
   });
 }
 
