@@ -1078,7 +1078,7 @@ var DOC_TIPOS={
 };
 
 var DOC_PROMPTS={
-  escritura:'Analizá esta escritura de compraventa inmobiliaria escaneada. REGLA CRÍTICA: los TITULARES son exclusivamente quienes aparecen como PARTE COMPRADORA o ADQUIRENTE — los que RECIBEN el inmueble y firman como compradores. NUNCA el vendedor ni el apoderado del vendedor. En una escritura de compraventa típica dice "VENDE a [COMPRADORES]" — esos son los titulares. Extraé y devolvé SOLO un JSON: {"titulares":[{"nombre":"...","estado_civil":"..."}],"domicilio_inmueble":"...","unidad_funcional":"...","m2_cubiertos":"...","m2_totales":"...","matricula_fr":"...","fecha_inscripcion_reglamento":"...","gravamenes":["..."],"hipotecas":["..."],"usufructos":["..."],"servidumbres":["..."],"otros_impedimentos":["..."],"alertas":["..."],"resumen":"..."} Instrucciones adicionales: 3) unidad_funcional: convertí número en letras a número (DIECINUEVE=19). 4) m2_cubiertos y m2_totales según escritura. 5) matricula_fr formato FR-XXXX/XX. 6) fecha_inscripcion_reglamento es SOLO la fecha del Reglamento de Copropiedad, no otros registros. 7) Si una hipoteca se cancela SIMULTÁNEAMENTE con esta escritura, NO la incluyas en hipotecas — mencionala solo en resumen como cancelada. 8) NO alertar sobre certificados de dominio de la operación ni sobre fechas o firmas digitales. 9) alertas solo para gravámenes vigentes post-escritura o irregularidades reales. Respondé ÚNICAMENTE con el JSON.',
+  escritura:'Analizá esta escritura de compraventa inmobiliaria argentina escaneada. INSTRUCCIÓN CRÍTICA SOBRE TITULARES: En la escritura hay múltiples personas mencionadas — vendedores, apoderados, compradores. Los TITULARES DE DOMINIO que debés extraer son ÚNICAMENTE quienes aparecen como PARTE COMPRADORA en la frase principal de venta. Buscá la frase que dice "VENDE a [nombres]" o "transfiere a [nombres]" — esas personas son los titulares. NO son titulares: el vendedor, el apoderado del vendedor, personas mencionadas en antecedentes de dominio previos, ni escribanos. INSTRUCCIÓN SOBRE SUPERFICIES: Buscá el dato de metros cuadrados que corresponde al piso y la unidad funcional vendida. Puede estar expresado en letras (OCHENTA Y SEIS METROS VEINTE DECÍMETROS = 86.20 m²). Convertí siempre a número. INSTRUCCIÓN SOBRE GRAVÁMENES: Solo incluí gravámenes VIGENTES después de esta escritura. Si dice "caduca sin inscripción", "se cancela simultáneamente", "ha quedado caduca", o similar — NO lo incluyas en gravámenes. Extraé y devolvé SOLO este JSON: {"titulares":[{"nombre":"...","estado_civil":"..."}],"domicilio_inmueble":"...","unidad_funcional":"...","m2_cubiertos":"...","m2_totales":"...","matricula_fr":"...","fecha_inscripcion_reglamento":"...","gravamenes":[],"hipotecas":[],"usufructos":[],"servidumbres":[],"otros_impedimentos":[],"alertas":[],"resumen":"..."} Respondé ÚNICAMENTE con el JSON, sin texto adicional.',
   dni:'Analizá este DNI argentino (puede ser foto o PDF escaneado, frente y/o dorso). Extraé SOLO un JSON: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","domicilio":"...","alertas":[]} Instrucciones: 1) nombre y apellido tal como figura. 2) dni sin puntos ni espacios. 3) fecha_nacimiento en DD/MM/AAAA. 4) domicilio del dorso. 5) Si hay múltiples DNIs en el archivo, devolvé un array "titulares":[{...},{...}] en vez del objeto simple. Respondé ÚNICAMENTE con el JSON.',
   autorizacion:'Analizá esta autorización de venta inmobiliaria. Extraé SOLO un JSON: {"firmantes":[{"nombre":"...","dni":"..."}],"propiedad":"...","fecha_firma":"...","vencimiento":"...","exclusividad":"...","comision_vendedor":"...","alertas":["..."],"resumen":"..."} Instrucciones: 1) firmantes son los propietarios que firman la autorización. 2) fecha_firma es la fecha real de firma que figura en el documento (puede ser firma digital). 3) vencimiento en días hábiles o fecha. 4) comision_vendedor es el porcentaje pactado para el vendedor. 5) alertas SOLO para inconsistencias reales relevantes (datos faltantes, contradicciones). NO alertar sobre fechas futuras, firmas digitales, ni cláusulas duplicadas que son parte del formato estándar. Respondé ÚNICAMENTE con el JSON.',
   expensas:'Analizá esta liquidación de expensas. Extraé SOLO un JSON: {"unidad_funcional":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"juicios":["..."],"gastos_extraordinarios":["..."],"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true y deuda_total el monto en pesos.',
@@ -1183,6 +1183,7 @@ function abrirDocumentacion(propId,dir){
 }
 
 function renderPanelDoc(propId,dir,propDocs){
+  window._lastPropDocs=propDocs;
   var html='<div class="modal-header"><span class="modal-title">📁 '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
 
   // Alertas globales
@@ -1224,7 +1225,7 @@ function renderPanelDoc(propId,dir,propDocs){
       +(docExistente?'<div style="font-size:11px;color:#888;margin-top:2px">Cargado el '+docExistente.fecha_carga+(tieneAlerta?' · <span style="color:#FF1A1A;font-weight:600">⚠️ Con alertas</span>':'')+'</div>':'<div style="font-size:11px;color:#aaa;margin-top:2px">Sin cargar</div>')
       +'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center">'
-      +(docExistente?'<button class="btn btn-sm" onclick="verAnalisis(\''+propId+'\',\''+tipo+'\')">Ver análisis</button>':'')
+      +(docExistente?'<button class="btn btn-sm" onclick="verAnalisis('"+propId+"','"+tipo+"','"+esc(dir)+"')">Ver análisis</button>':'')
       +'<label style="background:#185FA5;color:#fff;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">'
       +(docExistente?'Reemplazar':'Subir')
       +'<input type="file" accept="'+info.accept+'" style="display:none" onchange="subirDocumento(this,\''+propId+'\',\''+tipo+'\',\''+esc(dir)+'\')" /></label>'
@@ -1356,20 +1357,20 @@ function subirDocumento(input,propId,tipo,dir){
   });
 }
 
-function verAnalisis(propId,tipo){
+function verAnalisis(propId,tipo,dir){
   fetchCached('DocumentacionProp').then(function(docs){
-    var doc=(docs||[]).find(function(d){return d.propiedad_id===propId&&d.tipo_doc===tipo;});
+    var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
+    var doc=propDocs.find(function(d){return d.tipo_doc===tipo;});
     if(!doc)return;
     var data={};try{data=JSON.parse(doc.analisis||'{}');}catch(e){}
     var alertas=[];try{alertas=JSON.parse(doc.alertas||'[]');}catch(e){}
-    var html='<div class="modal-header"><span class="modal-title">'+DOC_TIPOS[tipo].icon+' '+DOC_TIPOS[tipo].label+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    var html='<div class="modal-header"><span class="modal-title">'+DOC_TIPOS[tipo].icon+' '+DOC_TIPOS[tipo].label+'</span><button class="close-btn" onclick="closeModal();renderPanelDoc(\''+esc(propId)+'\',\''+esc(dir||'')+'\',window._lastPropDocs||[])">×</button></div>';
     html+='<div style="font-size:12px;color:#888;margin-bottom:1rem">Analizado el '+(doc.fecha_carga||'').replace(/^'/,'')+'</div>';
     if(alertas.length){
       html+='<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:1rem">'
         +'<div style="font-weight:700;color:#FF1A1A;font-size:12px;margin-bottom:4px">⚠️ Alertas</div>'
         +alertas.map(function(a){return '<div style="font-size:12px;color:#FF1A1A">• '+a+'</div>';}).join('')+'</div>';
     }
-    // Mostrar todos los campos del JSON
     html+='<div style="display:flex;flex-direction:column;gap:6px;font-size:13px">';
     Object.keys(data).forEach(function(k){
       if(k==='resumen')return;
@@ -1384,7 +1385,8 @@ function verAnalisis(propId,tipo){
     });
     html+='</div>';
     if(data.resumen)html+='<div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:13px;color:#555;font-style:italic">'+data.resumen+'</div>';
-    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal();renderPanelDoc(\''+esc(propId)+'\',\''+esc(dir||'')+'\',window._lastPropDocs||[])">Cerrar</button></div>';
+    window._lastPropDocs=propDocs;
     document.getElementById('modalBox').innerHTML=html;
     openModal();
   });
