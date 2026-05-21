@@ -912,6 +912,7 @@ function propCardHtml(p,sheet,mostrarReferido,gastosProp){
     +'<button class="btn btn-sm btn-success" onclick="abrirCierre(\'prop\',\''+sheet+'\',\''+p.id+'\',\''+esc(p.direccion)+'\','+Number(p.precio||0)+','+Number(p.comision_compradora||4)+','+Number(p.comision_vendedora||3)+',\''+referido+'\')">Reservar/Vender</button>'
     +(p.estado==='Reservada'&&sheet==='Busquedas'?'<button class="btn btn-sm btn-success" onclick="guardarEstado(\''+p.id+'\',\'Busquedas\',\'Vendida\')" >Pasar a Vendida</button>':'')
     +'<button class="btn btn-sm" onclick="cambiarEstado(\''+p.id+'\',\''+sheet+'\')" >Estado</button>'
+    +'<button class="btn btn-sm" style="color:#185FA5;border-color:#185FA5" onclick="abrirDocumentacion(\''+p.id+'\',\''+esc(p.direccion)+'\')">📁 Documentación</button>'
     +'<button class="btn btn-sm" style="color:#FF1A1A;border-color:#fecaca" onclick="eliminarProp(\''+p.id+'\',\''+sheet+'\')">Eliminar</button>'
     +'</div></div>';
 }
@@ -1050,6 +1051,309 @@ function verFichaProp(id,sheet){
       openModal();
     });
     });
+  });
+}
+
+var GEMINI_KEY='AIzaSyB9hvcgIIUya9LtF-DD1QAz2KLQMLosWpw';
+var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+GEMINI_KEY;
+
+var DOC_TIPOS={
+  escritura:{label:'Escritura / Boleto / Adhesión fideicomiso',icon:'📜',accept:'.pdf'},
+  dni:{label:'DNI titulares',icon:'🪪',accept:'.pdf,image/*'},
+  autorizacion:{label:'Autorización de venta',icon:'✍️',accept:'.pdf'},
+  expensas:{label:'Liquidación de expensas',icon:'🏢',accept:'.pdf'},
+  abl:{label:'Boleta ABL',icon:'📄',accept:'.pdf'}
+};
+
+var DOC_PROMPTS={
+  escritura:'Analizá esta escritura inmobiliaria escaneada. Extraé y devolvé SOLO un JSON con estos campos: {"titulares":[{"nombre":"...","dni":"..."}],"matricula":"...","fecha_inscripcion":"...","gravamenes":["..."],"servidumbres":["..."],"impedimentos":["..."],"alertas":["..."],"resumen":"..."} Si no encontrás algún dato, dejá el campo vacío o array vacío. Las alertas deben incluir cualquier gravamen, hipoteca, usufructo, embargo o restricción que encuentres.',
+  dni:'Analizá este DNI argentino (puede ser foto o PDF). Extraé SOLO un JSON: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","sexo":"...","alertas":[]} Si es el frente y dorso del mismo DNI, extraé los datos del frente. Si no podés leer algún dato, dejá el campo vacío.',
+  autorizacion:'Analizá esta autorización de venta inmobiliaria. Extraé SOLO un JSON: {"firmantes":[{"nombre":"...","dni":"..."}],"propiedad":"...","fecha_firma":"...","vencimiento":"...","exclusividad":"...","alertas":["..."],"resumen":"..."} Las alertas deben incluir cualquier incongruencia o dato faltante importante.',
+  expensas:'Analizá esta liquidación de expensas. Extraé SOLO un JSON: {"unidad_funcional":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"juicios":["..."],"gastos_extraordinarios":["..."],"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true y deuda_total el monto en pesos. Las alertas deben incluir deudas, juicios o gastos extraordinarios importantes.',
+  abl:'Analizá esta boleta de ABL (Alumbrado, Barrido y Limpieza) de CABA o impuesto inmobiliario provincial. Extraé SOLO un JSON: {"titular":"...","partida":"...","direccion":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"cuotas_adeudadas":0,"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true.'
+};
+
+function fileToBase64(file){
+  return new Promise(function(resolve,reject){
+    var r=new FileReader();
+    r.onload=function(e){resolve(e.target.result.split(',')[1]);};
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function analizarConGemini(base64,mimeType,tipoProp){
+  var prompt=DOC_PROMPTS[tipoProp];
+  var body={
+    contents:[{parts:[
+      {text:prompt},
+      {inline_data:{mime_type:mimeType,data:base64}}
+    ]}],
+    generationConfig:{temperature:0,maxOutputTokens:2048}
+  };
+  return fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var texto=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts[0].text||'{}';
+      var clean=texto.replace(/```json|```/g,'').trim();
+      try{return JSON.parse(clean);}catch(e){return {resumen:texto,alertas:['Error parseando respuesta']};}
+    });
+}
+
+function guardarDocAnalisis(propId,tipo,analisis,datos){
+  var row={
+    id:uid(),
+    propiedad_id:propId,
+    tipo_doc:tipo,
+    fecha_carga:today(),
+    analisis:JSON.stringify(analisis),
+    titulares:JSON.stringify(datos.titulares||datos.firmantes||[]),
+    gravamenes:JSON.stringify(datos.gravamenes||[]),
+    matricula:datos.matricula||datos.partida||'',
+    deuda_expensas:datos.tiene_deuda?String(datos.deuda_total||0):'0',
+    deuda_abl:datos.tiene_deuda?String(datos.deuda_total||0):'0',
+    alertas:JSON.stringify(datos.alertas||[]),
+    matching_status:''
+  };
+  return new Promise(function(resolve){
+    addRow('DocumentacionProp',row,function(){resolve(row);});
+  });
+}
+
+function abrirDocumentacion(propId,dir){
+  fetchCached('DocumentacionProp').then(function(docs){
+    var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
+    renderPanelDoc(propId,dir,propDocs);
+  }).catch(function(){renderPanelDoc(propId,dir,[]);});
+}
+
+function renderPanelDoc(propId,dir,propDocs){
+  var html='<div class="modal-header"><span class="modal-title">📁 '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+
+  // Alertas globales
+  var todasAlertas=[];
+  propDocs.forEach(function(d){
+    try{var al=JSON.parse(d.alertas||'[]');todasAlertas=todasAlertas.concat(al.map(function(a){return '['+d.tipo_doc+'] '+a;}));}catch(e){}
+  });
+  if(todasAlertas.length){
+    html+='<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:1rem">'
+      +'<div style="font-weight:700;color:#FF1A1A;font-size:13px;margin-bottom:6px">⚠️ Alertas</div>'
+      +todasAlertas.map(function(a){return '<div style="font-size:12px;color:#FF1A1A;margin-bottom:2px">• '+a+'</div>';}).join('')
+      +'</div>';
+  }
+
+  // Sección de matching si hay escritura + DNI + autorización
+  var tieneEscritura=propDocs.some(function(d){return d.tipo_doc==='escritura';});
+  var tieneDNI=propDocs.some(function(d){return d.tipo_doc==='dni';});
+  var tieneAuth=propDocs.some(function(d){return d.tipo_doc==='autorizacion';});
+  if(tieneEscritura&&(tieneDNI||tieneAuth)){
+    html+='<div style="background:#EFF6FF;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:13px;font-weight:600;color:#185FA5">Tenés escritura + '+(tieneDNI?'DNI':'')+''+(tieneDNI&&tieneAuth?' + ':'')+''+(tieneAuth?'autorización':'')+' cargados</div>'
+      +'<button class="btn btn-sm btn-primary" onclick="hacerMatching(\''+propId+'\')">🔍 Verificar matching</button>'
+      +'</div>';
+  }
+
+  // Cards por tipo de documento
+  html+='<div style="display:flex;flex-direction:column;gap:12px">';
+  Object.keys(DOC_TIPOS).forEach(function(tipo){
+    var info=DOC_TIPOS[tipo];
+    var docExistente=propDocs.find(function(d){return d.tipo_doc===tipo;});
+    var tieneAlerta=false;
+    if(docExistente){try{tieneAlerta=JSON.parse(docExistente.alertas||'[]').length>0;}catch(e){}}
+    html+='<div style="border:1px solid '+(docExistente?'#bbf7d0':'#e5e7eb')+';border-radius:10px;padding:14px 16px;background:'+(docExistente?'#f0fdf4':'#fafafa')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:20px">'+info.icon+'</span>'
+      +'<div>'
+      +'<div style="font-weight:600;font-size:13px">'+info.label+'</div>'
+      +(docExistente?'<div style="font-size:11px;color:#888;margin-top:2px">Cargado el '+docExistente.fecha_carga+(tieneAlerta?' · <span style="color:#FF1A1A;font-weight:600">⚠️ Con alertas</span>':'')+'</div>':'<div style="font-size:11px;color:#aaa;margin-top:2px">Sin cargar</div>')
+      +'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+      +(docExistente?'<button class="btn btn-sm" onclick="verAnalisis(\''+propId+'\',\''+tipo+'\')">Ver análisis</button>':'')
+      +'<label style="background:#185FA5;color:#fff;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">'
+      +(docExistente?'Reemplazar':'Subir')
+      +'<input type="file" accept="'+info.accept+'" style="display:none" onchange="subirDocumento(this,\''+propId+'\',\''+tipo+'\',\''+esc(dir)+'\')" /></label>'
+      +'</div></div>'
+      +(docExistente&&docExistente.analisis?renderResumenDoc(tipo,docExistente):'')
+      +'</div>';
+  });
+  html+='</div>';
+  html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+  document.getElementById('modalBox').innerHTML=html;
+  openModal();
+}
+
+function renderResumenDoc(tipo,doc){
+  var data={};
+  try{data=JSON.parse(doc.analisis||'{}');}catch(e){}
+  var html='<div style="background:#fff;border-radius:8px;padding:10px 12px;border:1px solid #e5e7eb;font-size:12px">';
+  if(tipo==='escritura'){
+    var tits=[];try{tits=JSON.parse(doc.titulares||'[]');}catch(e){}
+    var gravs=[];try{gravs=JSON.parse(doc.gravamenes||'[]');}catch(e){}
+    if(tits.length)html+='<div><span style="color:#888">Titulares:</span> '+tits.map(function(t){return(t.nombre||t)+(t.dni?' (DNI '+t.dni+')':'');}).join(', ')+'</div>';
+    if(doc.matricula)html+='<div><span style="color:#888">Matrícula:</span> '+doc.matricula+'</div>';
+    if(data.fecha_inscripcion)html+='<div><span style="color:#888">Inscripción:</span> '+data.fecha_inscripcion+'</div>';
+    if(gravs.length)html+='<div style="color:#FF1A1A"><span style="color:#888">Gravámenes:</span> '+gravs.join(', ')+'</div>';
+    else html+='<div style="color:#00C853">Sin gravámenes registrados</div>';
+  }else if(tipo==='dni'){
+    try{data=JSON.parse(doc.analisis||'{}');}catch(e){}
+    if(data.nombre)html+='<div><span style="color:#888">Titular:</span> '+data.apellido+', '+data.nombre+' — DNI '+data.dni+'</div>';
+  }else if(tipo==='autorizacion'){
+    var firms=[];try{firms=JSON.parse(doc.titulares||'[]');}catch(e){}
+    if(firms.length)html+='<div><span style="color:#888">Firmantes:</span> '+firms.map(function(f){return(f.nombre||f);}).join(', ')+'</div>';
+    if(data.fecha_firma)html+='<div><span style="color:#888">Fecha firma:</span> '+data.fecha_firma+'</div>';
+    if(data.vencimiento)html+='<div><span style="color:#888">Vence:</span> '+data.vencimiento+'</div>';
+  }else if(tipo==='expensas'){
+    html+='<div>'+(Number(doc.deuda_expensas||0)>0
+      ?'<span style="color:#FF1A1A;font-weight:700">⚠️ Deuda: $'+fmt(Number(doc.deuda_expensas))+'</span>'
+      :'<span style="color:#00C853;font-weight:700">✅ Sin deuda</span>')+'</div>';
+    if(data.juicios&&data.juicios.length)html+='<div style="color:#FF1A1A">Juicios: '+data.juicios.join(', ')+'</div>';
+    if(data.gastos_extraordinarios&&data.gastos_extraordinarios.length)html+='<div style="color:#FFCC00">Gastos extraord.: '+data.gastos_extraordinarios.join(', ')+'</div>';
+  }else if(tipo==='abl'){
+    if(data.titular)html+='<div><span style="color:#888">Titular:</span> '+data.titular+'</div>';
+    html+='<div>'+(Number(doc.deuda_abl||0)>0
+      ?'<span style="color:#FF1A1A;font-weight:700">⚠️ Deuda ABL: $'+fmt(Number(doc.deuda_abl))+'</span>'
+      :'<span style="color:#00C853;font-weight:700">✅ Sin deuda ABL</span>')+'</div>';
+  }
+  if(data.resumen)html+='<div style="margin-top:6px;color:#555;font-style:italic">'+data.resumen+'</div>';
+  html+='</div>';
+  return html;
+}
+
+function subirDocumento(input,propId,tipo,dir){
+  var file=input.files[0];if(!file)return;
+  var mimeType=file.type||'application/pdf';
+  closeModal();
+  document.getElementById('tabContent').innerHTML='<div class="loading"><span class="spinner"></span>Analizando documento con IA... puede tardar unos segundos</div>';
+  fileToBase64(file).then(function(b64){
+    return analizarConGemini(b64,mimeType,tipo);
+  }).then(function(datos){
+    clearCache('DocumentacionProp');
+    // Determinar qué campos de deuda guardar según tipo
+    var deudaExp='0',deudaAbl='0';
+    if(tipo==='expensas')deudaExp=datos.tiene_deuda?String(datos.deuda_total||0):'0';
+    if(tipo==='abl')deudaAbl=datos.tiene_deuda?String(datos.deuda_total||0):'0';
+    var row={
+      id:uid(),propiedad_id:propId,tipo_doc:tipo,fecha_carga:today(),
+      analisis:JSON.stringify(datos),
+      titulares:JSON.stringify(datos.titulares||datos.firmantes||[]),
+      gravamenes:JSON.stringify(datos.gravamenes||[]),
+      matricula:datos.matricula||datos.partida||'',
+      deuda_expensas:deudaExp,
+      deuda_abl:deudaAbl,
+      alertas:JSON.stringify(datos.alertas||[]),
+      matching_status:''
+    };
+    return new Promise(function(resolve){addRow('DocumentacionProp',row,function(){resolve(datos);});});
+  }).then(function(){
+    clearCache('DocumentacionProp');
+    fetchCached('DocumentacionProp').then(function(docs){
+      var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
+      renderPanelDoc(propId,dir,propDocs);
+    });
+  }).catch(function(e){
+    alert('Error al analizar el documento: '+e.message);
+    abrirDocumentacion(propId,dir);
+  });
+}
+
+function verAnalisis(propId,tipo){
+  fetchCached('DocumentacionProp').then(function(docs){
+    var doc=(docs||[]).find(function(d){return d.propiedad_id===propId&&d.tipo_doc===tipo;});
+    if(!doc)return;
+    var data={};try{data=JSON.parse(doc.analisis||'{}');}catch(e){}
+    var alertas=[];try{alertas=JSON.parse(doc.alertas||'[]');}catch(e){}
+    var html='<div class="modal-header"><span class="modal-title">'+DOC_TIPOS[tipo].icon+' '+DOC_TIPOS[tipo].label+'</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    html+='<div style="font-size:12px;color:#888;margin-bottom:1rem">Analizado el '+doc.fecha_carga+'</div>';
+    if(alertas.length){
+      html+='<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:1rem">'
+        +'<div style="font-weight:700;color:#FF1A1A;font-size:12px;margin-bottom:4px">⚠️ Alertas</div>'
+        +alertas.map(function(a){return '<div style="font-size:12px;color:#FF1A1A">• '+a+'</div>';}).join('')+'</div>';
+    }
+    // Mostrar todos los campos del JSON
+    html+='<div style="display:flex;flex-direction:column;gap:6px;font-size:13px">';
+    Object.keys(data).forEach(function(k){
+      if(k==='resumen')return;
+      var val=data[k];
+      if(Array.isArray(val)&&val.length===0)return;
+      if(val===''||val===null||val===undefined)return;
+      var display=Array.isArray(val)?val.join(', '):String(val);
+      html+='<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5">'
+        +'<span style="color:#888;min-width:140px;font-size:12px">'+k.replace(/_/g,' ')+'</span>'
+        +'<span style="font-weight:600">'+display+'</span>'
+        +'</div>';
+    });
+    html+='</div>';
+    if(data.resumen)html+='<div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:13px;color:#555;font-style:italic">'+data.resumen+'</div>';
+    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
+  });
+}
+
+function hacerMatching(propId){
+  fetchCached('DocumentacionProp').then(function(docs){
+    var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
+    var escritura=propDocs.find(function(d){return d.tipo_doc==='escritura';});
+    var dnis=propDocs.filter(function(d){return d.tipo_doc==='dni';});
+    var auth=propDocs.find(function(d){return d.tipo_doc==='autorizacion';});
+    var issues=[],oks=[];
+
+    // Extraer titulares de escritura
+    var titsEscritura=[];
+    try{titsEscritura=JSON.parse(escritura.titulares||'[]');}catch(e){}
+    var dnisEscritura=titsEscritura.map(function(t){return String(t.dni||'').replace(/\D/g,'');}).filter(Boolean);
+
+    // Cruzar con DNIs subidos
+    dnis.forEach(function(d){
+      var data={};try{data=JSON.parse(d.analisis||'{}');}catch(e){}
+      var dniNum=String(data.dni||'').replace(/\D/g,'');
+      var nombre=(data.nombre||'')+' '+(data.apellido||'');
+      if(!dniNum){issues.push('No se pudo leer el DNI de un documento subido');return;}
+      if(dnisEscritura.length&&dnisEscritura.indexOf(dniNum)<0){
+        issues.push('DNI '+dniNum+' ('+nombre.trim()+') NO figura como titular en la escritura');
+      }else{
+        oks.push('DNI '+dniNum+' ('+nombre.trim()+') ✓ coincide con la escritura');
+      }
+    });
+
+    // Cruzar con autorización
+    if(auth){
+      var firmsAuth=[];try{firmsAuth=JSON.parse(auth.titulares||'[]');}catch(e){}
+      var dnisAuth=firmsAuth.map(function(f){return String(f.dni||'').replace(/\D/g,'');}).filter(Boolean);
+      dnisAuth.forEach(function(dniAuth){
+        var firma=firmsAuth.find(function(f){return String(f.dni||'').replace(/\D/g,'')==dniAuth;});
+        var nombre=firma?firma.nombre:'';
+        if(dnisEscritura.length&&dnisEscritura.indexOf(dniAuth)<0){
+          issues.push('Firmante de autorización DNI '+dniAuth+' ('+nombre+') NO figura como titular en la escritura');
+        }else{
+          oks.push('Firmante de autorización DNI '+dniAuth+' ('+nombre+') ✓ coincide con la escritura');
+        }
+      });
+    }
+
+    var status=issues.length>0?'advertencia':'ok';
+    // Guardar status en todos los docs de esta propiedad
+    propDocs.forEach(function(d){updRow('DocumentacionProp',d.id,{matching_status:status},function(){});});
+    clearCache('DocumentacionProp');
+
+    var html='<div class="modal-header"><span class="modal-title">🔍 Resultado del matching</span><button class="close-btn" onclick="closeModal()">×</button></div>';
+    if(oks.length){
+      html+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:1rem">'
+        +'<div style="font-weight:700;color:#00C853;font-size:13px;margin-bottom:6px">✅ Coincidencias</div>'
+        +oks.map(function(o){return '<div style="font-size:12px;color:#166534;margin-bottom:3px">• '+o+'</div>';}).join('')+'</div>';
+    }
+    if(issues.length){
+      html+='<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-bottom:1rem">'
+        +'<div style="font-weight:700;color:#FF1A1A;font-size:13px;margin-bottom:6px">⚠️ Inconsistencias</div>'
+        +issues.map(function(i){return '<div style="font-size:12px;color:#FF1A1A;margin-bottom:3px">• '+i+'</div>';}).join('')+'</div>';
+    }
+    if(!issues.length&&!oks.length){
+      html+='<div class="empty">No hay datos suficientes para hacer el matching. Verificá que los documentos hayan sido analizados correctamente.</div>';
+    }
+    html+='<div style="display:flex;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    document.getElementById('modalBox').innerHTML=html;
+    openModal();
   });
 }
 
