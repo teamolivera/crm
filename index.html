@@ -1054,19 +1054,19 @@ function verFichaProp(id,sheet){
   });
 }
 
-var _GAPI_CFG='AIzaSyDjAm6Khr3H_8y4zMdMtLEsTFw2zgO7uUQ';
-var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=';
+var _AAPI_CFG='';
 
-function getGeminiUrl(){
-  var k=localStorage.getItem('crm_gemini_key')||_GAPI_CFG;
-  if(!localStorage.getItem('crm_gemini_key'))localStorage.setItem('crm_gemini_key',k);
-  return GEMINI_URL+k;
+function getClaudeKey(){
+  return localStorage.getItem('crm_claude_key')||'';
 }
 
-function configurarGeminiKey(){
-  var actual=localStorage.getItem('crm_gemini_key')||'';
-  var nueva=prompt('API key de Gemini:'+(actual?'\n(actual: ...'+actual.slice(-6)+')':''));
-  if(nueva&&nueva.trim()){localStorage.setItem('crm_gemini_key',nueva.trim());alert('✅ Key guardada correctamente.');}
+function configurarClaudeKey(){
+  var actual=localStorage.getItem('crm_claude_key')||'';
+  var nueva=prompt('Ingresá tu API key de Anthropic:'+(actual?'\n(ya hay una guardada, dejá vacío para no cambiarla)':''));
+  if(nueva&&nueva.trim()){
+    localStorage.setItem('crm_claude_key',nueva.trim());
+    alert('✅ API key guardada correctamente.');
+  }
 }
 
 var DOC_TIPOS={
@@ -1078,10 +1078,10 @@ var DOC_TIPOS={
 };
 
 var DOC_PROMPTS={
-  escritura:'Analizá esta escritura o título de propiedad inmobiliaria escaneada. Extraé y devolvé SOLO un JSON con estos campos exactos: {"titulares":[{"nombre":"...","estado_civil":"..."}],"domicilio_inmueble":"...","unidad_funcional":"...","m2_cubiertos":"...","m2_totales":"...","matricula_fr":"...","fecha_inscripcion_reglamento":"...","gravamenes":["..."],"hipotecas":["..."],"usufructos":["..."],"servidumbres":["..."],"otros_impedimentos":["..."],"alertas":["..."],"resumen":"..."} Instrucciones: 1) titulares son los dueños actuales del inmueble según la escritura, con nombre completo y estado civil (soltero/a, casado/a, divorciado/a, viudo/a). 2) domicilio_inmueble es la dirección exacta de la propiedad. 3) unidad_funcional es el número de UF si aplica. 4) m2_cubiertos y m2_totales son los metros cuadrados según escritura o reglamento. 5) matricula_fr es la matrícula del Registro de la Propiedad (formato FR-XXXX/XX o similar). 6) fecha_inscripcion_reglamento es la fecha de inscripción del reglamento de copropiedad si existe. 7) En gravamenes, hipotecas, usufructos, servidumbres y otros_impedimentos listá CUALQUIER restricción al dominio que encuentres, si no hay dejá array vacío []. 8) alertas debe incluir CUALQUIER restricción, deuda, embargo, inhibición o irregularidad. 9) Si no encontrás algún dato poné cadena vacía. Respondé ÚNICAMENTE con el JSON, sin texto adicional.',
-  dni:'Analizá este DNI argentino (puede ser foto o PDF escaneado, frente y/o dorso). Extraé SOLO un JSON con estos campos: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","domicilio":"...","alertas":[]} Instrucciones: 1) nombre y apellido del titular tal como figura en el documento. 2) dni es el número sin puntos ni espacios. 3) fecha_nacimiento en formato DD/MM/AAAA. 4) domicilio es el domicilio real que figura en el DNI (dorso). 5) Si hay frente y dorso en el mismo archivo, combiná la información de ambos. 6) Si no podés leer algún dato dejá el campo vacío. Respondé ÚNICAMENTE con el JSON, sin texto adicional.',
+  escritura:'Analizá esta escritura o título de propiedad inmobiliaria escaneada. Extraé y devolvé SOLO un JSON con estos campos exactos: {"titulares":[{"nombre":"...","estado_civil":"..."}],"domicilio_inmueble":"...","unidad_funcional":"...","m2_cubiertos":"...","m2_totales":"...","matricula_fr":"...","fecha_inscripcion_reglamento":"...","gravamenes":["..."],"hipotecas":["..."],"usufructos":["..."],"servidumbres":["..."],"otros_impedimentos":["..."],"alertas":["..."],"resumen":"..."} Instrucciones: 1) titulares son los dueños actuales del inmueble según la escritura, con nombre completo y estado civil. 2) domicilio_inmueble es la dirección exacta. 3) unidad_funcional es el número de UF. 4) m2_cubiertos y m2_totales según escritura. 5) matricula_fr es la matrícula del Registro de la Propiedad. 6) fecha_inscripcion_reglamento si existe. 7) En gravamenes, hipotecas, usufructos, servidumbres y otros_impedimentos listá CUALQUIER restricción, si no hay dejá []. 8) alertas incluye restricciones, deudas, embargos o irregularidades. 9) Si no encontrás algún dato poné cadena vacía. Respondé ÚNICAMENTE con el JSON.',
+  dni:'Analizá este DNI argentino (puede ser foto o PDF escaneado, frente y/o dorso). Extraé SOLO un JSON: {"nombre":"...","apellido":"...","dni":"...","fecha_nacimiento":"...","domicilio":"...","alertas":[]} Instrucciones: 1) nombre y apellido tal como figura. 2) dni sin puntos ni espacios. 3) fecha_nacimiento en DD/MM/AAAA. 4) domicilio del dorso. 5) Si hay múltiples DNIs en el archivo, devolvé un array "titulares":[{...},{...}] en vez del objeto simple. Respondé ÚNICAMENTE con el JSON.',
   autorizacion:'Analizá esta autorización de venta inmobiliaria. Extraé SOLO un JSON: {"firmantes":[{"nombre":"...","dni":"..."}],"propiedad":"...","fecha_firma":"...","vencimiento":"...","exclusividad":"...","alertas":["..."],"resumen":"..."} Las alertas deben incluir cualquier incongruencia o dato faltante importante.',
-  expensas:'Analizá esta liquidación de expensas. Extraé SOLO un JSON: {"unidad_funcional":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"juicios":["..."],"gastos_extraordinarios":["..."],"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true y deuda_total el monto en pesos. Las alertas deben incluir deudas, juicios o gastos extraordinarios importantes.',
+  expensas:'Analizá esta liquidación de expensas. Extraé SOLO un JSON: {"unidad_funcional":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"juicios":["..."],"gastos_extraordinarios":["..."],"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true y deuda_total el monto en pesos.',
   abl:'Analizá esta boleta de ABL (Alumbrado, Barrido y Limpieza) de CABA o impuesto inmobiliario provincial. Extraé SOLO un JSON: {"titular":"...","partida":"...","direccion":"...","periodo":"...","deuda_total":0,"tiene_deuda":false,"cuotas_adeudadas":0,"alertas":["..."],"resumen":"..."} Si hay deuda, tiene_deuda debe ser true.'
 };
 
@@ -1096,32 +1096,37 @@ function fileToBase64(file){
 
 function analizarConGemini(base64,mimeType,tipoProp){
   var prompt=DOC_PROMPTS[tipoProp];
+  var mediaType=mimeType||'application/pdf';
+  var contentType=mediaType.startsWith('image/')?'image':'document';
   var body={
-    contents:[{parts:[
-      {text:prompt},
-      {inline_data:{mime_type:mimeType,data:base64}}
-    ]}],
-    generationConfig:{temperature:0,maxOutputTokens:4096}
+    model:'claude-sonnet-4-20250514',
+    max_tokens:2048,
+    messages:[{role:'user',content:[
+      {type:contentType,source:{type:'base64',media_type:mediaType,data:base64}},
+      {type:'text',text:prompt}
+    ]}]
   };
-  return fetch(getGeminiUrl(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      console.log('Gemini raw response:', JSON.stringify(d).slice(0,500));
-      if(d.error)throw new Error(d.error.message||'Error Gemini');
-      var texto=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text||'{}';
-      console.log('Gemini texto:', texto.slice(0,300));
-      // Limpiar markdown y extraer JSON aunque venga con texto alrededor
-      var clean=texto.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-      // Intentar extraer el JSON del texto si tiene texto antes o después
-      var match=clean.match(/\{[\s\S]*\}/);
-      if(match)clean=match[0];
-      try{return JSON.parse(clean);}
-      catch(e){
-        // Si falla el parse, devolver el texto como resumen
-        return {resumen:texto.slice(0,500),alertas:['No se pudo estructurar el análisis automáticamente']};
-      }
-    });
+  return fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':getClaudeKey(),
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify(body)
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.error)throw new Error(d.error.message||'Error Claude API');
+    var texto=d.content&&d.content[0]&&d.content[0].text||'{}';
+    var clean=texto.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    var match=clean.match(/\{[\s\S]*\}/);
+    if(match)clean=match[0];
+    try{return JSON.parse(clean);}
+    catch(e){return {resumen:texto.slice(0,500),alertas:['No se pudo estructurar el análisis']};}
+  });
 }
+
 
 function todayStr(){
   var d=new Date();
@@ -1160,6 +1165,17 @@ function configurarGeminiKey(){
 }
 
 function abrirDocumentacion(propId,dir){
+  if(!getClaudeKey()){
+    document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">📁 '+dir+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+      +'<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:1rem">'
+      +'<div style="font-weight:700;color:#FF1A1A;margin-bottom:8px">⚠️ API key no configurada</div>'
+      +'<div style="font-size:13px;color:#555;margin-bottom:12px">Para analizar documentos con IA necesitás configurar tu API key de Anthropic.</div>'
+      +'<button class="btn btn-primary" onclick="configurarClaudeKey();closeModal();">Configurar API key</button>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:flex-end"><button class="btn" onclick="closeModal()">Cerrar</button></div>';
+    openModal();
+    return;
+  }
   fetchCached('DocumentacionProp').then(function(docs){
     var propDocs=(docs||[]).filter(function(d){return d.propiedad_id===propId;});
     renderPanelDoc(propId,dir,propDocs);
