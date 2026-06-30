@@ -174,6 +174,8 @@
     <button class="nav-btn" onclick="showTab('finanzas',this)">Finanzas</button>
     <button class="nav-btn" onclick="showTab('objetivos',this)">Objetivos</button>
     <button class="nav-btn" onclick="showTab('documentos',this)">Documentos</button>
+    <button class="nav-btn" id="btnLeads" onclick="showTab('leads',this)">Leads</button>
+    <button class="nav-btn" onclick="showTab('clientes',this)">Clientes</button>
     <button class="nav-btn" id="btnEquipo" style="display:none" onclick="showTab('equipo',this)">Panel Equipo</button>
   </div>
   <div class="content" id="tabContent"></div>
@@ -185,6 +187,7 @@
 
 <script>
 var API='https://sheetdb.io/api/v1/8al8hyqbj13qm';
+var API_LEADS='https://sheetdb.io/api/v1/ydr7wuwjf2h3a';
 var currentUser=null;
 var allAgentes=[];
 
@@ -288,6 +291,41 @@ function mostrarApp(){
   if(currentUser.rol==='Líder')document.getElementById('btnEquipo').style.display='block';
   getSheet('Usuarios',function(e,rows){allAgentes=(rows||[]).filter(function(r){return r.activo==='si';}).map(function(r){return r.nombre;});});
   showTab('dashboard',document.querySelector('.nav-btn'));
+  actualizarBadgeLeads();
+  setInterval(actualizarBadgeLeads,60000);
+}
+
+function esLeadSinAtender(estado){
+  estado=(estado||'').trim();
+  return estado===''||estado==='Nuevo';
+}
+
+function actualizarBadgeLeads(){
+  Promise.all([
+    fetchLeadsSheet('Venta'),
+    fetchLeadsSheet('Compra')
+  ]).then(function(res){
+    var ventas=(res[0]||[]).map(function(r){r._asesor=asignarAsesorPorBarrio(r['Barrio']);return r;});
+    var compras=(res[1]||[]).map(function(r){r._asesor=asignarAsesorPorBarrio(r['Barrio']);return r;});
+    var todos=ventas.concat(compras);
+    var esLider=currentUser.rol==='Líder';
+    var visibles=esLider?todos:todos.filter(function(l){return l._asesor.indexOf(currentUser.nombre)===0;});
+    var pendientes=visibles.filter(function(l){return esLeadSinAtender(l['Estado']);}).length;
+    var btn=document.getElementById('btnLeads');
+    if(!btn)return;
+    var badge=document.getElementById('badgeLeads');
+    if(pendientes>0){
+      if(!badge){
+        badge=document.createElement('span');
+        badge.id='badgeLeads';
+        badge.style.cssText='background:#FF1A1A;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px';
+        btn.appendChild(badge);
+      }
+      badge.textContent=pendientes;
+    }else if(badge){
+      badge.remove();
+    }
+  }).catch(function(){});
 }
 
 function doLogin(){
@@ -400,10 +438,10 @@ function doSetNewPass(usuarioNombre){
   if(!p1||p1.length<4){msg.textContent='La contraseña debe tener al menos 4 caracteres.';msg.className='alert alert-error';msg.classList.remove('hidden');return;}
   if(p1!==p2){msg.textContent='Las contraseñas no coinciden.';msg.className='alert alert-error';msg.classList.remove('hidden');return;}
   msg.textContent='Actualizando...';msg.className='alert';msg.classList.remove('hidden');
-  fetch(API_URL+'/search?usuario='+encodeURIComponent(usuarioNombre)).then(function(r){return r.json();}).then(function(rows){
+  fetch(API+'/search?usuario='+encodeURIComponent(usuarioNombre)).then(function(r){return r.json();}).then(function(rows){
     if(!rows||rows.length===0){msg.textContent='Error: usuario no encontrado.';msg.className='alert alert-error';return;}
     var row=rows[0];
-    return fetch(API_URL+'/id/'+row.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{password:p1}})});
+    return fetch(API+'/id/'+row.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{password:p1}})});
   }).then(function(){
     localStorage.removeItem('reset_token');
     history.replaceState({},'',window.location.pathname);
@@ -429,11 +467,250 @@ function showTab(tab,btn){
   else if(tab==='objetivos')loadObjetivos();
   else if(tab==='equipo')loadEquipo();
   else if(tab==='documentos')loadDocumentos();
+  else if(tab==='leads')loadLeads();
+  else if(tab==='clientes')loadClientes();
 }
 
 // ============================================================
-// DASHBOARD
+// LEADS — Manychat (Venta y Compra) con derivación por zona
 // ============================================================
+var ZONAS_OLIVERA=['villa urquiza','villa pueyrredon','villa devoto','villa ortuzar','parque chas','saavedra','nuñez','nunez','belgrano','colegiales','palermo','villa del parque','coghlan','vicente lopez','olivos','martinez','la lucila','acassuso','san isidro'];
+var ZONAS_QUINTANA=['caballito','almagro','flores','floresta','villa crespo','recoleta','balvanera','barrio norte'];
+
+function normalizarTexto(s){
+  return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+
+function asignarAsesorPorBarrio(barrio){
+  var b=normalizarTexto(barrio);
+  if(!b)return'Sin asignar (zona vacía)';
+  if(ZONAS_OLIVERA.indexOf(b)!==-1)return'Gonzalo Olivera';
+  if(ZONAS_QUINTANA.indexOf(b)!==-1)return'Gonzalo Quintana';
+  return'Gonzalo Olivera (zona no listada)';
+}
+
+function fetchLeadsSheet(sheet){
+  return fetch(API_LEADS+'?sheet='+sheet).then(function(r){return r.json();}).catch(function(){return[];});
+}
+
+function updLeadEstado(sheet,telefono,nuevoEstado,cb){
+  fetch(API_LEADS+'/Teléfono/'+encodeURIComponent(telefono)+'?sheet='+sheet,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({data:{Estado:nuevoEstado}})
+  }).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});
+}
+
+function aceptarLead(sheet,telefono){
+  if(!confirm('¿Aceptar este lead? Quedará marcado como Referido del TL (45% TL / 35% TM en la futura operación).'))return;
+  updLeadEstado(sheet,telefono,'Aceptado - Referido TL',function(){
+    loadLeads();
+    actualizarBadgeLeads();
+  });
+}
+
+function loadLeads(){
+  Promise.all([
+    fetchLeadsSheet('Venta'),
+    fetchLeadsSheet('Compra')
+  ]).then(function(res){
+    var ventas=(res[0]||[]).map(function(r){r._tipoSheet='Venta';r._asesor=asignarAsesorPorBarrio(r['Barrio']);return r;});
+    var compras=(res[1]||[]).map(function(r){r._tipoSheet='Compra';r._asesor=asignarAsesorPorBarrio(r['Barrio']);return r;});
+    var todos=ventas.concat(compras);
+    todos.sort(function(a,b){
+      var fa=a['Fecha y hora']||'',fb=b['Fecha y hora']||'';
+      return fb.localeCompare(fa);
+    });
+    var esLider=currentUser.rol==='Líder';
+    var visibles=esLider?todos:todos.filter(function(l){return l._asesor.indexOf(currentUser.nombre)===0;});
+
+    var html='<div class="section-header"><div class="section-title">Leads (Manychat)</div></div>'
+      +'<div style="font-size:13px;color:#888;margin-bottom:1.5rem">Leads de compra y venta capturados por el bot, derivados automáticamente por zona. Los leads de Quintana quedan ocultos hasta que él los acepta (quedan marcados como Referido TL).</div>';
+
+    if(!visibles.length){
+      html+='<div class="empty">No hay leads cargados todavía.</div>';
+    }else{
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table>'
+        +'<tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Barrio</th><th>Detalle</th><th>Asignado a</th><th>Estado</th></tr>';
+      visibles.forEach(function(l){
+        var detalle=l._tipoSheet==='Venta'?(l['Tipo de propiedad']||'-'):(l['Presupuesto']||'-');
+        var esQuintanaLead=l._asesor.indexOf('Quintana')!==-1;
+        var aceptado=(l['Estado']||'').indexOf('Aceptado')===0;
+        var puedeAceptar=esQuintanaLead&&!aceptado&&(currentUser.nombre.indexOf('Quintana')!==-1||esLider);
+        var asesorClass=l._asesor.indexOf('no listada')!==-1?'style="color:#c0392b;font-weight:600"':'';
+
+        var nombreCell,telCell,estadoCell;
+        if(esQuintanaLead&&!aceptado){
+          nombreCell='<span style="color:#aaa">🔒 Oculto</span>';
+          telCell=puedeAceptar?'<button class="btn btn-sm btn-primary" onclick="aceptarLead(\''+l._tipoSheet+'\',\''+esc(l['Teléfono'])+'\')">Aceptar lead</button>':'<span style="color:#aaa">Pendiente</span>';
+          estadoCell='<span class="badge badge-amber">Pendiente de aceptar</span>';
+        }else{
+          nombreCell=l['Nombre']||'-';
+          telCell=l['Teléfono']||'-';
+          estadoCell=aceptado?'<span class="badge badge-purple">Referido TL</span>':'<span class="badge badge-gray">'+(l['Estado']||'Nuevo')+'</span>';
+        }
+
+        html+='<tr>'
+          +'<td>'+(l['Fecha y hora']||'-')+'</td>'
+          +'<td>'+l._tipoSheet+'</td>'
+          +'<td>'+nombreCell+'</td>'
+          +'<td>'+telCell+'</td>'
+          +'<td>'+(l['Barrio']||'-')+'</td>'
+          +'<td>'+detalle+'</td>'
+          +'<td '+asesorClass+'>'+l._asesor+'</td>'
+          +'<td>'+estadoCell+'</td>'
+          +'</tr>';
+      });
+      html+='</table></div></div>';
+    }
+    document.getElementById('tabContent').innerHTML=html;
+  });
+}
+
+// ============================================================
+// CLIENTES — Base de clientes con categorías A+/A/B/C y alertas
+// ============================================================
+var _clientesFiltroTipo='Todos';
+
+function diasDesde(fecha){
+  if(!fecha)return null;
+  var inicio=new Date(fecha);
+  var fin=new Date();
+  var diff=Math.round((fin-inicio)/(1000*60*60*24));
+  return diff>=0?diff:null;
+}
+
+function alertaCliente(c){
+  var dias=diasDesde(c.ultimo_contacto);
+  if(c.tipo==='A+'){
+    if(dias===null)return{alerta:true,texto:'⚠ Sin fecha de contacto'};
+    if(dias>90)return{alerta:true,texto:'⚠ Sin contacto hace '+dias+' días (límite 90)'};
+    return{alerta:false,texto:'OK · último contacto hace '+dias+' días'};
+  }
+  if(c.tipo==='A'){
+    if(dias===null)return{alerta:true,texto:'⚠ Sin fecha de contacto'};
+    if(dias>180)return{alerta:true,texto:'⚠ Sin contacto hace '+dias+' días (límite 180)'};
+    return{alerta:false,texto:'OK · último contacto hace '+dias+' días'};
+  }
+  if(c.tipo==='B'){
+    if(dias===null)return{alerta:true,texto:'Enviar mail informativo anual'};
+    if(dias>365)return{alerta:true,texto:'⚠ Enviar mail informativo (hace '+dias+' días)'};
+    return{alerta:false,texto:'Mail anual al día'};
+  }
+  return{alerta:false,texto:'Descartado'};
+}
+
+function marcarContacto(id){
+  updRow('Clientes',id,{ultimo_contacto:today()},function(e){
+    if(!e)loadClientes(_clientesFiltroTipo);
+  });
+}
+
+function loadClientes(filtroTipo){
+  _clientesFiltroTipo=filtroTipo||_clientesFiltroTipo||'Todos';
+  fetchCached('Clientes').then(function(rows){
+    var esLider=currentUser.rol==='Líder';
+    var clientes=(rows||[]).filter(function(c){
+      if(c.agente===currentUser.nombre)return true; // siempre veo los míos
+      if(esLider)return(c.referido_tl||'').toLowerCase()==='si'; // de otros TM, solo si son referidos TL
+      return false; // un TM no ve clientes de otros TM
+    });
+
+    var tipos=['Todos','A+','A','B','C'];
+    var counts={};
+    tipos.forEach(function(t){counts[t]=t==='Todos'?clientes.length:clientes.filter(function(c){return c.tipo===t;}).length;});
+
+    var html='<div class="section-header"><div class="section-title">Clientes</div><button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo cliente</button></div>';
+
+    html+='<div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">';
+    tipos.forEach(function(t){
+      var activo=_clientesFiltroTipo===t;
+      html+='<button class="btn '+(activo?'btn-primary':'')+'" style="border-radius:20px" onclick="loadClientes(\''+t+'\')">'+t+' ('+counts[t]+')</button>';
+    });
+    html+='</div>';
+
+    var visibles=_clientesFiltroTipo==='Todos'?clientes:clientes.filter(function(c){return c.tipo===_clientesFiltroTipo;});
+    // Ordenar: alertas primero
+    visibles=visibles.map(function(c){c._alerta=alertaCliente(c);return c;});
+    visibles.sort(function(a,b){return(b._alerta.alerta?1:0)-(a._alerta.alerta?1:0);});
+
+    if(!visibles.length){
+      html+='<div class="empty">No hay clientes en esta categoría.</div>';
+    }else{
+      html+='<div class="card" style="padding:0"><div class="table-wrap"><table>'
+        +'<tr><th>Nombre</th><th>Dirección</th><th>Teléfono</th><th>Mail</th><th>Cumpleaños</th><th>Tipo</th><th>Seguimiento</th><th></th></tr>';
+      visibles.forEach(function(c){
+        var tipoClass=c.tipo==='A+'?'badge-red':c.tipo==='A'?'badge-amber':c.tipo==='B'?'badge-blue':'badge-gray';
+        var al=c._alerta;
+        html+='<tr>'
+          +'<td>'+(c.nombre||'-')+'</td>'
+          +'<td>'+(c.direccion||'-')+'</td>'
+          +'<td>'+(c.telefono||'-')+'</td>'
+          +'<td>'+(c.mail||'-')+'</td>'
+          +'<td>'+(c.cumpleanos||'-')+'</td>'
+          +'<td><span class="badge '+tipoClass+'">'+c.tipo+'</span></td>'
+          +'<td style="'+(al.alerta?'color:#c0392b;font-weight:600':'color:#888')+'">'+al.texto+'</td>'
+          +'<td><button class="btn btn-sm" onclick="marcarContacto(\''+c.id+'\')">Marcar contactado hoy</button> '
+          +'<button class="btn btn-sm" onclick="abrirModalCliente('+JSON.stringify(c).replace(/"/g,'&quot;')+')">Editar</button></td>'
+          +'</tr>';
+      });
+      html+='</table></div></div>';
+    }
+    document.getElementById('tabContent').innerHTML=html;
+  });
+}
+
+function abrirModalCliente(c){
+  var editar=!!c;
+  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">'+(editar?'Editar':'Nuevo')+' cliente</span><button class="close-btn" onclick="closeModal()">×</button></div>'
+    +'<div class="form-group"><label>Nombre y apellido</label><input id="cl-nombre" value="'+(c?esc(c.nombre):'')+'"/></div>'
+    +'<div class="form-group"><label>Dirección</label><input id="cl-direccion" value="'+(c?esc(c.direccion):'')+'"/></div>'
+    +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="cl-telefono" value="'+(c?esc(c.telefono):'')+'"/></div>'
+    +'<div class="form-group"><label>Mail</label><input id="cl-mail" value="'+(c?esc(c.mail):'')+'"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Fecha de cumpleaños</label><input id="cl-cumple" type="date" value="'+(c?c.cumpleanos:'')+'"/></div>'
+    +'<div class="form-group"><label>Tipo de cliente</label><select id="cl-tipo">'
+    +'<option value="A+"'+(c&&c.tipo==='A+'?' selected':'')+'>A+ (clave, seguimiento ≤90 días)</option>'
+    +'<option value="A"'+(c&&c.tipo==='A'?' selected':'')+'>A (importante, seguimiento ≤180 días)</option>'
+    +'<option value="B"'+(c&&c.tipo==='B'?' selected':'')+'>B (no fidelizado / leads, mail anual)</option>'
+    +'<option value="C"'+(c&&c.tipo==='C'?' selected':'')+'>C (descartado)</option>'
+    +'</select></div></div>'
+    +'<div class="form-group"><label>¿Es referido del TL? (si el TM lo carga referido por el Líder)</label><select id="cl-referido"><option value="no"'+(c&&c.referido_tl==='no'?' selected':'')+'>No</option><option value="si"'+(c&&c.referido_tl==='si'?' selected':'')+'>Sí — el TL podrá verlo</option></select></div>'
+    +(editar?'<div class="form-group"><label>Último contacto</label><input id="cl-ultimo" type="date" value="'+(c.ultimo_contacto||'')+'"/></div>':'')
+    +(esLiderActual()?'<div class="form-group"><label>Agente</label><select id="cl-agente">'+allAgentes.map(function(a){return'<option value="'+a+'"'+(c&&c.agente===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select></div>':'')
+    +'<button class="btn btn-primary btn-full" onclick="guardarCliente('+(editar?'\''+c.id+'\'':'null')+')">Guardar</button>';
+  openModal();
+}
+
+function esLiderActual(){return currentUser&&currentUser.rol==='Líder';}
+
+function guardarCliente(id){
+  var data={
+    nombre:v('cl-nombre'),
+    direccion:v('cl-direccion'),
+    telefono:v('cl-telefono'),
+    mail:v('cl-mail'),
+    cumpleanos:v('cl-cumple'),
+    tipo:v('cl-tipo'),
+    referido_tl:v('cl-referido')||'no',
+    agente:esLiderActual()?v('cl-agente'):currentUser.nombre
+  };
+  if(!data.nombre){alert('El nombre es obligatorio.');return;}
+  if(id){
+    data.ultimo_contacto=v('cl-ultimo')||today();
+    updRow('Clientes',id,data,function(e){
+      if(e){alert('Error al guardar.');return;}
+      closeModal();loadClientes(_clientesFiltroTipo);
+    });
+  }else{
+    data.ultimo_contacto=today();
+    data.fecha_carga=today();
+    addRow('Clientes',data,function(e){
+      if(e){alert('Error al guardar.');return;}
+      closeModal();loadClientes(_clientesFiltroTipo);
+    });
+  }
+}
+
+
 function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
   var esLider=currentUser.rol==='Líder';
