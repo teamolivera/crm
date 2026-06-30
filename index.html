@@ -2105,14 +2105,15 @@ function confirmarCierre(origen,sheet,id,referido,esAgente,esBusqueda){
     agente:currentUser.nombre};
 
   function afterOp(){
-    if(estado==='Vendida'){
-      // Activar tab dashboard y recargar
-      document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
-      document.querySelector('.nav-btn').classList.add('active');
-      loadDashboard(currentUser.nombre);
-    }else{
-      sheet==='Busquedas'?loadBusquedas():loadPropiedades();
-    }
+    setTimeout(function(){
+      if(estado==='Vendida'){
+        document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+        document.querySelector('.nav-btn').classList.add('active');
+        loadDashboard(currentUser.nombre);
+      }else{
+        sheet==='Busquedas'?loadBusquedas():loadPropiedades();
+      }
+    },1200);
   }
 
   if(origen==='prop'){
