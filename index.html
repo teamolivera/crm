@@ -523,8 +523,7 @@ function loadLeads(){
     var esLider=currentUser.rol==='Líder';
     var visibles=esLider?todos:todos.filter(function(l){return l._asesor.indexOf(currentUser.nombre)===0;});
 
-    var html='<div class="section-header"><div class="section-title">Leads (Manychat)</div></div>'
-      +'<div style="font-size:13px;color:#888;margin-bottom:1.5rem">Leads de compra y venta capturados por el bot, derivados automáticamente por zona. Los leads de Quintana quedan ocultos hasta que él los acepta (quedan marcados como Referido TL).</div>';
+    var html='<div class="section-header"><div class="section-title">Leads (Manychat)</div></div>';
 
     if(!visibles.length){
       html+='<div class="empty">No hay leads cargados todavía.</div>';
