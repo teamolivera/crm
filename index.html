@@ -1219,7 +1219,10 @@ function loadPropiedades(){
     fetchCached('Propiedades'),
     fetchCached('Gastos')
   ]).then(function(res){
-    var props=(res[0]||[]).filter(function(p){return p.agente===currentUser.nombre&&!p.desarrollo_id;});
+    var props=(res[0]||[]).filter(function(p){
+      var est=(p.estado||'').trim();
+      return p.agente===currentUser.nombre&&!p.desarrollo_id&&(est==='En venta'||est==='Reservada'||est==='En alquiler'||est==='Alquilada');
+    });
     var gastosProp=res[1]||[];
     var esAgente=currentUser.rol!=='Líder';
     var html='<div class="section-header"><div class="section-title">Propiedades</div><button class="btn btn-primary" onclick="abrirModalProp(\'Propiedades\')">+ Nueva propiedad</button></div>';
@@ -1336,7 +1339,10 @@ function guardarNuevaProp(sheet){
   addRow(sheet,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
 }
 function guardarEditProp(id,sheet){
-  var data=getPropData({});
+  // Recuperar agente actual de la caché para no sobreescribirlo
+  var cached=(_cache[sheet]||[]).find(function(p){return p.id===id;});
+  var extra={agente:cached?cached.agente:currentUser.nombre};
+  var data=getPropData(extra);
   closeModal();loading();
   updRow(sheet,id,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
 }
