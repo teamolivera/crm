@@ -1192,6 +1192,8 @@ function htmlFormProp(d,sheet,mostrarReferido){
     +'<div class="form-group"><label>Nombre</label><input id="f-cliente" value="'+(d.cliente||'')+'" autocomplete="off"/></div>'
     +'<div class="row"><div class="form-group"><label>Teléfono</label><input id="f-tel" value="'+(d.telefono||'')+'" autocomplete="off"/></div>'
     +'<div class="form-group"><label>Mail</label><input id="f-mail" type="email" value="'+(d.mail||'')+'" autocomplete="off"/></div></div>'
+    +'<div class="row"><div class="form-group"><label>Cumpleaños</label><input id="f-cumple" type="date" value="'+(d.cumpleanos||'')+'"/></div>'
+    +'<div class="form-group"><label>Categoría del cliente</label><select id="f-cat-cliente"><option value="">Sin guardar en Clientes</option><option value="A+">A+ (clave, seguimiento ≤90 días)</option><option value="A">A (importante, ≤180 días)</option><option value="B">B (no fidelizado)</option><option value="C">C (descartado)</option></select></div></div>'
     +'<div class="section-divider">Comisiones</div>'
     +'<div class="row"><div class="form-group"><label>Com. comprador (%)</label><input id="f-comp" type="number" value="'+(d.comision_compradora||4)+'"/></div>'
     +'<div class="form-group"><label>Com. vendedor (%)</label><input id="f-vend" type="number" value="'+(d.comision_vendedora||3)+'"/></div></div>';
@@ -1335,8 +1337,15 @@ function abrirModalProp(sheet,d){
 
 function guardarNuevaProp(sheet){
   var data=getPropData({id:uid(),agente:currentUser.nombre,fecha:today()});
+  var cat=v('f-cat-cliente');
   closeModal();loading();
-  addRow(sheet,data,function(){sheet==='Busquedas'?loadBusquedas():loadPropiedades();});
+  addRow(sheet,data,function(){
+    if(cat&&data.cliente){
+      var clienteData={id:uid(),nombre:data.cliente,telefono:data.telefono||'',mail:data.mail||'',cumpleanos:v('f-cumple')||'',tipo:cat,referido_tl:'no',agente:currentUser.nombre,ultimo_contacto:today(),fecha_carga:today()};
+      addRow('Clientes',clienteData,function(){});
+    }
+    sheet==='Busquedas'?loadBusquedas():loadPropiedades();
+  });
 }
 function guardarEditProp(id,sheet){
   // Recuperar agente actual de la caché para no sobreescribirlo
@@ -2238,22 +2247,18 @@ function verFichaDesarrollo(devId){
 function abrirModalDesarrollo(){
   document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Nuevo desarrollo</span><button class="close-btn" onclick="closeModal()">×</button></div>'
     +'<div class="form-group"><label>Nombre</label><input id="dev-nombre" autocomplete="off"/></div>'
-function abrirGastosDev(devId,nombre){
-  document.getElementById('modalBox').innerHTML='<div class="modal-header"><span class="modal-title">Gasto · '+nombre+'</span><button class="close-btn" onclick="closeModal()">×</button></div>'
-    +'<div class="form-group"><label>Concepto</label><input id="gd-concepto" autocomplete="off"/></div>'
-    +'<div class="row"><div class="form-group"><label>Moneda</label><select id="gd-moneda" onchange="toggleEquivUSD(\'gd\')"><option value="USD">USD</option><option value="ARS">Pesos $</option></select></div><div class="form-group"><label>Monto</label><input id="gd-monto" type="number"/></div></div>'
-    +'<div id="gd-equiv-wrap" style="display:none"><div class="form-group"><label>Equivalente en USD (para rentabilidad)</label><input id="gd-equiv" type="number" placeholder="0"/></div></div>'
-    +'<div class="form-group"><label>Fecha</label><input id="gd-fecha" type="date" value="'+today()+'"/></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarGastoDev(\''+devId+'\')" >Guardar</button></div>';
+    +'<div class="form-group"><label>Dirección</label><input id="dev-dir" autocomplete="off"/></div>'
+    +'<div class="form-group"><label>Localidad</label><input id="dev-loc" autocomplete="off"/></div>'
+    +'<div class="row"><div class="form-group"><label>Cliente / Desarrolladora</label><input id="dev-cliente" autocomplete="off"/></div><div class="form-group"><label>Teléfono</label><input id="dev-tel" type="tel"/></div></div>'
+    +'<div class="form-group"><label>Mail</label><input id="dev-mail" type="email"/></div>'
+    +'<div class="row"><div class="form-group"><label>Comisión compradora %</label><input id="dev-comp" type="number" step="0.1" value="4"/></div><div class="form-group"><label>Comisión vendedora %</label><input id="dev-vend" type="number" step="0.1" value="3"/></div></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarNuevoDev()">Guardar</button></div>';
   openModal();
 }
-function guardarGastoDev(devId){
-  var moneda=v('gd-moneda');
-  var equivUSD=moneda==='ARS'?(Number(v('gd-equiv'))||0):Number(v('gd-monto'));
-  var data={id:uid(),fecha:v('gd-fecha'),propiedad_id:devId,concepto:v('gd-concepto'),monto:v('gd-monto'),moneda:moneda,equiv_usd:equivUSD,agente:currentUser.nombre};
-  closeModal();addRow('Gastos',data,function(){alert('Gasto registrado.');});
-}
-  var data={id:uid(),nombre:v('dev-nombre'),direccion:v('dev-dir'),localidad:v('dev-loc'),cliente:v('dev-cliente'),telefono:v('dev-tel'),mail:v('dev-mail'),comision_compradora:v('dev-comp'),comision_vendedora:v('dev-vend'),agente:currentUser.nombre,fecha:today()};
+function guardarNuevoDev(){
+  var nombre=v('dev-nombre');
+  if(!nombre){alert('El nombre es obligatorio.');return;}
+  var data={id:uid(),nombre:nombre,direccion:v('dev-dir'),localidad:v('dev-loc'),cliente:v('dev-cliente'),telefono:v('dev-tel'),mail:v('dev-mail'),comision_compradora:v('dev-comp'),comision_vendedora:v('dev-vend'),agente:currentUser.nombre,fecha:today()};
   closeModal();loading();addRow('Desarrollos',data,function(){loadDesarrollos();});
 }
 function eliminarDev(id){if(!confirm('¿Eliminar?'))return;loading();delRow('Desarrollos',id,function(){loadDesarrollos();});}
