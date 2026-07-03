@@ -836,22 +836,176 @@ function acmSaludo(){
 }
 
 // ---- SUB-TAB: COMPARABLES ARGENPROP ----
+var _acmModoBusqueda='zona'; // 'zona' | 'cuadricula' | 'mapa'
+
+// Variables del mapa
+var _mapaLeaflet=null;
+var _mapaMarker=null;
+var _mapaRect=null;
+var _mapaRectP1=null;
+var _mapaZonaSeleccionada='';
+var _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
+var _mapaModo='zona';
+
+function setMapaModo(modo){
+  _mapaModo=modo;
+  _mapaZonaSeleccionada='';
+  _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
+  _mapaRectP1=null;
+  document.getElementById('mapaZonaDetectada').textContent='';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+  if(_mapaMarker&&_mapaLeaflet){_mapaLeaflet.removeLayer(_mapaMarker);_mapaMarker=null;}
+  if(_mapaRect&&_mapaLeaflet){_mapaLeaflet.removeLayer(_mapaRect);_mapaRect=null;}
+  document.getElementById('mapaModoZona').className='btn btn-sm'+(modo==='zona'?' btn-primary':'');
+  document.getElementById('mapaModoGrid').className='btn btn-sm'+(modo==='grid'?' btn-primary':'');
+  document.getElementById('mapaInstruccion').textContent=modo==='zona'
+    ?'Hacé clic en el mapa para marcar la zona.'
+    :'Hacé clic en el mapa para marcar la esquina 1 de la cuadrícula, luego la esquina opuesta.';
+}
+
+function abrirMapaZona(){
+  document.getElementById('mapaModal').classList.add('visible');
+  document.getElementById('mapaZonaDetectada').textContent='';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+  // Setear modo según búsqueda actual
+  var modoMapa=_acmModoBusqueda==='cuadricula'?'grid':'zona';
+  setTimeout(function(){
+    setMapaModo(modoMapa);
+    if(!_mapaLeaflet){
+      if(!window.L){
+        var lnk=document.createElement('link');lnk.rel='stylesheet';lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(lnk);
+        var sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        sc.onload=function(){iniciarMapa();};document.head.appendChild(sc);
+      }else{iniciarMapa();}
+    }else{_mapaLeaflet.invalidateSize();}
+  },150);
+}
+
+function iniciarMapa(){
+  var L=window.L;
+  _mapaLeaflet=L.map('mapaContainer').setView([-34.5883,-58.4003],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(_mapaLeaflet);
+  _mapaLeaflet.on('click',function(e){
+    if(_mapaModo==='zona'){mapaClickZona(e);}
+    else{mapaClickGrid(e);}
+  });
+}
+
+function mapaClickZona(e){
+  var L=window.L;
+  if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
+  _mapaMarker=L.marker(e.latlng).addTo(_mapaLeaflet);
+  document.getElementById('mapaZonaDetectada').textContent='Detectando barrio...';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+  fetch('https://nominatim.openstreetmap.org/reverse?lat='+e.latlng.lat+'&lon='+e.latlng.lng+'&format=json&accept-language=es')
+    .then(function(r){return r.json();}).then(function(d){
+      var addr=d.address||{};
+      var barrio=addr.neighbourhood||addr.suburb||addr.quarter||addr.city_district||'';
+      _mapaZonaSeleccionada=barrio;
+      document.getElementById('mapaZonaDetectada').textContent=barrio?'Zona: '+barrio:'No se detectó barrio.';
+      document.getElementById('mapaConfirmarBtn').disabled=!barrio;
+    }).catch(function(){
+      document.getElementById('mapaZonaDetectada').textContent='Error al detectar el barrio.';
+    });
+}
+
+function mapaClickGrid(e){
+  var L=window.L;
+  if(!_mapaRectP1){
+    _mapaRectP1=e.latlng;
+    if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
+    _mapaMarker=L.marker(e.latlng,{title:'Esquina 1'}).addTo(_mapaLeaflet);
+    document.getElementById('mapaZonaDetectada').textContent='Esquina 1 marcada. Hacé clic en la esquina opuesta.';
+  }else{
+    var bounds=L.latLngBounds(_mapaRectP1,e.latlng);
+    if(_mapaRect)_mapaLeaflet.removeLayer(_mapaRect);
+    if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
+    _mapaMarker=null;
+    _mapaRect=L.rectangle(bounds,{color:'#185FA5',weight:2,fillOpacity:0.1}).addTo(_mapaLeaflet);
+    _mapaLeaflet.fitBounds(bounds,{padding:[20,20]});
+    document.getElementById('mapaZonaDetectada').textContent='Detectando calles...';
+    _mapaRectP1=null;
+    var ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
+    Promise.all([
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();})
+    ]).then(function(res){
+      function calle(d){var a=d.address||{};return a.road||a.pedestrian||'';}
+      _mapaGridCalles={norte:calle(res[0]),sur:calle(res[1]),este:calle(res[2]),oeste:calle(res[3])};
+      var txt='Cuadrícula: N:'+(_mapaGridCalles.norte||'?')+' S:'+(_mapaGridCalles.sur||'?')+' E:'+(_mapaGridCalles.este||'?')+' O:'+(_mapaGridCalles.oeste||'?');
+      document.getElementById('mapaZonaDetectada').textContent=txt;
+      document.getElementById('mapaConfirmarBtn').disabled=false;
+    }).catch(function(){
+      document.getElementById('mapaZonaDetectada').textContent='Error al detectar calles.';
+      document.getElementById('mapaConfirmarBtn').disabled=false;
+    });
+  }
+}
+
+function cerrarMapaZona(){
+  document.getElementById('mapaModal').classList.remove('visible');
+}
+
+function confirmarZonaMapa(){
+  if(_mapaModo==='zona'&&_mapaZonaSeleccionada){
+    var el=document.getElementById('an-zona');
+    if(el)el.value=_mapaZonaSeleccionada;
+    var info=document.getElementById('an-zona-mapa-info');
+    if(info)info.innerHTML='<span style="color:#185FA5;font-weight:600">✓ Zona: '+esc(_mapaZonaSeleccionada)+'</span>';
+  }else if(_mapaModo==='grid'){
+    ['norte','sur','este','oeste'].forEach(function(lado){
+      var el=document.getElementById('an-'+lado);
+      if(el&&_mapaGridCalles[lado])el.value=_mapaGridCalles[lado];
+    });
+  }
+  cerrarMapaZona();
+}
+
 function acmHtmlArgenprop(){
   var zonaDefault=_acm.cliente.propiedad?_acm.cliente.propiedad.split(',').slice(-2).join(',').trim():'';
+  var modos=[
+    {id:'zona',label:'📍 Por zona'},
+    {id:'cuadricula',label:'⬜ Por cuadrícula de calles'},
+    {id:'mapa',label:'🗺️ Dibujar en mapa'}
+  ];
+  var navModos='<div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">';
+  modos.forEach(function(m){
+    var act=_acmModoBusqueda===m.id;
+    navModos+='<button onclick="acmSetModo(\''+m.id+'\')" style="padding:7px 14px;border-radius:20px;border:2px solid '+(act?'#185FA5':'#ddd')+';background:'+(act?'#185FA5':'#fff')+';color:'+(act?'#fff':'#374151')+';font-size:13px;cursor:pointer;font-weight:'+(act?'700':'400')+'">'+m.label+'</button>';
+  });
+  navModos+='</div>';
+
+  var campoBusqueda='';
+  if(_acmModoBusqueda==='zona'){
+    campoBusqueda='<div class="form-group"><label>Zona / Barrio</label>'
+      +'<input id="an-zona" list="an-zona-list" value="'+esc(zonaDefault)+'" placeholder="Escribí una zona o barrio..." autocomplete="off"/>'
+      +'<datalist id="an-zona-list"><option>Villa Urquiza</option><option>Villa Pueyrredón</option><option>Villa Devoto</option><option>Villa del Parque</option><option>Belgrano</option><option>Colegiales</option><option>Palermo</option><option>Saavedra</option><option>Núñez</option><option>Coghlan</option><option>Parque Chas</option><option>Villa Ortuzar</option><option>Caballito</option><option>Almagro</option><option>Flores</option><option>Villa Crespo</option><option>Recoleta</option></datalist>'
+      +'</div>';
+  }else if(_acmModoBusqueda==='cuadricula'){
+    campoBusqueda='<div class="form-group"><label>Calles que delimitan el área</label>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<input id="an-norte" placeholder="Calle Norte (ej: Av. Triunvirato)" autocomplete="off"/>'
+      +'<input id="an-sur" placeholder="Calle Sur (ej: Av. Congreso)" autocomplete="off"/>'
+      +'<input id="an-este" placeholder="Calle Este (ej: Av. Monroe)" autocomplete="off"/>'
+      +'<input id="an-oeste" placeholder="Calle Oeste (ej: Av. de los Incas)" autocomplete="off"/>'
+      +'</div></div>';
+  }else if(_acmModoBusqueda==='mapa'){
+    campoBusqueda='<div class="form-group">'
+      +'<div id="an-zona-mapa-info" style="font-size:13px;color:#888;margin-bottom:8px">Abrí el mapa, dibujá el área y confirmá la zona.</div>'
+      +'<button class="btn" onclick="abrirMapaZona()">🗺️ Abrir mapa y dibujar área</button>'
+      +'<input id="an-zona" type="hidden" value="'+esc(zonaDefault)+'"/>'
+      +'<input id="an-norte" type="hidden"/><input id="an-sur" type="hidden"/>'
+      +'<input id="an-este" type="hidden"/><input id="an-oeste" type="hidden"/>'
+      +'</div>';
+  }
+
   return '<div class="card" style="max-width:680px">'
-    +'<p style="font-weight:600;margin-bottom:6px">Búsqueda de comparables en Argenprop</p>'
-    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Todos los campos son opcionales. El sistema busca en Zonaprop y calcula el precio por m² ajustado (semicubiertos = mitad de valor).</div>'
-    +'<div class="form-group"><label>Zona / Barrio</label>'
-    +'<div style="display:flex;gap:8px"><input id="an-zona" list="an-zona-list" value="'+esc(zonaDefault)+'" placeholder="Escribí una zona o barrio..." autocomplete="off" style="flex:1"/>'
-    +'<button class="btn" onclick="abrirMapaZona()" title="Seleccionar en mapa">🗺️ Mapa</button></div>'
-    +'<datalist id="an-zona-list"><option>Villa Urquiza</option><option>Villa Pueyrredón</option><option>Villa Devoto</option><option>Villa del Parque</option><option>Belgrano</option><option>Colegiales</option><option>Palermo</option><option>Saavedra</option><option>Núñez</option><option>Coghlan</option><option>Parque Chas</option><option>Villa Ortuzar</option><option>Caballito</option><option>Almagro</option><option>Flores</option><option>Villa Crespo</option><option>Recoleta</option></datalist></div>'
-    +'<div class="form-group"><label>Cuadrícula de calles <span style="font-size:11px;color:#888">(opcional)</span></label>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-    +'<div><label style="font-size:11px;color:#888">Norte</label><input id="an-norte" placeholder="ej: Av. Triunvirato" autocomplete="off"/></div>'
-    +'<div><label style="font-size:11px;color:#888">Sur</label><input id="an-sur" placeholder="ej: Av. Congreso" autocomplete="off"/></div>'
-    +'<div><label style="font-size:11px;color:#888">Este</label><input id="an-este" placeholder="ej: Av. Monroe" autocomplete="off"/></div>'
-    +'<div><label style="font-size:11px;color:#888">Oeste</label><input id="an-oeste" placeholder="ej: Av. de los Incas" autocomplete="off"/></div>'
-    +'</div></div>'
+    +'<p style="font-weight:600;margin-bottom:6px">Comparables en Zonaprop</p>'
+    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Elegí cómo querés definir el área de búsqueda:</div>'
+    +navModos
+    +campoBusqueda
     +'<div class="row">'
     +'<div class="form-group"><label>Tipo</label><select id="an-tipo"><option value="">Cualquier tipo</option><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
     +'<div class="form-group"><label>Operación</label><select id="an-op"><option value="venta">Venta</option><option value="alquiler">Alquiler</option></select></div>'
@@ -875,6 +1029,98 @@ function acmHtmlArgenprop(){
     +'<div id="an-resultado" style="margin-top:1.5rem"></div>'
     +'</div>';
 }
+
+function acmSetModo(modo){
+  _acmModoBusqueda=modo;
+  document.getElementById('acmContenido').innerHTML=acmHtmlArgenprop();
+  if(modo==='mapa')setTimeout(abrirMapaZona,200);
+}
+
+function gv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+
+function correrAnalisis(){
+  var apiKey=getAnthropicKey();
+  if(!apiKey)return;
+
+  var btn=document.getElementById('an-btn');
+  var res=document.getElementById('an-resultado');
+  if(!btn||!res)return;
+  btn.textContent='Buscando...';btn.disabled=true;
+  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop...<br><small>Esto puede tardar unos segundos</small></div>';
+
+  var filtros=[];
+  if(_acmModoBusqueda==='zona'){
+    var zona=gv('an-zona');
+    if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
+  }else if(_acmModoBusqueda==='cuadricula'||_acmModoBusqueda==='mapa'){
+    var norte=gv('an-norte'),sur=gv('an-sur'),este=gv('an-este'),oeste=gv('an-oeste');
+    var zona=gv('an-zona');
+    if(zona)filtros.push('Zona: '+zona);
+    if(norte||sur||este||oeste){
+      var g='Cuadrícula de calles:';
+      if(norte)g+=' Norte: '+norte;
+      if(sur)g+=' / Sur: '+sur;
+      if(este)g+=' / Este: '+este;
+      if(oeste)g+=' / Oeste: '+oeste;
+      filtros.push(g);
+    }
+  }
+
+  var tipo=gv('an-tipo'),op=gv('an-op'),amb=gv('an-amb'),estado=gv('an-estado');
+  var m2min=gv('an-m2-min'),m2max=gv('an-m2-max');
+  var cochera=gv('an-cochera'),amenities=gv('an-amenities');
+  if(!filtros.length)filtros.push('Villa Urquiza, CABA, Argentina (zona por defecto)');
+  if(tipo)filtros.push('Tipo: '+tipo);
+  filtros.push('Operación: '+(op||'venta'));
+  if(amb)filtros.push('Ambientes: '+amb);
+  if(estado)filtros.push('Estado: '+estado);
+  if(m2min&&m2max)filtros.push('Superficie: entre '+m2min+' y '+m2max+' m²');
+  else if(m2min)filtros.push('Superficie: desde '+m2min+' m²');
+  else if(m2max)filtros.push('Superficie: hasta '+m2max+' m²');
+  if(cochera)filtros.push('Cochera: '+cochera);
+  if(amenities)filtros.push('Amenities: '+amenities);
+
+  var prompt='Sos un experto en análisis de mercado inmobiliario en Buenos Aires. Buscá publicaciones reales en Zonaprop (zonaprop.com.ar) con estos filtros:\n'
+    +filtros.map(function(f){return'- '+f;}).join('\n')
+    +'\n\nInstrucciones:\n'
+    +'1. Buscá al menos 10-15 publicaciones con esos filtros en zonaprop.com.ar.\n'
+    +'2. Para cada publicación anotá: dirección, precio de publicación (USD), metros cubiertos, metros semicubiertos (si los hay), estado (Activa/Reservada/Cerrada).\n'
+    +'3. Calculá el precio por m² ajustado: precio / (m²_cubiertos + m²_semicubiertos × 0.5). Si no hay desglose usá m² totales.\n'
+    +'4. Calculá: precio promedio de publicación, precio por m² ajustado promedio, precio mínimo y máximo.\n'
+    +'5. Excluí emprendimientos "en pozo" o "desde" del promedio, pero mencionálos aparte.\n'
+    +'6. Cerrá con una tabla resumen y una conclusión para un agente RE/MAX.\n'
+    +'Presentá: tabla con dirección/precio/m²/USD m² ajustado, promedios destacados, conclusión.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:3000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();}).then(function(data){
+    var texto='';
+    if(data.content)data.content.forEach(function(b){if(b.type==='text')texto+=b.text;});
+    if(!texto)texto='No se pudieron obtener datos. Intentá de nuevo.';
+    texto=texto
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:15px;margin:1rem 0 4px">$1</p>')
+      .replace(/\| (.+) \|/g,function(m){return'<tr><td style="padding:4px 8px;border:1px solid #eee">'+m.replace(/\|/g,'</td><td style="padding:4px 8px;border:1px solid #eee">').replace(/^<\/td>/,'<td>').replace(/<td style[^>]+>$/,'')+'</td></tr>';})
+      .replace(/\n- /g,'<br>• ')
+      .replace(/\n/g,'<br>');
+    res.innerHTML='<div class="card"><div style="font-size:14px;line-height:1.7">'+texto+'</div>'
+      +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee;font-size:11px;color:#aaa">Datos obtenidos de Zonaprop · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
+  }).catch(function(e){
+    res.innerHTML='<div class="card" style="color:#c0392b">Error al conectar: '+e.message+'</div>';
+    btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
+  });
+}
+
+
+
 
 // ---- SUB-TAB: COMPARABLES RE/MAX ----
 function acmHtmlRemax(){
