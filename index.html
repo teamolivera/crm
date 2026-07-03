@@ -740,7 +740,7 @@ function loadAnalisis(){
   _acmSubTab=_acmSubTab||'cliente';
   var tabs=[
     {id:'cliente',label:'📋 Datos del cliente'},
-    {id:'argenprop',label:'🔍 Comparables Argenprop'},
+    {id:'argenprop',label:'🔍 Comparables Zonaprop'},
     {id:'remax',label:'📄 Comparables RE/MAX'},
     {id:'resultados',label:'📊 Resultados y valuación'}
   ];
@@ -840,7 +840,7 @@ function acmHtmlArgenprop(){
   var zonaDefault=_acm.cliente.propiedad?_acm.cliente.propiedad.split(',').slice(-2).join(',').trim():'';
   return '<div class="card" style="max-width:680px">'
     +'<p style="font-weight:600;margin-bottom:6px">Búsqueda de comparables en Argenprop</p>'
-    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Todos los campos son opcionales. El sistema busca en Argenprop y calcula el precio por m² ajustado (semicubiertos = mitad de valor).</div>'
+    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Todos los campos son opcionales. El sistema busca en Zonaprop y calcula el precio por m² ajustado (semicubiertos = mitad de valor).</div>'
     +'<div class="form-group"><label>Zona / Barrio</label>'
     +'<div style="display:flex;gap:8px"><input id="an-zona" list="an-zona-list" value="'+esc(zonaDefault)+'" placeholder="Escribí una zona o barrio..." autocomplete="off" style="flex:1"/>'
     +'<button class="btn" onclick="abrirMapaZona()" title="Seleccionar en mapa">🗺️ Mapa</button></div>'
@@ -871,7 +871,7 @@ function acmHtmlArgenprop(){
     +'<div class="form-group"><label>Cochera</label><select id="an-cochera"><option value="">Indistinto</option><option value="con cochera">Con cochera</option><option value="sin cochera">Sin cochera</option></select></div>'
     +'<div class="form-group"><label>Amenities</label><select id="an-amenities"><option value="">Indistinto</option><option value="con amenities">Con amenities</option><option value="sin amenities">Sin amenities</option></select></div>'
     +'</div>'
-    +'<button class="btn btn-primary btn-full" id="an-btn" onclick="correrAnalisis()">🔍 Buscar en Argenprop</button>'
+    +'<button class="btn btn-primary btn-full" id="an-btn" onclick="correrAnalisis()">🔍 Buscar en Zonaprop</button>'
     +'<div id="an-resultado" style="margin-top:1.5rem"></div>'
     +'</div>';
 }
