@@ -176,6 +176,7 @@
     <button class="nav-btn" onclick="showTab('documentos',this)">Documentos</button>
     <button class="nav-btn" id="btnLeads" onclick="showTab('leads',this)">Leads</button>
     <button class="nav-btn" onclick="showTab('clientes',this)">Clientes</button>
+    <button class="nav-btn" onclick="showTab('analisis',this)">ACM</button>
     <button class="nav-btn" id="btnEquipo" style="display:none" onclick="showTab('equipo',this)">Panel Equipo</button>
   </div>
   <div class="content" id="tabContent"></div>
@@ -469,6 +470,7 @@ function showTab(tab,btn){
   else if(tab==='documentos')loadDocumentos();
   else if(tab==='leads')loadLeads();
   else if(tab==='clientes')loadClientes();
+  else if(tab==='analisis')loadAnalisis();
 }
 
 // ============================================================
@@ -709,6 +711,121 @@ function guardarCliente(id){
   }
 }
 
+
+// ============================================================
+// ANÁLISIS DE MERCADO
+// ============================================================
+function loadAnalisis(){
+  var html='<div class="section-header"><div class="section-title">Análisis Comparativo de Mercado</div></div>'
+    +'<div class="card" style="max-width:640px">'
+    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Todos los campos son opcionales. Completá los que necesites para afinar el análisis.</div>'
+
+    +'<div class="form-group"><label>Zona / Barrio</label>'
+    +'<select id="an-zona"><option value="">Cualquier zona</option><option>Villa Urquiza</option><option>Villa Pueyrredón</option><option>Villa Devoto</option><option>Villa del Parque</option><option>Belgrano</option><option>Colegiales</option><option>Palermo</option><option>Saavedra</option><option>Núñez</option><option>Coghlan</option><option>Parque Chas</option><option>Villa Ortuzar</option><option>Caballito</option><option>Almagro</option><option>Flores</option><option>Villa Crespo</option><option>Recoleta</option></select></div>'
+
+    +'<div class="row">'
+    +'<div class="form-group"><label>Tipo de propiedad</label><select id="an-tipo"><option value="">Cualquier tipo</option><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
+    +'<div class="form-group"><label>Operación</label><select id="an-op"><option value="venta">Venta</option><option value="alquiler">Alquiler</option></select></div>'
+    +'</div>'
+
+    +'<div class="form-group"><label>Cantidad de ambientes</label>'
+    +'<select id="an-amb"><option value="">Cualquier cantidad</option><option value="1">1 ambiente (monoambiente)</option><option value="2">2 ambientes</option><option value="3">3 ambientes</option><option value="4">4 ambientes</option><option value="5">5+ ambientes</option></select></div>'
+
+    +'<div class="form-group"><label>Estado de la propiedad</label>'
+    +'<select id="an-estado"><option value="">Cualquier estado</option><option value="a estrenar">A estrenar</option><option value="excelente">Excelente</option><option value="muy bueno">Muy bueno</option><option value="bueno">Bueno</option><option value="a reciclar">A reciclar</option></select></div>'
+
+    +'<div class="form-group"><label>Metros cuadrados</label>'
+    +'<div class="row" style="margin:0;gap:8px;align-items:center">'
+    +'<div class="form-group" style="margin:0"><input id="an-m2-min" type="number" placeholder="Mínimo" min="0"/></div>'
+    +'<span style="color:#888;padding-top:4px">y</span>'
+    +'<div class="form-group" style="margin:0"><input id="an-m2-max" type="number" placeholder="Máximo" min="0"/></div>'
+    +'<span style="color:#888;padding-top:4px">m²</span>'
+    +'</div></div>'
+
+    +'<div class="form-group"><label>Cochera</label>'
+    +'<select id="an-cochera"><option value="">Indistinto</option><option value="con cochera">Con cochera</option><option value="sin cochera">Sin cochera</option></select></div>'
+
+    +'<div class="form-group"><label>Amenities</label>'
+    +'<select id="an-amenities"><option value="">Indistinto</option><option value="con amenities">Con amenities</option><option value="sin amenities">Sin amenities</option></select></div>'
+
+    +'<button class="btn btn-primary btn-full" id="an-btn" onclick="correrAnalisis()">🔍 Generar análisis</button>'
+    +'</div>'
+    +'<div id="an-resultado" style="margin-top:1.5rem"></div>';
+  document.getElementById('tabContent').innerHTML=html;
+}
+
+function correrAnalisis(){
+  var zona=document.getElementById('an-zona').value;
+  var tipo=document.getElementById('an-tipo').value;
+  var op=document.getElementById('an-op').value;
+  var amb=document.getElementById('an-amb').value;
+  var estado=document.getElementById('an-estado').value;
+  var m2min=document.getElementById('an-m2-min').value;
+  var m2max=document.getElementById('an-m2-max').value;
+  var cochera=document.getElementById('an-cochera').value;
+  var amenities=document.getElementById('an-amenities').value;
+
+  var filtros=[];
+  if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
+  if(tipo)filtros.push('Tipo: '+tipo);
+  filtros.push('Operación: '+op);
+  if(amb)filtros.push('Ambientes: '+amb+(amb==='1'?' (monoambiente)':''));
+  if(estado)filtros.push('Estado de la propiedad: '+estado);
+  if(m2min&&m2max)filtros.push('Superficie: entre '+m2min+' y '+m2max+' m²');
+  else if(m2min)filtros.push('Superficie: desde '+m2min+' m²');
+  else if(m2max)filtros.push('Superficie: hasta '+m2max+' m²');
+  if(cochera)filtros.push('Cochera: '+cochera);
+  if(amenities)filtros.push('Amenities: '+amenities);
+
+  var btn=document.getElementById('an-btn');
+  btn.textContent='Analizando...';btn.disabled=true;
+
+  var res=document.getElementById('an-resultado');
+  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando datos en Zonaprop y Argenprop...<br><small>Esto puede tardar unos segundos</small></div>';
+
+  var prompt='Sos un experto en el mercado inmobiliario de Buenos Aires. Necesito un análisis de mercado comparativo entre Zonaprop y Argenprop con los siguientes filtros:\n'
+    +filtros.map(function(f){return'- '+f;}).join('\n')
+    +'\n\nBuscá en ambos portales (zonaprop.com.ar y argenprop.com) con esos filtros y armá un análisis que incluya:'
+    +'\n1. Precio promedio'+(zona?' en '+zona:'')
+    +'\n2. Rango de precios (mínimo y máximo)'
+    +'\n3. Precio promedio por m² (si hay datos disponibles)'
+    +'\n4. Cantidad aproximada de unidades en oferta en cada portal'
+    +'\n5. Comparativa entre Zonaprop y Argenprop (diferencias de precio y cantidad de oferta)'
+    +'\n6. Tendencia reciente del mercado (si hay datos disponibles)'
+    +'\n7. Conclusión y recomendación para un agente inmobiliario de RE/MAX operando en esa zona'
+    +'\nPresentá el análisis de forma clara, con datos concretos y en formato fácil de leer. Usá los datos más recientes que encuentres.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:2000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();}).then(function(data){
+    var texto='';
+    if(data.content&&data.content.length){
+      for(var i=0;i<data.content.length;i++){
+        if(data.content[i].type==='text')texto+=data.content[i].text;
+      }
+    }
+    if(!texto){texto='No se pudieron obtener datos. Intentá de nuevo.';}
+    // Convertir markdown básico a HTML
+    texto=texto
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:15px;margin:1rem 0 4px">$1</p>')
+      .replace(/\n- /g,'<br>• ')
+      .replace(/\n/g,'<br>');
+    res.innerHTML='<div class="card"><div style="font-size:14px;line-height:1.7">'+texto+'</div>'
+      +'<div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee;font-size:11px;color:#aaa">Datos obtenidos de Zonaprop y Argenprop · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    btn.textContent='🔍 Generar análisis';btn.disabled=false;
+  }).catch(function(e){
+    res.innerHTML='<div class="card" style="color:#c0392b">Error al conectar con la IA. Intentá de nuevo.</div>';
+    btn.textContent='🔍 Generar análisis';btn.disabled=false;
+  });
+}
 
 function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
