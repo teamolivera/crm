@@ -841,8 +841,10 @@ var _acmModoBusqueda='zona'; // 'zona' | 'cuadricula' | 'mapa'
 // Variables del mapa
 var _mapaLeaflet=null;
 var _mapaMarker=null;
-var _mapaRect=null;
-var _mapaRectP1=null;
+var _mapaPoligono=null;
+var _mapaPoligonoLineas=[];
+var _mapaPoligonoMarkers=[];
+var _mapaPoligonoPoints=[];
 var _mapaZonaSeleccionada='';
 var _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
 var _mapaModo='zona';
@@ -851,18 +853,185 @@ function setMapaModo(modo){
   _mapaModo=modo;
   _mapaZonaSeleccionada='';
   _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
-  _mapaRectP1=null;
+  _mapaPoligonoPoints=[];
   document.getElementById('mapaZonaDetectada').textContent='';
   document.getElementById('mapaConfirmarBtn').disabled=true;
-  if(_mapaMarker&&_mapaLeaflet){_mapaLeaflet.removeLayer(_mapaMarker);_mapaMarker=null;}
-  if(_mapaRect&&_mapaLeaflet){_mapaLeaflet.removeLayer(_mapaRect);_mapaRect=null;}
-  document.getElementById('mapaModoZona').className='btn btn-sm'+(modo==='zona'?' btn-primary':'');
-  document.getElementById('mapaModoGrid').className='btn btn-sm'+(modo==='grid'?' btn-primary':'');
-  document.getElementById('mapaInstruccion').textContent=modo==='zona'
-    ?'Hacé clic en el mapa para marcar la zona.'
-    :'Hacé clic en el mapa para marcar la esquina 1 de la cuadrícula, luego la esquina opuesta.';
+  limpiarMapa();
+  var instruccion=modo==='zona'
+    ?'Hacé clic en el mapa para marcar el barrio/zona.'
+    :'Hacé clic para agregar puntos y definir el área. Cuando termines, apretá "Cerrar área".';
+  document.getElementById('mapaInstruccion').textContent=instruccion;
+  var btnCerrar=document.getElementById('mapaCerrarPoligono');
+  if(btnCerrar)btnCerrar.style.display=modo==='grid'?'inline-block':'none';
+  document.getElementById('mapaModoZona').style.background=modo==='zona'?'#185FA5':'';
+  document.getElementById('mapaModoZona').style.color=modo==='zona'?'#fff':'';
+  document.getElementById('mapaModoGrid').style.background=modo==='grid'?'#185FA5':'';
+  document.getElementById('mapaModoGrid').style.color=modo==='grid'?'#fff':'';
 }
 
+function limpiarMapa(){
+  var L=window.L;
+  if(!_mapaLeaflet||!L)return;
+  if(_mapaMarker){_mapaLeaflet.removeLayer(_mapaMarker);_mapaMarker=null;}
+  if(_mapaPoligono){_mapaLeaflet.removeLayer(_mapaPoligono);_mapaPoligono=null;}
+  _mapaPoligonoLineas.forEach(function(l){_mapaLeaflet.removeLayer(l);});
+  _mapaPoligonoLineas=[];
+  _mapaPoligonoMarkers.forEach(function(m){_mapaLeaflet.removeLayer(m);});
+  _mapaPoligonoMarkers=[];
+  _mapaPoligonoPoints=[];
+}
+
+function abrirMapaZona(){
+  document.getElementById('mapaModal').classList.add('visible');
+  document.getElementById('mapaZonaDetectada').textContent='';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+  var modoMapa=_acmModoBusqueda==='cuadricula'?'grid':'zona';
+  setTimeout(function(){
+    if(!_mapaLeaflet){
+      if(!window.L){
+        var lnk=document.createElement('link');lnk.rel='stylesheet';lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(lnk);
+        var sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        sc.onload=function(){iniciarMapa();setTimeout(function(){setMapaModo(modoMapa);},100);};document.head.appendChild(sc);
+      }else{iniciarMapa();setMapaModo(modoMapa);}
+    }else{_mapaLeaflet.invalidateSize();setMapaModo(modoMapa);}
+  },150);
+}
+
+function getAnthropicKey(){
+  var k=localStorage.getItem('anthropic_api_key');
+  if(!k){
+    k=prompt('Para usar el ACM necesitás tu API key de Anthropic.\nObtené una en console.anthropic.com\n\nPegá tu API key acá (sk-ant-...):');
+    if(k)localStorage.setItem('anthropic_api_key',k.trim());
+  }
+  return k?k.trim():null;
+}
+
+function iniciarMapa(){
+  var L=window.L;
+  _mapaLeaflet=L.map('mapaContainer',{doubleClickZoom:false}).setView([-34.5883,-58.4003],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(_mapaLeaflet);
+  var lastClick=0;
+  _mapaLeaflet.on('click',function(e){
+    var now=Date.now();
+    if(now-lastClick<350)return;
+    lastClick=now;
+    if(_mapaModo==='zona'){mapaClickZona(e);}
+    else{mapaClickPoligono(e);}
+  });
+}
+
+function mapaClickZona(e){
+  var L=window.L;
+  limpiarMapa();
+  _mapaMarker=L.marker(e.latlng).addTo(_mapaLeaflet);
+  document.getElementById('mapaZonaDetectada').textContent='Detectando barrio...';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+  fetch('https://nominatim.openstreetmap.org/reverse?lat='+e.latlng.lat+'&lon='+e.latlng.lng+'&format=json&accept-language=es')
+    .then(function(r){return r.json();}).then(function(d){
+      var addr=d.address||{};
+      var barrio=addr.neighbourhood||addr.suburb||addr.quarter||addr.city_district||'';
+      _mapaZonaSeleccionada=barrio;
+      document.getElementById('mapaZonaDetectada').textContent=barrio?'✓ Zona detectada: '+barrio:'No se detectó barrio. Intentá otro punto.';
+      document.getElementById('mapaConfirmarBtn').disabled=!barrio;
+    }).catch(function(){
+      document.getElementById('mapaZonaDetectada').textContent='Error al detectar el barrio.';
+    });
+}
+
+function mapaClickPoligono(e){
+  var L=window.L;
+  _mapaPoligonoPoints.push(e.latlng);
+  var n=_mapaPoligonoPoints.length;
+
+  // Marcador numerado
+  var m=L.marker(e.latlng,{
+    icon:L.divIcon({className:'',html:'<div style="background:#185FA5;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">'+n+'</div>',iconSize:[22,22],iconAnchor:[11,11]})
+  }).addTo(_mapaLeaflet);
+  _mapaPoligonoMarkers.push(m);
+
+  // Línea al punto anterior
+  if(n>1){
+    var linea=L.polyline([_mapaPoligonoPoints[n-2],e.latlng],{color:'#185FA5',weight:2,dashArray:'5,5'}).addTo(_mapaLeaflet);
+    _mapaPoligonoLineas.push(linea);
+  }
+
+  // Actualizar polígono si hay 3+ puntos
+  if(n>=3){
+    if(_mapaPoligono)_mapaLeaflet.removeLayer(_mapaPoligono);
+    _mapaPoligono=L.polygon(_mapaPoligonoPoints,{color:'#185FA5',weight:2,fillOpacity:0.1}).addTo(_mapaLeaflet);
+  }
+
+  document.getElementById('mapaZonaDetectada').textContent=n+' punto'+(n>1?'s':'')+' marcado'+(n>1?'s':'')+'. '+(n<3?'Necesitás al menos 3 puntos.':'Podés seguir agregando puntos o cerrar el área.');
+  if(n>=3)document.getElementById('mapaCerrarPoligono').style.background='#00C853';
+}
+
+function cerrarPoligonoMapa(){
+  var L=window.L;
+  var n=_mapaPoligonoPoints.length;
+  if(n<3){alert('Necesitás marcar al menos 3 puntos para cerrar el área.');return;}
+
+  // Dibujar polígono cerrado final
+  if(_mapaPoligono)_mapaLeaflet.removeLayer(_mapaPoligono);
+  _mapaPoligono=L.polygon(_mapaPoligonoPoints,{color:'#185FA5',weight:2.5,fillOpacity:0.15}).addTo(_mapaLeaflet);
+  _mapaLeaflet.fitBounds(_mapaPoligono.getBounds(),{padding:[20,20]});
+
+  // Obtener calles de los puntos extremos
+  var bounds=_mapaPoligono.getBounds();
+  var ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
+  document.getElementById('mapaZonaDetectada').textContent='Detectando calles del área...';
+  document.getElementById('mapaConfirmarBtn').disabled=true;
+
+  Promise.all([
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
+    fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();})
+  ]).then(function(res){
+    function calle(d){var a=d.address||{};return a.road||a.pedestrian||'';}
+    _mapaGridCalles={norte:calle(res[0]),sur:calle(res[1]),este:calle(res[2]),oeste:calle(res[3])};
+    var txt='✓ Área definida por: '+[_mapaGridCalles.norte,_mapaGridCalles.sur,_mapaGridCalles.este,_mapaGridCalles.oeste].filter(Boolean).join(' / ');
+    document.getElementById('mapaZonaDetectada').textContent=txt;
+    document.getElementById('mapaConfirmarBtn').disabled=false;
+  }).catch(function(){
+    document.getElementById('mapaZonaDetectada').textContent='Área marcada. No se detectaron calles exactas.';
+    document.getElementById('mapaConfirmarBtn').disabled=false;
+  });
+}
+
+function cerrarMapaZona(){
+  document.getElementById('mapaModal').classList.remove('visible');
+}
+
+function confirmarZonaMapa(){
+  if(_mapaModo==='zona'&&_mapaZonaSeleccionada){
+    var el=document.getElementById('an-zona');
+    if(el)el.value=_mapaZonaSeleccionada;
+    var info=document.getElementById('an-zona-mapa-info');
+    if(info)info.innerHTML='<span style="color:#185FA5;font-weight:600">✓ Zona: '+esc(_mapaZonaSeleccionada)+'</span>';
+  }else if(_mapaModo==='grid'){
+    ['norte','sur','este','oeste'].forEach(function(lado){
+      var el=document.getElementById('an-'+lado);
+      if(el&&_mapaGridCalles[lado])el.value=_mapaGridCalles[lado];
+    });
+    var info=document.getElementById('an-zona-mapa-info');
+    if(info){
+      var txt='<span style="color:#185FA5;font-weight:600">✓ Área: ';
+      if(_mapaGridCalles.norte)txt+=_mapaGridCalles.norte;
+      if(_mapaGridCalles.sur)txt+=' / '+_mapaGridCalles.sur;
+      if(_mapaGridCalles.este)txt+=' / '+_mapaGridCalles.este;
+      if(_mapaGridCalles.oeste)txt+=' / '+_mapaGridCalles.oeste;
+      info.innerHTML=txt+'</span>';
+    }
+  }
+  cerrarMapaZona();
+}
+
+
+  _mapaModo=modo;
+  _mapaZonaSeleccionada='';
+  _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
+  _mapaRectP1=null;
+  document.getElementById('mapaZonaDetectada').textContent='';
 function abrirMapaZona(){
   document.getElementById('mapaModal').classList.add('visible');
   document.getElementById('mapaZonaDetectada').textContent='';
@@ -881,11 +1050,24 @@ function abrirMapaZona(){
   },150);
 }
 
+function getAnthropicKey(){
+  var k=localStorage.getItem('anthropic_api_key');
+  if(!k){
+    k=prompt('Para usar el ACM necesitás tu API key de Anthropic.\nObtené una en console.anthropic.com\n\nPegá tu API key acá (sk-ant-...):');
+    if(k)localStorage.setItem('anthropic_api_key',k.trim());
+  }
+  return k?k.trim():null;
+}
+
 function iniciarMapa(){
   var L=window.L;
-  _mapaLeaflet=L.map('mapaContainer').setView([-34.5883,-58.4003],13);
+  _mapaLeaflet=L.map('mapaContainer',{doubleClickZoom:false}).setView([-34.5883,-58.4003],13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(_mapaLeaflet);
+  var lastClick=0;
   _mapaLeaflet.on('click',function(e){
+    var now=Date.now();
+    if(now-lastClick<400)return; // ignorar doble clic
+    lastClick=now;
     if(_mapaModo==='zona'){mapaClickZona(e);}
     else{mapaClickGrid(e);}
   });
@@ -948,20 +1130,6 @@ function cerrarMapaZona(){
   document.getElementById('mapaModal').classList.remove('visible');
 }
 
-function confirmarZonaMapa(){
-  if(_mapaModo==='zona'&&_mapaZonaSeleccionada){
-    var el=document.getElementById('an-zona');
-    if(el)el.value=_mapaZonaSeleccionada;
-    var info=document.getElementById('an-zona-mapa-info');
-    if(info)info.innerHTML='<span style="color:#185FA5;font-weight:600">✓ Zona: '+esc(_mapaZonaSeleccionada)+'</span>';
-  }else if(_mapaModo==='grid'){
-    ['norte','sur','este','oeste'].forEach(function(lado){
-      var el=document.getElementById('an-'+lado);
-      if(el&&_mapaGridCalles[lado])el.value=_mapaGridCalles[lado];
-    });
-  }
-  cerrarMapaZona();
-}
 
 function acmHtmlArgenprop(){
   var zonaDefault=_acm.cliente.propiedad?_acm.cliente.propiedad.split(',').slice(-2).join(',').trim():'';
@@ -1040,38 +1208,45 @@ function gv(id){var el=document.getElementById(id);return el?el.value.trim():'';
 
 function correrAnalisis(){
   var apiKey=getAnthropicKey();
-  if(!apiKey)return;
+  if(!apiKey){
+    alert('Necesitás configurar la API key de Anthropic para usar esta función.');
+    return;
+  }
 
   var btn=document.getElementById('an-btn');
   var res=document.getElementById('an-resultado');
-  if(!btn||!res)return;
+  if(!btn||!res){
+    alert('Error: no se encontró el botón o el área de resultado. Intentá recargar la pestaña ACM.');
+    return;
+  }
   btn.textContent='Buscando...';btn.disabled=true;
-  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop...<br><small>Esto puede tardar unos segundos</small></div>';
+  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop...<br><small>Esto puede tardar 15-30 segundos</small></div>';
 
   var filtros=[];
   if(_acmModoBusqueda==='zona'){
     var zona=gv('an-zona');
     if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
+    else filtros.push('CABA, Argentina (zona general)');
   }else if(_acmModoBusqueda==='cuadricula'||_acmModoBusqueda==='mapa'){
     var norte=gv('an-norte'),sur=gv('an-sur'),este=gv('an-este'),oeste=gv('an-oeste');
     var zona=gv('an-zona');
-    if(zona)filtros.push('Zona: '+zona);
+    if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
     if(norte||sur||este||oeste){
-      var g='Cuadrícula de calles:';
+      var g='Cuadrícula de calles en CABA:';
       if(norte)g+=' Norte: '+norte;
       if(sur)g+=' / Sur: '+sur;
       if(este)g+=' / Este: '+este;
       if(oeste)g+=' / Oeste: '+oeste;
       filtros.push(g);
     }
+    if(!zona&&!norte&&!sur&&!este&&!oeste)filtros.push('CABA, Argentina');
   }
 
-  var tipo=gv('an-tipo'),op=gv('an-op'),amb=gv('an-amb'),estado=gv('an-estado');
+  var tipo=gv('an-tipo'),op=gv('an-op')||'venta',amb=gv('an-amb'),estado=gv('an-estado');
   var m2min=gv('an-m2-min'),m2max=gv('an-m2-max');
   var cochera=gv('an-cochera'),amenities=gv('an-amenities');
-  if(!filtros.length)filtros.push('Villa Urquiza, CABA, Argentina (zona por defecto)');
   if(tipo)filtros.push('Tipo: '+tipo);
-  filtros.push('Operación: '+(op||'venta'));
+  filtros.push('Operación: '+op);
   if(amb)filtros.push('Ambientes: '+amb);
   if(estado)filtros.push('Estado: '+estado);
   if(m2min&&m2max)filtros.push('Superficie: entre '+m2min+' y '+m2max+' m²');
@@ -1083,44 +1258,60 @@ function correrAnalisis(){
   var prompt='Sos un experto en análisis de mercado inmobiliario en Buenos Aires. Buscá publicaciones reales en Zonaprop (zonaprop.com.ar) con estos filtros:\n'
     +filtros.map(function(f){return'- '+f;}).join('\n')
     +'\n\nInstrucciones:\n'
-    +'1. Buscá al menos 10-15 publicaciones con esos filtros en zonaprop.com.ar.\n'
-    +'2. Para cada publicación anotá: dirección, precio de publicación (USD), metros cubiertos, metros semicubiertos (si los hay), estado (Activa/Reservada/Cerrada).\n'
+    +'1. Buscá al menos 10-15 publicaciones en zonaprop.com.ar con esos filtros.\n'
+    +'2. Para cada publicación anotá: dirección, precio (USD), m² cubiertos, m² semicubiertos (si los hay), estado (Activa/Reservada/Cerrada).\n'
     +'3. Calculá el precio por m² ajustado: precio / (m²_cubiertos + m²_semicubiertos × 0.5). Si no hay desglose usá m² totales.\n'
-    +'4. Calculá: precio promedio de publicación, precio por m² ajustado promedio, precio mínimo y máximo.\n'
-    +'5. Excluí emprendimientos "en pozo" o "desde" del promedio, pero mencionálos aparte.\n'
-    +'6. Cerrá con una tabla resumen y una conclusión para un agente RE/MAX.\n'
-    +'Presentá: tabla con dirección/precio/m²/USD m² ajustado, promedios destacados, conclusión.';
+    +'4. Calculá promedios: precio promedio de publicación, precio/m² ajustado promedio, mínimo y máximo.\n'
+    +'5. Excluí emprendimientos "en pozo" o precios "desde" del promedio, pero mencionálos.\n'
+    +'6. Mostrá una tabla con dirección / precio / m² / USD/m² ajustado y los promedios finales destacados.\n'
+    +'7. Cerrá con una conclusión breve para un agente RE/MAX.';
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
     body:JSON.stringify({
       model:'claude-sonnet-4-6',
       max_tokens:3000,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:prompt}]
     })
-  }).then(function(r){return r.json();}).then(function(data){
+  }).then(function(r){
+    if(!r.ok){
+      return r.json().then(function(err){
+        throw new Error('API error '+r.status+': '+(err.error&&err.error.message||JSON.stringify(err)));
+      });
+    }
+    return r.json();
+  }).then(function(data){
     var texto='';
     if(data.content)data.content.forEach(function(b){if(b.type==='text')texto+=b.text;});
-    if(!texto)texto='No se pudieron obtener datos. Intentá de nuevo.';
+    if(!texto){
+      if(data.error)throw new Error(data.error.message||'Error desconocido');
+      texto='No se pudieron obtener datos. Intentá de nuevo.';
+    }
     texto=texto
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:15px;margin:1rem 0 4px">$1</p>')
-      .replace(/\| (.+) \|/g,function(m){return'<tr><td style="padding:4px 8px;border:1px solid #eee">'+m.replace(/\|/g,'</td><td style="padding:4px 8px;border:1px solid #eee">').replace(/^<\/td>/,'<td>').replace(/<td style[^>]+>$/,'')+'</td></tr>';})
       .replace(/\n- /g,'<br>• ')
       .replace(/\n/g,'<br>');
     res.innerHTML='<div class="card"><div style="font-size:14px;line-height:1.7">'+texto+'</div>'
       +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee;font-size:11px;color:#aaa">Datos obtenidos de Zonaprop · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
     btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
   }).catch(function(e){
-    res.innerHTML='<div class="card" style="color:#c0392b">Error al conectar: '+e.message+'</div>';
+    res.innerHTML='<div class="card" style="color:#c0392b;padding:1rem">'
+      +'<strong>Error al conectar con la IA</strong><br>'
+      +esc(e.message)+'<br><br>'
+      +'<small>Verificá que la API key sea correcta. Podés borrarla de localStorage y volver a ingresarla.</small><br>'
+      +'<button class="btn btn-sm" style="margin-top:8px" onclick="localStorage.removeItem(\'anthropic_api_key\');alert(\'API key borrada. Recargá la pestaña ACM e ingresala de nuevo.\')">Borrar API key y reintentar</button>'
+      +'</div>';
     btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
   });
 }
-
-
-
 
 // ---- SUB-TAB: COMPARABLES RE/MAX ----
 function acmHtmlRemax(){
@@ -4350,15 +4541,17 @@ if('serviceWorker' in navigator){
 <!-- Modal mapa ACM -->
 <div id="mapaModal" class="modal-overlay" style="z-index:200">
   <div class="modal-box" style="max-width:750px;width:95%">
-    <div class="modal-header"><span class="modal-title">Seleccionar en el mapa</span><button class="close-btn" onclick="cerrarMapaZona()">×</button></div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button id="mapaModoZona" class="btn btn-primary btn-sm" onclick="setMapaModo('zona')">📍 Zona / Barrio</button>
-      <button id="mapaModoGrid" class="btn btn-sm" onclick="setMapaModo('grid')">⬜ Cuadrícula</button>
+    <div class="modal-header"><span class="modal-title">Seleccionar área en el mapa</span><button class="close-btn" onclick="cerrarMapaZona()">×</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+      <button id="mapaModoZona" class="btn btn-sm btn-primary" onclick="setMapaModo('zona')" style="background:#185FA5;color:#fff">📍 Zona / Barrio</button>
+      <button id="mapaModoGrid" class="btn btn-sm" onclick="setMapaModo('grid')">⬜ Marcar área</button>
+      <button id="mapaCerrarPoligono" class="btn btn-sm" onclick="cerrarPoligonoMapa()" style="display:none;margin-left:auto">✓ Cerrar área</button>
     </div>
-    <div id="mapaInstruccion" style="font-size:12px;color:#888;margin-bottom:8px">Hacé clic en el mapa para marcar la zona.</div>
+    <div id="mapaInstruccion" style="font-size:12px;color:#888;margin-bottom:8px">Hacé clic en el mapa para marcar el barrio/zona.</div>
     <div id="mapaContainer" style="height:400px;border-radius:8px;overflow:hidden;background:#eee"></div>
     <div id="mapaZonaDetectada" style="margin-top:10px;font-size:13px;color:#185FA5;font-weight:600;min-height:20px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn" onclick="limpiarMapa();document.getElementById('mapaZonaDetectada').textContent='';document.getElementById('mapaConfirmarBtn').disabled=true;">🗑 Limpiar</button>
       <button class="btn" onclick="cerrarMapaZona()">Cancelar</button>
       <button class="btn btn-primary" id="mapaConfirmarBtn" onclick="confirmarZonaMapa()" disabled>Confirmar</button>
     </div>
