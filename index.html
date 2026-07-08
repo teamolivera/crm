@@ -1134,29 +1134,31 @@ function acmLeerPdfRemax(input){
 // ====== 5. BÚSQUEDA DE MERCADO ======
 function acmHtmlBusqueda(){
   var b = _acm.busqueda;
+  var c = _acm.cliente;
   function sel(id,val,opts){
     return '<select id="'+id+'">'+ opts.map(function(o){return'<option'+(o===val?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
   }
   return '<div class="card" style="max-width:700px">'+
     '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Análisis de mercado (Zonaprop + Argenprop + MercadoLibre)</p>'+
-    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Completá los filtros y la IA busca en los tres portales para generar el análisis de mercado del barrio.</div>'+
+    '<div style="font-size:12px;background:#EBF5FF;border:1px solid #185FA5;border-radius:6px;padding:8px 12px;margin-bottom:1rem">'+
+      '📍 La IA busca propiedades <strong>en un radio de 500 metros</strong> de la dirección del cliente. '+
+      'Descarta automáticamente las propiedades que estén más de un <strong>25% por encima o debajo</strong> del precio promedio (outliers).</div>'+
+    '<div class="form-group"><label>Dirección de referencia (se toma del paso 1)</label>'+
+      '<input id="bq-dir-ref" value="'+esc(c.direccion||b.localidad||'')+'" placeholder="ej: Lugones 2124, Villa Urquiza, CABA" style="background:#f8fafc"/>'+
+      '<div style="font-size:11px;color:#888;margin-top:3px">La búsqueda se centra en los 500m alrededor de esta dirección.</div></div>'+
     '<div class="row">'+
-      '<div class="form-group"><label>Localidad / Barrio</label>'+
-        '<input id="bq-localidad" value="'+esc(b.localidad||_acm.cliente.zona)+'" placeholder="ej: Villa Urquiza"/></div>'+
       '<div class="form-group"><label>Tipo de propiedad</label>'+
-        sel('bq-tipo',b.tipo||_acm.cliente.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
+        sel('bq-tipo',b.tipo||c.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
+      '<div class="form-group"><label>Ambientes</label>'+
+        '<input id="bq-amb" type="number" value="'+esc(b.ambientes||c.ambientes)+'" placeholder="3"/></div>'+
     '</div>'+
     '<div class="row">'+
-      '<div class="form-group"><label>Cantidad de ambientes</label>'+
-        '<input id="bq-amb" type="number" value="'+esc(b.ambientes||_acm.cliente.ambientes)+'" placeholder="3"/></div>'+
       '<div class="form-group"><label>Antigüedad (años)</label>'+
-        '<input id="bq-antig" value="'+esc(b.antiguedad)+'" placeholder="ej: 10-30 o hasta 5"/></div>'+
-    '</div>'+
-    '<div class="row">'+
+        '<input id="bq-antig" value="'+esc(b.antiguedad)+'" placeholder="ej: 10-25"/></div>'+
       '<div class="form-group"><label>M² mínimos</label>'+
-        '<input id="bq-m2min" type="number" value="'+esc(b.m2min)+'" placeholder="ej: 50"/></div>'+
+        '<input id="bq-m2min" type="number" value="'+esc(b.m2min)+'" placeholder="ej: 55"/></div>'+
       '<div class="form-group"><label>M² máximos</label>'+
-        '<input id="bq-m2max" type="number" value="'+esc(b.m2max)+'" placeholder="ej: 90"/></div>'+
+        '<input id="bq-m2max" type="number" value="'+esc(b.m2max)+'" placeholder="ej: 100"/></div>'+
     '</div>'+
     '<div class="row">'+
       '<div class="form-group"><label>Cochera</label>'+
@@ -1170,9 +1172,9 @@ function acmHtmlBusqueda(){
       '<div class="form-group"><label>Estado del inmueble</label>'+
         sel('bq-estadoInm',b.estadoInm,['Indistinto','A estrenar','Excelente','Muy bueno','Bueno','A reciclar'])+'</div>'+
     '</div>'+
-    '<button class="btn btn-primary btn-full" id="bq-btn" onclick="acmBuscarMercado()">🔍 Analizar mercado</button>'+
+    '<button class="btn btn-primary btn-full" id="bq-btn" onclick="acmBuscarMercado()">🔍 Analizar mercado en radio de 500m</button>'+
     '<div id="bq-resultado" style="margin-top:1.5rem">'+
-      (_acm.busquedaResultado ? '<div class="card"><div style="font-size:13px;line-height:1.7">'+_acm.busquedaResultado+'</div></div>' : '')+
+      (_acm.busquedaResultado ? '<div class="card"><div style="font-size:13px;line-height:1.8">'+_acm.busquedaResultado+'</div></div>' : '')+
     '</div>'+
   '</div>';
 }
@@ -1180,23 +1182,27 @@ function acmHtmlBusqueda(){
 function acmBuscarMercado(){
   var apiKey = getAnthropicKey(); if(!apiKey) return;
   _acm.busqueda = {
-    localidad:v('bq-localidad'), tipo:v('bq-tipo'), ambientes:v('bq-amb'),
+    localidad:v('bq-dir-ref'), tipo:v('bq-tipo'), ambientes:v('bq-amb'),
     antiguedad:v('bq-antig'), m2min:v('bq-m2min'), m2max:v('bq-m2max'),
     cochera:v('bq-cochera'), amenities:v('bq-amenities'),
     calidad:v('bq-calidad'), estadoInm:v('bq-estadoInm')
   };
   var b = _acm.busqueda;
+  var c = _acm.cliente;
   var btn = document.getElementById('bq-btn');
   var res = document.getElementById('bq-resultado');
   btn.textContent='Analizando...'; btn.disabled=true;
   res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop, Argenprop y MercadoLibre...<br><small>Esto puede tardar 30-60 segundos</small></div>';
 
+  // Construir filtros
   var filtros = [];
-  if(b.localidad) filtros.push('Localidad/Barrio: '+b.localidad+' (CABA, Argentina)');
+  var direccionRef = c.direccion ? c.direccion : (b.localidad ? b.localidad+', CABA' : '');
+  if(direccionRef) filtros.push('Dirección de referencia: '+direccionRef+' — buscá ÚNICAMENTE propiedades en un radio de 500 metros de esta dirección');
+  else if(b.localidad) filtros.push('Zona: '+b.localidad+', CABA, Argentina');
   if(b.tipo) filtros.push('Tipo: '+b.tipo);
-  if(b.ambientes) filtros.push('Ambientes: '+b.ambientes);
-  if(b.antiguedad) filtros.push('Antigüedad: '+b.antiguedad+' años');
-  if(b.m2min&&b.m2max) filtros.push('Superficie: entre '+b.m2min+' y '+b.m2max+' m²');
+  if(b.ambientes) filtros.push('Ambientes: '+b.ambientes+' (aceptá ±1 si hay pocos resultados)');
+  if(b.antiguedad) filtros.push('Antigüedad: '+b.antiguedad+' años (aceptá ±10 años si hay pocos resultados)');
+  if(b.m2min&&b.m2max) filtros.push('Superficie: entre '+b.m2min+' y '+b.m2max+' m² (aceptá ±15% si hay pocos resultados)');
   else if(b.m2min) filtros.push('Superficie: desde '+b.m2min+' m²');
   else if(b.m2max) filtros.push('Superficie: hasta '+b.m2max+' m²');
   if(b.cochera!=='Indistinto') filtros.push('Cochera: '+b.cochera);
@@ -1204,25 +1210,34 @@ function acmBuscarMercado(){
   if(b.calidad!=='Indistinto') filtros.push('Calidad constructiva: '+b.calidad);
   if(b.estadoInm!=='Indistinto') filtros.push('Estado: '+b.estadoInm);
 
-  var prompt = 'Sos un experto en mercado inmobiliario de Buenos Aires. Buscá propiedades en venta en ZONAPROP (zonaprop.com.ar), ARGENPROP (argenprop.com) y MERCADO LIBRE INMUEBLES (inmuebles.mercadolibre.com.ar) con estos filtros:\n'+
-    filtros.map(function(f){return'- '+f;}).join('\n')+
-    '\n\nPara cada portal, encontrá al menos 5 propiedades y calculá:\n'+
-    '1. Precio promedio de publicación (USD)\n'+
-    '2. Precio promedio por m² cubierto (aplicá: m² cubiertos + m² semicubiertos × 0.5)\n'+
-    '3. Rango de precios (mínimo y máximo)\n'+
-    '4. Cantidad de propiedades disponibles\n'+
-    '\nLuego presentá:\n'+
-    '- Tabla comparativa entre los 3 portales\n'+
-    '- Promedio general del mercado (precio y USD/m²)\n'+
-    '- Observaciones sobre tendencia y tiempo en mercado si hay datos\n'+
-    '- Una conclusión breve para un agente RE/MAX\n'+
-    '\nFormato: claro, con datos concretos. Usá **negrita** para valores clave.';
+  var prompt = 'Sos un experto tasador inmobiliario en Buenos Aires. Tu tarea es encontrar propiedades comparables para una tasación.\n\n'+
+    'FILTROS DE BÚSQUEDA:\n'+filtros.map(function(f){return'- '+f;}).join('\n')+
+    '\n\nINSTRUCCIONES IMPORTANTES:\n'+
+    '1. Buscá en ZONAPROP (zonaprop.com.ar), ARGENPROP (argenprop.com) y MERCADO LIBRE INMUEBLES (inmuebles.mercadolibre.com.ar)\n'+
+    '2. RADIO DE 500 METROS: solo incluí propiedades que estén dentro de los 500 metros de la dirección de referencia. No uses propiedades de otras zonas aunque sean similares.\n'+
+    '3. Para cada propiedad encontrá: dirección exacta, precio USD, m² cubiertos, m² semicubiertos (si no figura, calculá m²semi = m²tot - m²cub), cochera sí/no\n'+
+    '4. Calculá el USD/m² ajustado = precio / (m²cub + m²semi×0.5) para cada una\n'+
+    '5. ELIMINACIÓN DE OUTLIERS: calculá el promedio del USD/m². Descartá las propiedades que estén más de un 25% por encima O por debajo de ese promedio. Mencioná cuáles descartaste y por qué.\n'+
+    '6. Con las propiedades que quedan, calculá los promedios finales\n'+
+    '7. Separalos en dos grupos: EN VENTA (activas/reservadas) y VENDIDAS/CERRADAS\n\n'+
+    'PRESENTACIÓN:\n'+
+    '**En venta (activas)**\n'+
+    'Tabla con: dirección | precio | m²cub | m²semi | m²adj | USD/m²\n'+
+    'Promedio: precio promedio | USD/m² promedio\n\n'+
+    '**Vendidas/Cerradas** (si hay datos)\n'+
+    'Tabla con: dirección | precio pub. | precio venta | m²adj | USD/m²\n'+
+    'Promedio: precio promedio vendido | USD/m² promedio\n\n'+
+    '**Propiedades descartadas** (outliers)\n'+
+    'Lista de las que se excluyeron y motivo\n\n'+
+    '**Conclusión para el agente RE/MAX**\n'+
+    'Rango razonable de publicación y precio sugerido basado en los datos.\n\n'+
+    'Usá **negrita** para los valores clave.';
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body: JSON.stringify({
-      model:'claude-sonnet-4-6', max_tokens:3000,
+      model:'claude-sonnet-4-6', max_tokens:4000,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:prompt}]
     })
@@ -1236,10 +1251,11 @@ function acmBuscarMercado(){
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:14px;margin:1rem 0 4px">$1</p>')
       .replace(/\n- /g,'<br>• ')
+      .replace(/\n\|/g,'<br>|')
       .replace(/\n/g,'<br>');
     _acm.busquedaResultado = html;
-    res.innerHTML='<div class="card"><div style="font-size:13px;line-height:1.7">'+html+'</div>'+
-      '<div style="margin-top:.8rem;font-size:11px;color:#aaa">Zonaprop · Argenprop · MercadoLibre · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    res.innerHTML='<div class="card"><div style="font-size:13px;line-height:1.8">'+html+'</div>'+
+      '<div style="margin-top:.8rem;font-size:11px;color:#aaa">Radio 500m · Zonaprop · Argenprop · MercadoLibre · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
     btn.textContent='🔍 Analizar mercado'; btn.disabled=false;
   }).catch(function(e){
     res.innerHTML='<div style="color:#c0392b;padding:1rem">Error: '+esc(e.message)+'<br>'+
