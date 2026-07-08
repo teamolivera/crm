@@ -728,834 +728,695 @@ function guardarCliente(id){
 // ============================================================
 // ACM — Análisis Comparativo de Mercado
 // ============================================================
-var _acm={
-  cliente:{nombres:[],genero:'M',propiedad:'',tipo:'',descripcion:'',m2cub:'',m2semi:'',m2desc:'',favor:'',contra:''},
-  remax:[],
-  argenprop:[],
-  resultados:{tope:'',minimo:'',promedio:'',sugerido:'',pctMin:5,pctMax:8}
+
+// ============================================================
+// ACM — Análisis Comparativo de Mercado
+// ============================================================
+var _acm = {
+  cliente: {
+    nombres:[], genero:'M',
+    direccion:'', zona:'', tipo:'', estado:'', antiguedad:'',
+    ambientes:'', dormitorios:'', banos:'', toilette:'',
+    cochera:'no', amenities:'', deseabilidad:'',
+    m2cub:'', m2semi:'', m2desc:'',
+    descripcion:'', favor:'', contra:''
+  },
+  zonaprop: [],      // 1-3 comparables de Zonaprop (extraídos de PDF)
+  mapaZonaprop: null, // imagen del mapa
+  remax: [],         // 1-3 comparables RE/MAX (extraídos de PDF)
+  busqueda: {
+    localidad:'', tipo:'', ambientes:'', antiguedad:'',
+    m2min:'', m2max:'', cochera:'', amenities:'',
+    calidad:'', estadoInm:''
+  },
+  busquedaResultado: '',
+  resultados: { promVendidos:'', m2Vendidos:'', promPublicados:'', m2Publicados:'', sugerido:'' }
 };
-var _acmSubTab='cliente';
+var _acmSubTab = 'cliente';
 
-function loadAnalisis(){
-  _acmSubTab=_acmSubTab||'cliente';
-  var tabs=[
-    {id:'cliente',label:'📋 Datos del cliente'},
-    {id:'argenprop',label:'🔍 Comparables Zonaprop'},
-    {id:'remax',label:'📄 Comparables RE/MAX'},
-    {id:'resultados',label:'📊 Resultados y valuación'}
-  ];
-  var navHtml='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.5rem;border-bottom:2px solid #e5e7eb;padding-bottom:10px">';
-  tabs.forEach(function(t){
-    var activo=_acmSubTab===t.id;
-    navHtml+='<button onclick="acmSubTab(\''+t.id+'\')" style="padding:6px 14px;border-radius:8px 8px 0 0;border:none;cursor:pointer;font-size:13px;font-weight:'+(activo?'700':'500')+';background:'+(activo?'#185FA5':'#f3f4f6')+';color:'+(activo?'#fff':'#374151')+';border-bottom:'+(activo?'2px solid #185FA5':'2px solid transparent')+'">'+t.label+'</button>';
-  });
-  navHtml+='</div>';
+function fmtN(n){ return n?Number(n).toLocaleString('es-AR'):'—'; }
 
-  var html='<div class="section-header"><div class="section-title">Análisis Comparativo de Mercado</div></div>'+navHtml+'<div id="acmContenido"></div>';
-  document.getElementById('tabContent').innerHTML=html;
-  acmRenderSubTab();
-}
-
-function acmSubTab(id){
-  _acmSubTab=id;
-  loadAnalisis();
-}
-
-function acmRenderSubTab(){
-  var el=document.getElementById('acmContenido');
-  if(!el)return;
-  if(_acmSubTab==='cliente')el.innerHTML=acmHtmlCliente();
-  else if(_acmSubTab==='argenprop')el.innerHTML=acmHtmlArgenprop();
-  else if(_acmSubTab==='remax')el.innerHTML=acmHtmlRemax();
-  else if(_acmSubTab==='resultados')el.innerHTML=acmHtmlResultados();
-}
-
-// ---- SUB-TAB: DATOS DEL CLIENTE ----
-function acmHtmlCliente(){
-  var c=_acm.cliente;
-  var nombres=c.nombres.join(', ');
-  return '<div class="card" style="max-width:680px">'
-    +'<p style="font-weight:600;margin-bottom:1rem">Destinatario del informe</p>'
-    +'<div class="form-group"><label>Nombre/s del o los propietarios</label>'
-    +'<input id="acm-nombres" placeholder="ej: Marcelo, Marcelo y Adriana" value="'+esc(nombres)+'" autocomplete="off"/>'
-    +'<div style="font-size:11px;color:#888;margin-top:4px">Si son varios, separalos con coma. El saludo se adapta automáticamente.</div></div>'
-    +'<div class="form-group"><label>Género (para el saludo, si es una sola persona)</label>'
-    +'<select id="acm-genero">'
-    +'<option value="M"'+(c.genero==='M'?' selected':'')+'>Estimado (masculino)</option>'
-    +'<option value="F"'+(c.genero==='F'?' selected':'')+'>Estimada (femenino)</option>'
-    +'</select>'
-    +'<div style="font-size:11px;color:#888;margin-top:4px">Si son dos o más personas se usa "Estimados" automáticamente.</div></div>'
-    +'<hr style="margin:1.2rem 0;border:none;border-top:1px solid #eee"/>'
-    +'<p style="font-weight:600;margin-bottom:1rem">Datos de la propiedad del cliente</p>'
-    +'<div class="form-group"><label>Dirección</label><input id="acm-propiedad" value="'+esc(c.propiedad)+'" placeholder="ej: Av. Congreso 4700, Piso 3, Villa Urquiza" autocomplete="off"/></div>'
-    +'<div class="row">'
-    +'<div class="form-group"><label>Tipo</label><select id="acm-tipo"><option'+(c.tipo==='Departamento'?' selected':'')+'>Departamento</option><option'+(c.tipo==='PH'?' selected':'')+'>PH</option><option'+(c.tipo==='Casa'?' selected':'')+'>Casa</option><option'+(c.tipo==='Local'?' selected':'')+'>Local</option></select></div>'
-    +'<div class="form-group"><label>Ambientes</label><input id="acm-amb" type="number" value="'+(c.amb||'')+'" placeholder="ej: 3"/></div>'
-    +'</div>'
-    +'<div class="form-group"><label>Descripción breve de la propiedad</label>'
-    +'<textarea id="acm-desc" rows="3" style="width:100%;resize:vertical" placeholder="ej: Departamento 3 ambientes en piso alto, living comedor, cocina equipada, balcón con vista, baño completo, toilette, cochera.">'+(c.descripcion||'')+'</textarea></div>'
-    +'<div class="row">'
-    +'<div class="form-group"><label>M² cubiertos</label><input id="acm-m2cub" type="number" step="0.01" value="'+(c.m2cub||'')+'" placeholder="ej: 65"/></div>'
-    +'<div class="form-group"><label>M² semicubiertos</label><input id="acm-m2semi" type="number" step="0.01" value="'+(c.m2semi||'')+'" placeholder="ej: 8"/></div>'
-    +'<div class="form-group"><label>M² descubiertos</label><input id="acm-m2desc" type="number" step="0.01" value="'+(c.m2desc||'')+'" placeholder="ej: 0"/></div>'
-    +'</div>'
-    +'<div class="form-group"><label>Puntos a favor</label>'
-    +'<textarea id="acm-favor" rows="3" style="width:100%;resize:vertical" placeholder="ej: Zona demandada, piso alto, buena iluminación, edificio con amenities">'+(c.favor||'')+'</textarea></div>'
-    +'<div class="form-group"><label>Puntos en contra</label>'
-    +'<textarea id="acm-contra" rows="3" style="width:100%;resize:vertical" placeholder="ej: Sin escritura, expensas altas, antigüedad del edificio">'+(c.contra||'')+'</textarea></div>'
-    +'<button class="btn btn-primary" onclick="acmGuardarCliente()">Guardar y continuar →</button>'
-    +'</div>';
-}
-
-function acmGuardarCliente(){
-  var nombresRaw=v('acm-nombres');
-  var lista=nombresRaw.split(',').map(function(n){return n.trim();}).filter(Boolean);
-  _acm.cliente={
-    nombres:lista,
-    genero:v('acm-genero'),
-    propiedad:v('acm-propiedad'),
-    tipo:v('acm-tipo'),
-    amb:v('acm-amb'),
-    descripcion:v('acm-desc'),
-    m2cub:v('acm-m2cub'),
-    m2semi:v('acm-m2semi'),
-    m2desc:v('acm-m2desc'),
-    favor:v('acm-favor'),
-    contra:v('acm-contra')
-  };
-  acmSubTab('argenprop');
+function getAnthropicKey(){
+  var k=localStorage.getItem('anthropic_api_key');
+  if(!k){
+    k=prompt('Necesitás tu API key de Anthropic (console.anthropic.com):');
+    if(k) localStorage.setItem('anthropic_api_key', k.trim());
+  }
+  return k ? k.trim() : null;
 }
 
 function acmSaludo(){
-  var c=_acm.cliente;
-  var n=c.nombres;
-  if(!n||n.length===0)return'Estimado/a propietario/a';
-  if(n.length===1)return(c.genero==='F'?'Estimada ':'Estimado ')+n[0];
-  var todos=n.slice(0,-1).join(', ')+' y '+n[n.length-1];
-  return'Estimados '+todos;
+  var c=_acm.cliente, n=c.nombres;
+  if(!n||!n.length) return 'Estimado/a propietario/a';
+  if(n.length===1) return (c.genero==='F'?'Estimada ':'Estimado ')+n[0];
+  return 'Estimados '+n.slice(0,-1).join(', ')+' y '+n[n.length-1];
 }
 
-// ---- SUB-TAB: COMPARABLES ARGENPROP ----
-var _acmModoBusqueda='zona'; // 'zona' | 'cuadricula' | 'mapa'
-
-// Variables del mapa
-var _mapaLeaflet=null;
-var _mapaMarker=null;
-var _mapaPoligono=null;
-var _mapaPoligonoLineas=[];
-var _mapaPoligonoMarkers=[];
-var _mapaPoligonoPoints=[];
-var _mapaZonaSeleccionada='';
-var _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
-var _mapaModo='zona';
-
-function setMapaModo(modo){
-  _mapaModo=modo;
-  _mapaZonaSeleccionada='';
-  _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
-  _mapaPoligonoPoints=[];
-  document.getElementById('mapaZonaDetectada').textContent='';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-  limpiarMapa();
-  var instruccion=modo==='zona'
-    ?'Hacé clic en el mapa para marcar el barrio/zona.'
-    :'Hacé clic para agregar puntos y definir el área. Cuando termines, apretá "Cerrar área".';
-  document.getElementById('mapaInstruccion').textContent=instruccion;
-  var btnCerrar=document.getElementById('mapaCerrarPoligono');
-  if(btnCerrar)btnCerrar.style.display=modo==='grid'?'inline-block':'none';
-  document.getElementById('mapaModoZona').style.background=modo==='zona'?'#185FA5':'';
-  document.getElementById('mapaModoZona').style.color=modo==='zona'?'#fff':'';
-  document.getElementById('mapaModoGrid').style.background=modo==='grid'?'#185FA5':'';
-  document.getElementById('mapaModoGrid').style.color=modo==='grid'?'#fff':'';
-}
-
-function limpiarMapa(){
-  var L=window.L;
-  if(!_mapaLeaflet||!L)return;
-  if(_mapaMarker){_mapaLeaflet.removeLayer(_mapaMarker);_mapaMarker=null;}
-  if(_mapaPoligono){_mapaLeaflet.removeLayer(_mapaPoligono);_mapaPoligono=null;}
-  _mapaPoligonoLineas.forEach(function(l){_mapaLeaflet.removeLayer(l);});
-  _mapaPoligonoLineas=[];
-  _mapaPoligonoMarkers.forEach(function(m){_mapaLeaflet.removeLayer(m);});
-  _mapaPoligonoMarkers=[];
-  _mapaPoligonoPoints=[];
-}
-
-function abrirMapaZona(){
-  document.getElementById('mapaModal').classList.add('visible');
-  document.getElementById('mapaZonaDetectada').textContent='';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-  var modoMapa=_acmModoBusqueda==='cuadricula'?'grid':'zona';
-  setTimeout(function(){
-    if(!_mapaLeaflet){
-      if(!window.L){
-        var lnk=document.createElement('link');lnk.rel='stylesheet';lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(lnk);
-        var sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        sc.onload=function(){iniciarMapa();setTimeout(function(){setMapaModo(modoMapa);},100);};document.head.appendChild(sc);
-      }else{iniciarMapa();setMapaModo(modoMapa);}
-    }else{_mapaLeaflet.invalidateSize();setMapaModo(modoMapa);}
-  },150);
-}
-
-function getAnthropicKey(){
-  var k=localStorage.getItem('anthropic_api_key');
-  if(!k){
-    k=prompt('Para usar el ACM necesitás tu API key de Anthropic.\nObtené una en console.anthropic.com\n\nPegá tu API key acá (sk-ant-...):');
-    if(k)localStorage.setItem('anthropic_api_key',k.trim());
-  }
-  return k?k.trim():null;
-}
-
-function iniciarMapa(){
-  var L=window.L;
-  _mapaLeaflet=L.map('mapaContainer',{doubleClickZoom:false}).setView([-34.5883,-58.4003],13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(_mapaLeaflet);
-  var lastClick=0;
-  _mapaLeaflet.on('click',function(e){
-    var now=Date.now();
-    if(now-lastClick<350)return;
-    lastClick=now;
-    if(_mapaModo==='zona'){mapaClickZona(e);}
-    else{mapaClickPoligono(e);}
-  });
-}
-
-function mapaClickZona(e){
-  var L=window.L;
-  limpiarMapa();
-  _mapaMarker=L.marker(e.latlng).addTo(_mapaLeaflet);
-  document.getElementById('mapaZonaDetectada').textContent='Detectando barrio...';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-  fetch('https://nominatim.openstreetmap.org/reverse?lat='+e.latlng.lat+'&lon='+e.latlng.lng+'&format=json&accept-language=es')
-    .then(function(r){return r.json();}).then(function(d){
-      var addr=d.address||{};
-      var barrio=addr.neighbourhood||addr.suburb||addr.quarter||addr.city_district||'';
-      _mapaZonaSeleccionada=barrio;
-      document.getElementById('mapaZonaDetectada').textContent=barrio?'✓ Zona detectada: '+barrio:'No se detectó barrio. Intentá otro punto.';
-      document.getElementById('mapaConfirmarBtn').disabled=!barrio;
-    }).catch(function(){
-      document.getElementById('mapaZonaDetectada').textContent='Error al detectar el barrio.';
-    });
-}
-
-function mapaClickPoligono(e){
-  var L=window.L;
-  _mapaPoligonoPoints.push(e.latlng);
-  var n=_mapaPoligonoPoints.length;
-
-  // Marcador numerado
-  var m=L.marker(e.latlng,{
-    icon:L.divIcon({className:'',html:'<div style="background:#185FA5;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">'+n+'</div>',iconSize:[22,22],iconAnchor:[11,11]})
-  }).addTo(_mapaLeaflet);
-  _mapaPoligonoMarkers.push(m);
-
-  // Línea al punto anterior
-  if(n>1){
-    var linea=L.polyline([_mapaPoligonoPoints[n-2],e.latlng],{color:'#185FA5',weight:2,dashArray:'5,5'}).addTo(_mapaLeaflet);
-    _mapaPoligonoLineas.push(linea);
-  }
-
-  // Actualizar polígono si hay 3+ puntos
-  if(n>=3){
-    if(_mapaPoligono)_mapaLeaflet.removeLayer(_mapaPoligono);
-    _mapaPoligono=L.polygon(_mapaPoligonoPoints,{color:'#185FA5',weight:2,fillOpacity:0.1}).addTo(_mapaLeaflet);
-  }
-
-  document.getElementById('mapaZonaDetectada').textContent=n+' punto'+(n>1?'s':'')+' marcado'+(n>1?'s':'')+'. '+(n<3?'Necesitás al menos 3 puntos.':'Podés seguir agregando puntos o cerrar el área.');
-  if(n>=3)document.getElementById('mapaCerrarPoligono').style.background='#00C853';
-}
-
-function cerrarPoligonoMapa(){
-  var L=window.L;
-  var n=_mapaPoligonoPoints.length;
-  if(n<3){alert('Necesitás marcar al menos 3 puntos para cerrar el área.');return;}
-
-  // Dibujar polígono cerrado final
-  if(_mapaPoligono)_mapaLeaflet.removeLayer(_mapaPoligono);
-  _mapaPoligono=L.polygon(_mapaPoligonoPoints,{color:'#185FA5',weight:2.5,fillOpacity:0.15}).addTo(_mapaLeaflet);
-  _mapaLeaflet.fitBounds(_mapaPoligono.getBounds(),{padding:[20,20]});
-
-  // Obtener calles de los puntos extremos
-  var bounds=_mapaPoligono.getBounds();
-  var ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
-  document.getElementById('mapaZonaDetectada').textContent='Detectando calles del área...';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-
-  Promise.all([
-    fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-    fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-    fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-    fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();})
-  ]).then(function(res){
-    function calle(d){var a=d.address||{};return a.road||a.pedestrian||'';}
-    _mapaGridCalles={norte:calle(res[0]),sur:calle(res[1]),este:calle(res[2]),oeste:calle(res[3])};
-    var txt='✓ Área definida por: '+[_mapaGridCalles.norte,_mapaGridCalles.sur,_mapaGridCalles.este,_mapaGridCalles.oeste].filter(Boolean).join(' / ');
-    document.getElementById('mapaZonaDetectada').textContent=txt;
-    document.getElementById('mapaConfirmarBtn').disabled=false;
-  }).catch(function(){
-    document.getElementById('mapaZonaDetectada').textContent='Área marcada. No se detectaron calles exactas.';
-    document.getElementById('mapaConfirmarBtn').disabled=false;
-  });
-}
-
-function cerrarMapaZona(){
-  document.getElementById('mapaModal').classList.remove('visible');
-}
-
-function confirmarZonaMapa(){
-  if(_mapaModo==='zona'&&_mapaZonaSeleccionada){
-    var el=document.getElementById('an-zona');
-    if(el)el.value=_mapaZonaSeleccionada;
-    var info=document.getElementById('an-zona-mapa-info');
-    if(info)info.innerHTML='<span style="color:#185FA5;font-weight:600">✓ Zona: '+esc(_mapaZonaSeleccionada)+'</span>';
-  }else if(_mapaModo==='grid'){
-    ['norte','sur','este','oeste'].forEach(function(lado){
-      var el=document.getElementById('an-'+lado);
-      if(el&&_mapaGridCalles[lado])el.value=_mapaGridCalles[lado];
-    });
-    var info=document.getElementById('an-zona-mapa-info');
-    if(info){
-      var txt='<span style="color:#185FA5;font-weight:600">✓ Área: ';
-      if(_mapaGridCalles.norte)txt+=_mapaGridCalles.norte;
-      if(_mapaGridCalles.sur)txt+=' / '+_mapaGridCalles.sur;
-      if(_mapaGridCalles.este)txt+=' / '+_mapaGridCalles.este;
-      if(_mapaGridCalles.oeste)txt+=' / '+_mapaGridCalles.oeste;
-      info.innerHTML=txt+'</span>';
-    }
-  }
-  cerrarMapaZona();
-}
-
-
-  _mapaModo=modo;
-  _mapaZonaSeleccionada='';
-  _mapaGridCalles={norte:'',sur:'',este:'',oeste:''};
-  _mapaRectP1=null;
-  document.getElementById('mapaZonaDetectada').textContent='';
-function abrirMapaZona(){
-  document.getElementById('mapaModal').classList.add('visible');
-  document.getElementById('mapaZonaDetectada').textContent='';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-  // Setear modo según búsqueda actual
-  var modoMapa=_acmModoBusqueda==='cuadricula'?'grid':'zona';
-  setTimeout(function(){
-    setMapaModo(modoMapa);
-    if(!_mapaLeaflet){
-      if(!window.L){
-        var lnk=document.createElement('link');lnk.rel='stylesheet';lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(lnk);
-        var sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        sc.onload=function(){iniciarMapa();};document.head.appendChild(sc);
-      }else{iniciarMapa();}
-    }else{_mapaLeaflet.invalidateSize();}
-  },150);
-}
-
-function getAnthropicKey(){
-  var k=localStorage.getItem('anthropic_api_key');
-  if(!k){
-    k=prompt('Para usar el ACM necesitás tu API key de Anthropic.\nObtené una en console.anthropic.com\n\nPegá tu API key acá (sk-ant-...):');
-    if(k)localStorage.setItem('anthropic_api_key',k.trim());
-  }
-  return k?k.trim():null;
-}
-
-function iniciarMapa(){
-  var L=window.L;
-  _mapaLeaflet=L.map('mapaContainer',{doubleClickZoom:false}).setView([-34.5883,-58.4003],13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(_mapaLeaflet);
-  var lastClick=0;
-  _mapaLeaflet.on('click',function(e){
-    var now=Date.now();
-    if(now-lastClick<400)return; // ignorar doble clic
-    lastClick=now;
-    if(_mapaModo==='zona'){mapaClickZona(e);}
-    else{mapaClickGrid(e);}
-  });
-}
-
-function mapaClickZona(e){
-  var L=window.L;
-  if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
-  _mapaMarker=L.marker(e.latlng).addTo(_mapaLeaflet);
-  document.getElementById('mapaZonaDetectada').textContent='Detectando barrio...';
-  document.getElementById('mapaConfirmarBtn').disabled=true;
-  fetch('https://nominatim.openstreetmap.org/reverse?lat='+e.latlng.lat+'&lon='+e.latlng.lng+'&format=json&accept-language=es')
-    .then(function(r){return r.json();}).then(function(d){
-      var addr=d.address||{};
-      var barrio=addr.neighbourhood||addr.suburb||addr.quarter||addr.city_district||'';
-      _mapaZonaSeleccionada=barrio;
-      document.getElementById('mapaZonaDetectada').textContent=barrio?'Zona: '+barrio:'No se detectó barrio.';
-      document.getElementById('mapaConfirmarBtn').disabled=!barrio;
-    }).catch(function(){
-      document.getElementById('mapaZonaDetectada').textContent='Error al detectar el barrio.';
-    });
-}
-
-function mapaClickGrid(e){
-  var L=window.L;
-  if(!_mapaRectP1){
-    _mapaRectP1=e.latlng;
-    if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
-    _mapaMarker=L.marker(e.latlng,{title:'Esquina 1'}).addTo(_mapaLeaflet);
-    document.getElementById('mapaZonaDetectada').textContent='Esquina 1 marcada. Hacé clic en la esquina opuesta.';
-  }else{
-    var bounds=L.latLngBounds(_mapaRectP1,e.latlng);
-    if(_mapaRect)_mapaLeaflet.removeLayer(_mapaRect);
-    if(_mapaMarker)_mapaLeaflet.removeLayer(_mapaMarker);
-    _mapaMarker=null;
-    _mapaRect=L.rectangle(bounds,{color:'#185FA5',weight:2,fillOpacity:0.1}).addTo(_mapaLeaflet);
-    _mapaLeaflet.fitBounds(bounds,{padding:[20,20]});
-    document.getElementById('mapaZonaDetectada').textContent='Detectando calles...';
-    _mapaRectP1=null;
-    var ne=bounds.getNorthEast(),sw=bounds.getSouthWest();
-    Promise.all([
-      fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-      fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-      fetch('https://nominatim.openstreetmap.org/reverse?lat='+ne.lat+'&lon='+ne.lng+'&format=json&accept-language=es').then(function(r){return r.json();}),
-      fetch('https://nominatim.openstreetmap.org/reverse?lat='+sw.lat+'&lon='+sw.lng+'&format=json&accept-language=es').then(function(r){return r.json();})
-    ]).then(function(res){
-      function calle(d){var a=d.address||{};return a.road||a.pedestrian||'';}
-      _mapaGridCalles={norte:calle(res[0]),sur:calle(res[1]),este:calle(res[2]),oeste:calle(res[3])};
-      var txt='Cuadrícula: N:'+(_mapaGridCalles.norte||'?')+' S:'+(_mapaGridCalles.sur||'?')+' E:'+(_mapaGridCalles.este||'?')+' O:'+(_mapaGridCalles.oeste||'?');
-      document.getElementById('mapaZonaDetectada').textContent=txt;
-      document.getElementById('mapaConfirmarBtn').disabled=false;
-    }).catch(function(){
-      document.getElementById('mapaZonaDetectada').textContent='Error al detectar calles.';
-      document.getElementById('mapaConfirmarBtn').disabled=false;
-    });
-  }
-}
-
-function cerrarMapaZona(){
-  document.getElementById('mapaModal').classList.remove('visible');
-}
-
-
-function acmHtmlArgenprop(){
-  var zonaDefault=_acm.cliente.propiedad?_acm.cliente.propiedad.split(',').slice(-2).join(',').trim():'';
-  var modos=[
-    {id:'zona',label:'📍 Por zona'},
-    {id:'cuadricula',label:'⬜ Por cuadrícula de calles'},
-    {id:'mapa',label:'🗺️ Dibujar en mapa'}
+function loadAnalisis(){
+  _acmSubTab = _acmSubTab||'cliente';
+  var tabs = [
+    {id:'cliente',   label:'1. Propiedad'},
+    {id:'zonaprop',  label:'2. Zonaprop'},
+    {id:'mapa',      label:'3. Mapa'},
+    {id:'remax',     label:'4. RE/MAX'},
+    {id:'busqueda',  label:'5. Mercado'},
+    {id:'resultados',label:'6. Resultados'}
   ];
-  var navModos='<div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">';
-  modos.forEach(function(m){
-    var act=_acmModoBusqueda===m.id;
-    navModos+='<button onclick="acmSetModo(\''+m.id+'\')" style="padding:7px 14px;border-radius:20px;border:2px solid '+(act?'#185FA5':'#ddd')+';background:'+(act?'#185FA5':'#fff')+';color:'+(act?'#fff':'#374151')+';font-size:13px;cursor:pointer;font-weight:'+(act?'700':'400')+'">'+m.label+'</button>';
+  var nav = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:1.5rem;border-bottom:2px solid #e5e7eb;padding-bottom:10px">';
+  tabs.forEach(function(t){
+    var on = _acmSubTab===t.id;
+    nav += '<button onclick="acmSubTab(\''+t.id+'\')" style="padding:6px 12px;border-radius:8px 8px 0 0;border:none;cursor:pointer;font-size:12px;font-weight:'+(on?700:500)+';background:'+(on?'#185FA5':'#f3f4f6')+';color:'+(on?'#fff':'#374151')+';border-bottom:'+(on?'2px solid #185FA5':'2px solid transparent')+'">'+t.label+'</button>';
   });
-  navModos+='</div>';
-
-  var campoBusqueda='';
-  if(_acmModoBusqueda==='zona'){
-    campoBusqueda='<div class="form-group"><label>Zona / Barrio</label>'
-      +'<input id="an-zona" list="an-zona-list" value="'+esc(zonaDefault)+'" placeholder="Escribí una zona o barrio..." autocomplete="off"/>'
-      +'<datalist id="an-zona-list"><option>Villa Urquiza</option><option>Villa Pueyrredón</option><option>Villa Devoto</option><option>Villa del Parque</option><option>Belgrano</option><option>Colegiales</option><option>Palermo</option><option>Saavedra</option><option>Núñez</option><option>Coghlan</option><option>Parque Chas</option><option>Villa Ortuzar</option><option>Caballito</option><option>Almagro</option><option>Flores</option><option>Villa Crespo</option><option>Recoleta</option></datalist>'
-      +'</div>';
-  }else if(_acmModoBusqueda==='cuadricula'){
-    campoBusqueda='<div class="form-group"><label>Calles que delimitan el área</label>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<input id="an-norte" placeholder="Calle Norte (ej: Av. Triunvirato)" autocomplete="off"/>'
-      +'<input id="an-sur" placeholder="Calle Sur (ej: Av. Congreso)" autocomplete="off"/>'
-      +'<input id="an-este" placeholder="Calle Este (ej: Av. Monroe)" autocomplete="off"/>'
-      +'<input id="an-oeste" placeholder="Calle Oeste (ej: Av. de los Incas)" autocomplete="off"/>'
-      +'</div></div>';
-  }else if(_acmModoBusqueda==='mapa'){
-    campoBusqueda='<div class="form-group">'
-      +'<div id="an-zona-mapa-info" style="font-size:13px;color:#888;margin-bottom:8px">Abrí el mapa, dibujá el área y confirmá la zona.</div>'
-      +'<button class="btn" onclick="abrirMapaZona()">🗺️ Abrir mapa y dibujar área</button>'
-      +'<input id="an-zona" type="hidden" value="'+esc(zonaDefault)+'"/>'
-      +'<input id="an-norte" type="hidden"/><input id="an-sur" type="hidden"/>'
-      +'<input id="an-este" type="hidden"/><input id="an-oeste" type="hidden"/>'
-      +'</div>';
-  }
-
-  return '<div class="card" style="max-width:680px">'
-    +'<p style="font-weight:600;margin-bottom:6px">Comparables en Zonaprop</p>'
-    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Elegí cómo querés definir el área de búsqueda:</div>'
-    +navModos
-    +campoBusqueda
-    +'<div class="row">'
-    +'<div class="form-group"><label>Tipo</label><select id="an-tipo"><option value="">Cualquier tipo</option><option>Departamento</option><option>PH</option><option>Casa</option><option>Local</option><option>Oficina</option></select></div>'
-    +'<div class="form-group"><label>Operación</label><select id="an-op"><option value="venta">Venta</option><option value="alquiler">Alquiler</option></select></div>'
-    +'</div>'
-    +'<div class="row">'
-    +'<div class="form-group"><label>Ambientes</label><select id="an-amb"><option value="">Cualquier cantidad</option><option value="1">1 ambiente</option><option value="2">2 ambientes</option><option value="3">3 ambientes</option><option value="4">4 ambientes</option><option value="5">5+ ambientes</option></select></div>'
-    +'<div class="form-group"><label>Estado</label><select id="an-estado"><option value="">Cualquier estado</option><option value="a estrenar">A estrenar</option><option value="excelente">Excelente</option><option value="muy bueno">Muy bueno</option><option value="bueno">Bueno</option><option value="a reciclar">A reciclar</option></select></div>'
-    +'</div>'
-    +'<div class="form-group"><label>Metros cuadrados</label>'
-    +'<div style="display:flex;gap:8px;align-items:center">'
-    +'<input id="an-m2-min" type="number" placeholder="Mínimo" style="flex:1"/>'
-    +'<span style="color:#888">y</span>'
-    +'<input id="an-m2-max" type="number" placeholder="Máximo" style="flex:1"/>'
-    +'<span style="color:#888">m²</span>'
-    +'</div></div>'
-    +'<div class="row">'
-    +'<div class="form-group"><label>Cochera</label><select id="an-cochera"><option value="">Indistinto</option><option value="con cochera">Con cochera</option><option value="sin cochera">Sin cochera</option></select></div>'
-    +'<div class="form-group"><label>Amenities</label><select id="an-amenities"><option value="">Indistinto</option><option value="con amenities">Con amenities</option><option value="sin amenities">Sin amenities</option></select></div>'
-    +'</div>'
-    +'<button class="btn btn-primary btn-full" id="an-btn" onclick="correrAnalisis()">🔍 Buscar en Zonaprop</button>'
-    +'<div id="an-resultado" style="margin-top:1.5rem"></div>'
-    +'</div>';
+  nav += '</div>';
+  document.getElementById('tabContent').innerHTML =
+    '<div class="section-header"><div class="section-title">Análisis Comparativo de Mercado</div></div>'+
+    nav+'<div id="acmContenido"></div>';
+  acmRender();
 }
 
-function acmSetModo(modo){
-  _acmModoBusqueda=modo;
-  document.getElementById('acmContenido').innerHTML=acmHtmlArgenprop();
-  if(modo==='mapa')setTimeout(abrirMapaZona,200);
+function acmSubTab(id){ _acmSubTab=id; loadAnalisis(); }
+
+function acmRender(){
+  var el=document.getElementById('acmContenido'); if(!el) return;
+  var map={cliente:acmHtmlCliente, zonaprop:acmHtmlZonaprop, mapa:acmHtmlMapa, remax:acmHtmlRemax, busqueda:acmHtmlBusqueda, resultados:acmHtmlResultados};
+  if(map[_acmSubTab]) el.innerHTML=map[_acmSubTab]();
 }
 
-function gv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
-
-function correrAnalisis(){
-  var apiKey=getAnthropicKey();
-  if(!apiKey){
-    alert('Necesitás configurar la API key de Anthropic para usar esta función.');
-    return;
+// ====== 1. PROPIEDAD DEL CLIENTE ======
+function acmHtmlCliente(){
+  var c=_acm.cliente;
+  function sel(id,val,opts){
+    return '<select id="'+id+'">'+ opts.map(function(o){return'<option'+(o===val?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
   }
-
-  var btn=document.getElementById('an-btn');
-  var res=document.getElementById('an-resultado');
-  if(!btn||!res){
-    alert('Error: no se encontró el botón o el área de resultado. Intentá recargar la pestaña ACM.');
-    return;
-  }
-  btn.textContent='Buscando...';btn.disabled=true;
-  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop...<br><small>Esto puede tardar 15-30 segundos</small></div>';
-
-  var filtros=[];
-  if(_acmModoBusqueda==='zona'){
-    var zona=gv('an-zona');
-    if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
-    else filtros.push('CABA, Argentina (zona general)');
-  }else if(_acmModoBusqueda==='cuadricula'||_acmModoBusqueda==='mapa'){
-    var norte=gv('an-norte'),sur=gv('an-sur'),este=gv('an-este'),oeste=gv('an-oeste');
-    var zona=gv('an-zona');
-    if(zona)filtros.push('Zona: '+zona+' (CABA, Argentina)');
-    if(norte||sur||este||oeste){
-      var g='Cuadrícula de calles en CABA:';
-      if(norte)g+=' Norte: '+norte;
-      if(sur)g+=' / Sur: '+sur;
-      if(este)g+=' / Este: '+este;
-      if(oeste)g+=' / Oeste: '+oeste;
-      filtros.push(g);
-    }
-    if(!zona&&!norte&&!sur&&!este&&!oeste)filtros.push('CABA, Argentina');
-  }
-
-  var tipo=gv('an-tipo'),op=gv('an-op')||'venta',amb=gv('an-amb'),estado=gv('an-estado');
-  var m2min=gv('an-m2-min'),m2max=gv('an-m2-max');
-  var cochera=gv('an-cochera'),amenities=gv('an-amenities');
-  if(tipo)filtros.push('Tipo: '+tipo);
-  filtros.push('Operación: '+op);
-  if(amb)filtros.push('Ambientes: '+amb);
-  if(estado)filtros.push('Estado: '+estado);
-  if(m2min&&m2max)filtros.push('Superficie: entre '+m2min+' y '+m2max+' m²');
-  else if(m2min)filtros.push('Superficie: desde '+m2min+' m²');
-  else if(m2max)filtros.push('Superficie: hasta '+m2max+' m²');
-  if(cochera)filtros.push('Cochera: '+cochera);
-  if(amenities)filtros.push('Amenities: '+amenities);
-
-  var prompt='Sos un experto en análisis de mercado inmobiliario en Buenos Aires. Buscá publicaciones reales en Zonaprop (zonaprop.com.ar) con estos filtros:\n'
-    +filtros.map(function(f){return'- '+f;}).join('\n')
-    +'\n\nInstrucciones:\n'
-    +'1. Buscá al menos 10-15 publicaciones en zonaprop.com.ar con esos filtros.\n'
-    +'2. Para cada publicación anotá: dirección, precio (USD), m² cubiertos, m² semicubiertos (si los hay), estado (Activa/Reservada/Cerrada).\n'
-    +'3. Calculá el precio por m² ajustado: precio / (m²_cubiertos + m²_semicubiertos × 0.5). Si no hay desglose usá m² totales.\n'
-    +'4. Calculá promedios: precio promedio de publicación, precio/m² ajustado promedio, mínimo y máximo.\n'
-    +'5. Excluí emprendimientos "en pozo" o precios "desde" del promedio, pero mencionálos.\n'
-    +'6. Mostrá una tabla con dirección / precio / m² / USD/m² ajustado y los promedios finales destacados.\n'
-    +'7. Cerrá con una conclusión breve para un agente RE/MAX.';
-
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':apiKey,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:3000,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:prompt}]
-    })
-  }).then(function(r){
-    if(!r.ok){
-      return r.json().then(function(err){
-        throw new Error('API error '+r.status+': '+(err.error&&err.error.message||JSON.stringify(err)));
-      });
-    }
-    return r.json();
-  }).then(function(data){
-    var texto='';
-    if(data.content)data.content.forEach(function(b){if(b.type==='text')texto+=b.text;});
-    if(!texto){
-      if(data.error)throw new Error(data.error.message||'Error desconocido');
-      texto='No se pudieron obtener datos. Intentá de nuevo.';
-    }
-    texto=texto
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-      .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:15px;margin:1rem 0 4px">$1</p>')
-      .replace(/\n- /g,'<br>• ')
-      .replace(/\n/g,'<br>');
-    res.innerHTML='<div class="card"><div style="font-size:14px;line-height:1.7">'+texto+'</div>'
-      +'<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee;font-size:11px;color:#aaa">Datos obtenidos de Zonaprop · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
-    btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
-  }).catch(function(e){
-    res.innerHTML='<div class="card" style="color:#c0392b;padding:1rem">'
-      +'<strong>Error al conectar con la IA</strong><br>'
-      +esc(e.message)+'<br><br>'
-      +'<small>Verificá que la API key sea correcta. Podés borrarla de localStorage y volver a ingresarla.</small><br>'
-      +'<button class="btn btn-sm" style="margin-top:8px" onclick="localStorage.removeItem(\'anthropic_api_key\');alert(\'API key borrada. Recargá la pestaña ACM e ingresala de nuevo.\')">Borrar API key y reintentar</button>'
-      +'</div>';
-    btn.textContent='🔍 Buscar en Zonaprop';btn.disabled=false;
-  });
+  return '<div class="card" style="max-width:700px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:1rem">Datos de la propiedad a tasar</p>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Nombre/s del propietario/s</label>'+
+        '<input id="acm-nombres" value="'+esc(c.nombres.join(', '))+'" placeholder="ej: Carolina, o Marcelo y Adriana"/>'+
+        '<div style="font-size:11px;color:#888;margin-top:3px">Separalos con coma. El saludo se adapta solo.</div></div>'+
+      '<div class="form-group"><label>Género del saludo</label>'+
+        '<select id="acm-genero"><option value="M"'+(c.genero==='M'?' selected':'')+'>Estimado</option>'+
+        '<option value="F"'+(c.genero==='F'?' selected':'')+'>Estimada</option></select>'+
+        '<div style="font-size:11px;color:#888;margin-top:3px">Si son 2+ se usa "Estimados"</div></div>'+
+    '</div>'+
+    '<hr style="margin:1rem 0;border:none;border-top:1px solid #eee"/>'+
+    '<div class="form-group"><label>Dirección</label>'+
+      '<input id="acm-dir" value="'+esc(c.direccion)+'" placeholder="ej: Lugones 2124, Piso 3"/></div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Zona / Barrio</label>'+
+        '<input id="acm-zona" value="'+esc(c.zona)+'" placeholder="ej: Villa Urquiza"/></div>'+
+      '<div class="form-group"><label>Tipo</label>'+
+        sel('acm-tipo',c.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Estado</label>'+
+        sel('acm-estado',c.estado,['A estrenar','Excelente','Muy bueno','Bueno','A reciclar'])+'</div>'+
+      '<div class="form-group"><label>Antigüedad (años)</label>'+
+        '<input id="acm-antig" type="number" value="'+esc(c.antiguedad)+'" placeholder="ej: 15"/></div>'+
+      '<div class="form-group"><label>Deseabilidad</label>'+
+        sel('acm-desea',c.deseabilidad,['Alta','Media','Baja'])+'</div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Ambientes</label>'+
+        '<input id="acm-amb" type="number" value="'+esc(c.ambientes)+'" placeholder="3"/></div>'+
+      '<div class="form-group"><label>Dormitorios</label>'+
+        '<input id="acm-dorm" type="number" value="'+esc(c.dormitorios)+'" placeholder="2"/></div>'+
+      '<div class="form-group"><label>Baños</label>'+
+        '<input id="acm-banos" type="number" value="'+esc(c.banos)+'" placeholder="1"/></div>'+
+      '<div class="form-group"><label>Toilettes</label>'+
+        '<input id="acm-toilet" type="number" value="'+esc(c.toilette)+'" placeholder="1"/></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Cochera</label>'+
+        sel('acm-cochera',c.cochera,['No','Sí (1)','Sí (2)'])+'</div>'+
+      '<div class="form-group"><label>Amenities</label>'+
+        '<input id="acm-amenities" value="'+esc(c.amenities)+'" placeholder="ej: Pileta, SUM, gimnasio"/></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>M² cubiertos</label>'+
+        '<input id="acm-m2cub" type="number" step="0.01" value="'+esc(c.m2cub)+'" placeholder="65"/></div>'+
+      '<div class="form-group"><label>M² semicubiertos</label>'+
+        '<input id="acm-m2semi" type="number" step="0.01" value="'+esc(c.m2semi)+'" placeholder="8"/></div>'+
+      '<div class="form-group"><label>M² descubiertos</label>'+
+        '<input id="acm-m2desc" type="number" step="0.01" value="'+esc(c.m2desc)+'" placeholder="0"/></div>'+
+    '</div>'+
+    '<div class="form-group"><label>Descripción general</label>'+
+      '<textarea id="acm-desc" rows="2" style="width:100%;resize:vertical" placeholder="Descripción breve de la propiedad">'+esc(c.descripcion||'')+'</textarea></div>'+
+    '<div class="form-group"><label>✅ Puntos a favor</label>'+
+      '<textarea id="acm-favor" rows="3" style="width:100%;resize:vertical" placeholder="ej: Piso alto, buena iluminación, zona demandada, amenities completos, cochera propia...">'+esc(c.favor||'')+'</textarea></div>'+
+    '<div class="form-group"><label>❌ Puntos en contra</label>'+
+      '<textarea id="acm-contra" rows="3" style="width:100%;resize:vertical" placeholder="ej: Expensas altas, sin escritura, antigüedad, orientación norte...">'+esc(c.contra||'')+'</textarea></div>'+
+    '<button class="btn btn-primary" onclick="acmGuardarCliente()">Guardar y continuar →</button>'+
+  '</div>';
 }
 
-// ---- SUB-TAB: COMPARABLES RE/MAX ----
-function acmHtmlRemax(){
-  var rows=_acm.remax;
-  var html='<div class="card" style="max-width:680px">'
-    +'<p style="font-weight:600;margin-bottom:6px">Comparables RE/MAX</p>'
-    +'<div style="font-size:12px;color:#888;margin-bottom:1rem">Subí el PDF del ACM exportado desde tu portal de RE/MAX. El sistema extrae los datos y recalcula el precio por m² ajustado (semi-cubiertos = mitad de valor cubierto).</div>'
-    +'<div class="form-group">'
-    +'<input type="file" id="acm-remax-file" accept=".pdf" onchange="acmLeerPdfRemax(this)"/>'
-    +'</div>'
-    +'<div id="acm-remax-estado" style="margin-bottom:1rem"></div>';
+function acmGuardarCliente(){
+  var lista = v('acm-nombres').split(',').map(function(n){return n.trim();}).filter(Boolean);
+  _acm.cliente = {
+    nombres:lista, genero:v('acm-genero'),
+    direccion:v('acm-dir'), zona:v('acm-zona'),
+    tipo:v('acm-tipo'), estado:v('acm-estado'),
+    antiguedad:v('acm-antig'), deseabilidad:v('acm-desea'),
+    ambientes:v('acm-amb'), dormitorios:v('acm-dorm'),
+    banos:v('acm-banos'), toilette:v('acm-toilet'),
+    cochera:v('acm-cochera'), amenities:v('acm-amenities'),
+    m2cub:v('acm-m2cub'), m2semi:v('acm-m2semi'), m2desc:v('acm-m2desc'),
+    descripcion:v('acm-desc'), favor:v('acm-favor'), contra:v('acm-contra')
+  };
+  acmSubTab('zonaprop');
+}
+
+// ====== 2. COMPARABLES ZONAPROP (PDF) ======
+function acmHtmlZonaprop(){
+  var rows = _acm.zonaprop;
+  var html = '<div class="card" style="max-width:720px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Comparables Zonaprop</p>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Subí entre 1 y 3 PDFs de propiedades seleccionadas en Zonaprop. La IA extrae precio, m², días, clicks y fotos.</div>'+
+    '<div style="font-size:12px;background:#fffbe6;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;margin-bottom:1rem">'+
+      '📊 <strong>Regla de clicks:</strong> en CABA, ≥5 clicks/día = propiedad en precio (indicador verde).</div>'+
+    '<div class="form-group">'+
+      '<label>Subir PDF/s de Zonaprop (máx. 3)</label>'+
+      '<input type="file" id="acm-zp-file" accept=".pdf" multiple onchange="acmLeerPdfZonaprop(this)"/>'+
+    '</div>'+
+    '<div id="acm-zp-estado" style="margin-bottom:1rem"></div>';
 
   if(rows.length){
-    html+='<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">'
-      +'<tr style="background:#f3f4f6"><th style="padding:6px 8px;text-align:left">Dirección</th><th>Estado</th><th>Precio pub.</th><th>Precio venta</th><th>M² cub.</th><th>M² semi.</th><th>USD/m² ajust.</th><th>Días</th></tr>';
-    var sumPrecio=0,sumM2=0,sumVenta=0,contVenta=0,minVenta=Infinity,maxPub=0;
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:1rem">';
     rows.forEach(function(r,i){
-      var m2cub=Number(r.m2cub)||0;
-      var m2semi=Number(r.m2semi)||0;
-      var m2adj=m2cub+(m2semi*0.5);
-      var precio=Number(r.precio)||0;
-      var precioVenta=Number(r.precioVenta)||0;
-      var usdM2=m2adj>0?(precio/m2adj):0;
-      rows[i]._m2adj=m2adj;
-      rows[i]._usdM2=usdM2;
-      sumPrecio+=precio;
-      sumM2+=usdM2>0?usdM2:0;
-      if(precioVenta>0){sumVenta+=precioVenta;contVenta++;if(precioVenta<minVenta)minVenta=precioVenta;}
-      if(precio>maxPub)maxPub=precio;
-      var estadoColor=r.estado==='Cerrada'?'#d1fae5':r.estado==='Activa'?'#dbeafe':r.estado==='Reservada'?'#fef3c7':'#f3f4f6';
-      html+='<tr style="border-bottom:1px solid #f3f4f6">'
-        +'<td style="padding:6px 8px">'+esc(r.direccion||'-')+'</td>'
-        +'<td style="text-align:center"><span style="background:'+estadoColor+';padding:2px 6px;border-radius:10px;font-size:11px">'+esc(r.estado||'-')+'</span></td>'
-        +'<td style="text-align:right">USD '+fmtN(precio)+'</td>'
-        +'<td style="text-align:right">'+(precioVenta>0?'USD '+fmtN(precioVenta):'-')+'</td>'
-        +'<td style="text-align:right">'+(m2cub>0?m2cub+' m²':'-')+'</td>'
-        +'<td style="text-align:right">'+(m2semi>0?m2semi+' m²':'-')+'</td>'
-        +'<td style="text-align:right;font-weight:600">USD '+(usdM2>0?fmtN(Math.round(usdM2)):'-')+'</td>'
-        +'<td style="text-align:right">'+(r.dias||'-')+'</td>'
-        +'</tr>';
+      var m2adj = (Number(r.m2cub)||0) + (Number(r.m2semi)||0)*0.5;
+      var usdM2 = m2adj>0 ? Math.round((Number(r.precio)||0)/m2adj) : 0;
+      var clicksXdia = r.dias>0 ? ((Number(r.clicks)||0)/Number(r.dias)).toFixed(1) : '—';
+      var enPrecio = r.dias>0 && (Number(r.clicks)||0)/Number(r.dias) >= 5;
+      html += '<div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:12px">'+
+        (r.foto ? '<img src="'+r.foto+'" style="width:100%;height:120px;object-fit:cover"/>' :
+          '<div style="width:100%;height:120px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px">Sin foto</div>')+
+        '<div style="padding:10px">'+
+          '<div style="font-weight:600;margin-bottom:4px">'+esc(r.direccion||'—')+'</div>'+
+          '<div>USD '+fmtN(r.precio)+'</div>'+
+          '<div style="color:#888">'+
+            (r.m2cub?r.m2cub+' m² cub':'')+(r.m2semi?' · '+r.m2semi+' m² semi':'')+
+          '</div>'+
+          (usdM2>0?'<div style="color:#185FA5;font-weight:600">USD '+fmtN(usdM2)+'/m²</div>':'')+
+          '<div style="margin-top:6px">'+
+            '<span style="background:'+(enPrecio?'#d1fae5':'#fef3c7')+';color:'+(enPrecio?'#065f46':'#92400e')+';padding:2px 7px;border-radius:10px;font-size:11px">'+
+              (enPrecio?'✓ En precio':'⚠ Revisar precio')+
+            '</span>'+
+          '</div>'+
+          '<div style="color:#888;margin-top:4px">'+
+            (r.dias?r.dias+' días · ':'')+
+            (r.clicks?r.clicks+' clicks · '+clicksXdia+' clicks/día':'')+
+          '</div>'+
+          (r.ambientes?'<div>'+r.ambientes+' amb · '+(r.cochera||'sin cochera')+'</div>':'')+
+        '</div>'+
+      '</div>';
     });
-    var promPrecio=rows.length>0?(sumPrecio/rows.length):0;
-    var promM2=rows.filter(function(r){return r._usdM2>0;}).length>0?(sumM2/rows.filter(function(r){return r._usdM2>0;}).length):0;
-    var promVenta=contVenta>0?(sumVenta/contVenta):0;
-    html+='<tr style="background:#f8fafc;font-weight:700">'
-      +'<td colspan="2" style="padding:6px 8px">PROMEDIOS ('+rows.length+' propiedades)</td>'
-      +'<td style="text-align:right">USD '+fmtN(Math.round(promPrecio))+'</td>'
-      +'<td style="text-align:right">'+(promVenta>0?'USD '+fmtN(Math.round(promVenta)):'-')+'</td>'
-      +'<td colspan="2"></td>'
-      +'<td style="text-align:right;color:#185FA5">USD '+fmtN(Math.round(promM2))+'/m²</td>'
-      +'<td></td>'
-      +'</tr>'
-      +'</table></div>';
-
-    // Guardar promedios en resultados si están vacíos
-    if(!_acm.resultados.promedio&&promVenta>0)_acm.resultados.promedio=Math.round(promVenta);
-    if(!_acm.resultados.minimo&&minVenta<Infinity)_acm.resultados.minimo=Math.round(minVenta);
-    if(!_acm.resultados.tope&&maxPub>0)_acm.resultados.tope=Math.round(maxPub);
-
-    html+='<div style="margin-top:1rem">'
-      +'<button class="btn btn-primary" onclick="acmSubTab(\'resultados\')">Ver resultados y valuación →</button>'
-      +'</div>';
+    html += '</div>';
+    html += '<button class="btn btn-primary" onclick="acmSubTab(\'mapa\')">Continuar →</button>';
   }
-  html+='</div>';
+  html += '</div>';
   return html;
 }
 
-function fmtN(n){
-  return Number(n).toLocaleString('es-AR');
+function acmLeerPdfZonaprop(input){
+  var files = Array.from(input.files).slice(0,3);
+  if(!files.length) return;
+  var estado = document.getElementById('acm-zp-estado');
+  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s)...</div>';
+  var apiKey = getAnthropicKey();
+  if(!apiKey){ estado.innerHTML='<div style="color:#c0392b">Necesitás la API key.</div>'; return; }
+  _acm.zonaprop = [];
+
+  Promise.all(files.map(function(file){
+    return new Promise(function(resolve){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var base64 = e.target.result.split(',')[1];
+        fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body: JSON.stringify({
+            model:'claude-sonnet-4-6', max_tokens:1500,
+            messages:[{role:'user',content:[
+              {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+              {type:'text',text:'Extraé los datos de esta publicación de Zonaprop. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","dias":0,"clicks":0,"foto":""}\nReglas:\n- precio: en USD, número entero\n- m2cub: metros cubiertos\n- m2semi: metros semicubiertos (0 si no hay)\n- m2tot: metros totales\n- dias: días en el mercado\n- clicks: total de clicks o visitas mencionadas\n- foto: si hay URL de imagen en el PDF ponela, sino string vacío\n- cochera: "Sí" o "No"'}
+            ]}]
+          })
+        }).then(function(r){return r.json();})
+        .then(function(data){
+          var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text')txt+=b.text;});
+          try{ resolve(JSON.parse(txt.replace(/```json|```/g,'').trim())); }
+          catch(e){ resolve(null); }
+        }).catch(function(){ resolve(null); });
+      };
+      reader.readAsDataURL(file);
+    });
+  })).then(function(results){
+    _acm.zonaprop = results.filter(Boolean);
+    var n = _acm.zonaprop.length;
+    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s).</div>'; }
+    else { estado.innerHTML='<div style="color:#c0392b">No se pudieron extraer datos. Revisá los PDFs.</div>'; }
+    document.getElementById('acmContenido').innerHTML = acmHtmlZonaprop();
+  });
 }
 
-function acmLeerPdfRemax(input){
-  var file=input.files[0];
-  if(!file)return;
-  var estado=document.getElementById('acm-remax-estado');
-  estado.innerHTML='<div style="color:#888">⏳ Leyendo PDF con IA...</div>';
-  var apiKey=getAnthropicKey();
-  if(!apiKey){estado.innerHTML='<div style="color:#c0392b">Necesitás configurar la API key de Anthropic primero.</div>';return;}
+// ====== 3. MAPA ZONAPROP ======
+function acmHtmlMapa(){
+  return '<div class="card" style="max-width:700px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Mapa de Zonaprop</p>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Subí una captura de pantalla del mapa de Zonaprop con la zona delimitada y las propiedades en venta marcadas.</div>'+
+    '<div class="form-group">'+
+      '<input type="file" id="acm-mapa-file" accept="image/*" onchange="acmCargarMapa(this)"/>'+
+    '</div>'+
+    (_acm.mapaZonaprop ?
+      '<div style="margin-bottom:1rem">'+
+        '<img src="'+_acm.mapaZonaprop+'" style="max-width:100%;border-radius:8px;border:1px solid #e5e7eb"/>'+
+        '<div style="font-size:12px;color:#00C853;margin-top:6px">✓ Mapa cargado</div>'+
+      '</div>' : '')+
+    '<button class="btn btn-primary" onclick="acmSubTab(\'remax\')">Continuar →</button>'+
+  '</div>';
+}
 
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var base64=e.target.result.split(',')[1];
-    var prompt='Este PDF es un informe comparativo de mercado de RE/MAX con propiedades en venta y vendidas. '
-      +'Extraé los datos de cada propiedad y devolvé SOLO un JSON array con este formato exacto, sin texto adicional ni markdown:\n'
-      +'[{"direccion":"...","precio":180000,"precioVenta":0,"m2total":67.48,"m2cub":61.84,"m2semi":5.64,"estado":"Activa","dias":2},...]'
-      +'\nDonde: precio=precio de publicación en USD (número sin puntos ni comas), precioVenta=precio de venta en USD (0 si no hay), '
-      +'m2cub=superficie cubierta, m2semi=superficie semicubierta (0 si no hay), estado puede ser Activa/Reservada/Cerrada/En negociación, dias=días en el mercado. '
-      +'Ignorá las páginas de portada, mapa y promedios finales. Solo las propiedades individuales.';
-
-    fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:2000,
-        messages:[{role:'user',content:[
-          {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-          {type:'text',text:prompt}
-        ]}]
-      })
-    }).then(function(r){return r.json();}).then(function(data){
-      var texto='';
-      if(data.content)data.content.forEach(function(b){if(b.type==='text')texto+=b.text;});
-      try{
-        texto=texto.replace(/```json|```/g,'').trim();
-        var parsed=JSON.parse(texto);
-        _acm.remax=parsed;
-        estado.innerHTML='<div style="color:#00C853">✓ '+parsed.length+' propiedades extraídas correctamente.</div>';
-        document.getElementById('acmContenido').innerHTML=acmHtmlRemax();
-      }catch(err){
-        estado.innerHTML='<div style="color:#c0392b">Error al procesar el PDF. Asegurate de subir el PDF correcto.<br><small>'+err.message+'</small></div>';
-      }
-    }).catch(function(e){
-      estado.innerHTML='<div style="color:#c0392b">Error de conexión: '+e.message+'</div>';
-    });
+function acmCargarMapa(input){
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _acm.mapaZonaprop = e.target.result;
+    document.getElementById('acmContenido').innerHTML = acmHtmlMapa();
   };
   reader.readAsDataURL(file);
 }
 
-// ---- SUB-TAB: RESULTADOS Y VALUACIÓN ----
+// ====== 4. COMPARABLES RE/MAX (PDF) ======
+function acmHtmlRemax(){
+  var rows = _acm.remax;
+  var html = '<div class="card" style="max-width:720px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Comparables RE/MAX</p>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:6px">Subí entre 1 y 3 PDFs de propiedades (en venta y vendidas) de tu portal RE/MAX.</div>'+
+    '<div style="font-size:12px;background:#EBF5FF;border:1px solid #185FA5;border-radius:6px;padding:8px 12px;margin-bottom:1rem">'+
+      '📌 <strong>Las propiedades cerradas</strong> son la referencia más confiable porque el precio de venta es real, no de publicación.</div>'+
+    '<div class="form-group">'+
+      '<input type="file" id="acm-rm-file" accept=".pdf" multiple onchange="acmLeerPdfRemax(this)"/>'+
+    '</div>'+
+    '<div id="acm-rm-estado" style="margin-bottom:1rem"></div>';
+
+  if(rows.length){
+    var cerradas = rows.filter(function(r){return r.estado==='Cerrada';});
+    var otras = rows.filter(function(r){return r.estado!=='Cerrada';});
+
+    function cardRemax(r){
+      var m2adj=(Number(r.m2cub)||0)+(Number(r.m2semi)||0)*0.5;
+      var usdM2=m2adj>0?Math.round((Number(r.precio)||0)/m2adj):0;
+      return '<div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:12px">'+
+        (r.foto?'<img src="'+r.foto+'" style="width:100%;height:120px;object-fit:cover"/>':
+          '<div style="width:100%;height:120px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px">Sin foto</div>')+
+        '<div style="padding:10px">'+
+          '<div style="font-weight:600;margin-bottom:4px">'+esc(r.direccion||'—')+'</div>'+
+          '<span style="font-size:11px;background:'+(r.estado==='Cerrada'?'#d1fae5':r.estado==='Activa'?'#dbeafe':'#fef3c7')+';padding:2px 7px;border-radius:10px">'+esc(r.estado||'—')+'</span>'+
+          '<div style="margin-top:6px">Pub: USD '+fmtN(r.precio)+'</div>'+
+          (r.precioVenta>0?'<div style="font-weight:700;color:#185FA5">Venta: USD '+fmtN(r.precioVenta)+'</div>':'')+
+          (r.m2cub?'<div style="color:#888">'+r.m2cub+' m² cub'+(r.m2semi?' · '+r.m2semi+' m² semi':'')+'</div>':'')+
+          (usdM2>0?'<div style="color:#185FA5;font-weight:600">USD '+fmtN(usdM2)+'/m²</div>':'')+
+          (r.dias?'<div style="color:#888">'+r.dias+' días en mercado</div>':'')+
+        '</div>'+
+      '</div>';
+    }
+
+    if(cerradas.length){
+      html += '<p style="font-weight:600;color:#065f46;margin:1rem 0 8px">✅ Cerradas (referencia principal)</p>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1rem">';
+      cerradas.forEach(function(r){html+=cardRemax(r);});
+      html += '</div>';
+    }
+    if(otras.length){
+      html += '<p style="font-weight:600;color:#374151;margin:1rem 0 8px">📋 En venta / en negociación</p>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:1rem">';
+      otras.forEach(function(r){html+=cardRemax(r);});
+      html += '</div>';
+    }
+    html += '<button class="btn btn-primary" onclick="acmSubTab(\'busqueda\')">Continuar →</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function acmLeerPdfRemax(input){
+  var files = Array.from(input.files).slice(0,3);
+  if(!files.length) return;
+  var estado = document.getElementById('acm-rm-estado');
+  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s)...</div>';
+  var apiKey = getAnthropicKey();
+  if(!apiKey){ estado.innerHTML='<div style="color:#c0392b">Necesitás la API key.</div>'; return; }
+  _acm.remax = [];
+
+  Promise.all(files.map(function(file){
+    return new Promise(function(resolve){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var base64 = e.target.result.split(',')[1];
+        fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body: JSON.stringify({
+            model:'claude-sonnet-4-6', max_tokens:1500,
+            messages:[{role:'user',content:[
+              {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+              {type:'text',text:'Extraé los datos de este comparable de RE/MAX. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"precioVenta":0,"m2cub":0,"m2semi":0,"ambientes":0,"cochera":"No","estado":"Activa","dias":0,"foto":""}\n- precio: precio de publicación en USD\n- precioVenta: precio de venta real si está cerrada (0 si no)\n- m2cub: metros cubiertos\n- m2semi: metros semicubiertos (0 si no hay)\n- estado: "Activa", "Reservada", "Cerrada" o "En negociación"\n- dias: días en el mercado\n- foto: URL de imagen si aparece, sino string vacío'}
+            ]}]
+          })
+        }).then(function(r){return r.json();})
+        .then(function(data){
+          var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text')txt+=b.text;});
+          try{ resolve(JSON.parse(txt.replace(/```json|```/g,'').trim())); }
+          catch(e){ resolve(null); }
+        }).catch(function(){ resolve(null); });
+      };
+      reader.readAsDataURL(file);
+    });
+  })).then(function(results){
+    _acm.remax = results.filter(Boolean);
+    var n = _acm.remax.length;
+    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s).</div>'; }
+    else { estado.innerHTML='<div style="color:#c0392b">No se pudieron extraer datos.</div>'; }
+    document.getElementById('acmContenido').innerHTML = acmHtmlRemax();
+  });
+}
+
+// ====== 5. BÚSQUEDA DE MERCADO ======
+function acmHtmlBusqueda(){
+  var b = _acm.busqueda;
+  function sel(id,val,opts){
+    return '<select id="'+id+'">'+ opts.map(function(o){return'<option'+(o===val?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+  }
+  return '<div class="card" style="max-width:700px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Análisis de mercado (Zonaprop + Argenprop + MercadoLibre)</p>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Completá los filtros y la IA busca en los tres portales para generar el análisis de mercado del barrio.</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Localidad / Barrio</label>'+
+        '<input id="bq-localidad" value="'+esc(b.localidad||_acm.cliente.zona)+'" placeholder="ej: Villa Urquiza"/></div>'+
+      '<div class="form-group"><label>Tipo de propiedad</label>'+
+        sel('bq-tipo',b.tipo||_acm.cliente.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Cantidad de ambientes</label>'+
+        '<input id="bq-amb" type="number" value="'+esc(b.ambientes||_acm.cliente.ambientes)+'" placeholder="3"/></div>'+
+      '<div class="form-group"><label>Antigüedad (años)</label>'+
+        '<input id="bq-antig" value="'+esc(b.antiguedad)+'" placeholder="ej: 10-30 o hasta 5"/></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>M² mínimos</label>'+
+        '<input id="bq-m2min" type="number" value="'+esc(b.m2min)+'" placeholder="ej: 50"/></div>'+
+      '<div class="form-group"><label>M² máximos</label>'+
+        '<input id="bq-m2max" type="number" value="'+esc(b.m2max)+'" placeholder="ej: 90"/></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Cochera</label>'+
+        sel('bq-cochera',b.cochera,['Indistinto','Con cochera','Sin cochera'])+'</div>'+
+      '<div class="form-group"><label>Amenities</label>'+
+        sel('bq-amenities',b.amenities,['Indistinto','Con amenities','Sin amenities'])+'</div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="form-group"><label>Calidad constructiva</label>'+
+        sel('bq-calidad',b.calidad,['Indistinto','Premium','Estándar','Económico'])+'</div>'+
+      '<div class="form-group"><label>Estado del inmueble</label>'+
+        sel('bq-estadoInm',b.estadoInm,['Indistinto','A estrenar','Excelente','Muy bueno','Bueno','A reciclar'])+'</div>'+
+    '</div>'+
+    '<button class="btn btn-primary btn-full" id="bq-btn" onclick="acmBuscarMercado()">🔍 Analizar mercado</button>'+
+    '<div id="bq-resultado" style="margin-top:1.5rem">'+
+      (_acm.busquedaResultado ? '<div class="card"><div style="font-size:13px;line-height:1.7">'+_acm.busquedaResultado+'</div></div>' : '')+
+    '</div>'+
+  '</div>';
+}
+
+function acmBuscarMercado(){
+  var apiKey = getAnthropicKey(); if(!apiKey) return;
+  _acm.busqueda = {
+    localidad:v('bq-localidad'), tipo:v('bq-tipo'), ambientes:v('bq-amb'),
+    antiguedad:v('bq-antig'), m2min:v('bq-m2min'), m2max:v('bq-m2max'),
+    cochera:v('bq-cochera'), amenities:v('bq-amenities'),
+    calidad:v('bq-calidad'), estadoInm:v('bq-estadoInm')
+  };
+  var b = _acm.busqueda;
+  var btn = document.getElementById('bq-btn');
+  var res = document.getElementById('bq-resultado');
+  btn.textContent='Analizando...'; btn.disabled=true;
+  res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop, Argenprop y MercadoLibre...<br><small>Esto puede tardar 30-60 segundos</small></div>';
+
+  var filtros = [];
+  if(b.localidad) filtros.push('Localidad/Barrio: '+b.localidad+' (CABA, Argentina)');
+  if(b.tipo) filtros.push('Tipo: '+b.tipo);
+  if(b.ambientes) filtros.push('Ambientes: '+b.ambientes);
+  if(b.antiguedad) filtros.push('Antigüedad: '+b.antiguedad+' años');
+  if(b.m2min&&b.m2max) filtros.push('Superficie: entre '+b.m2min+' y '+b.m2max+' m²');
+  else if(b.m2min) filtros.push('Superficie: desde '+b.m2min+' m²');
+  else if(b.m2max) filtros.push('Superficie: hasta '+b.m2max+' m²');
+  if(b.cochera!=='Indistinto') filtros.push('Cochera: '+b.cochera);
+  if(b.amenities!=='Indistinto') filtros.push('Amenities: '+b.amenities);
+  if(b.calidad!=='Indistinto') filtros.push('Calidad constructiva: '+b.calidad);
+  if(b.estadoInm!=='Indistinto') filtros.push('Estado: '+b.estadoInm);
+
+  var prompt = 'Sos un experto en mercado inmobiliario de Buenos Aires. Buscá propiedades en venta en ZONAPROP (zonaprop.com.ar), ARGENPROP (argenprop.com) y MERCADO LIBRE INMUEBLES (inmuebles.mercadolibre.com.ar) con estos filtros:\n'+
+    filtros.map(function(f){return'- '+f;}).join('\n')+
+    '\n\nPara cada portal, encontrá al menos 5 propiedades y calculá:\n'+
+    '1. Precio promedio de publicación (USD)\n'+
+    '2. Precio promedio por m² cubierto (aplicá: m² cubiertos + m² semicubiertos × 0.5)\n'+
+    '3. Rango de precios (mínimo y máximo)\n'+
+    '4. Cantidad de propiedades disponibles\n'+
+    '\nLuego presentá:\n'+
+    '- Tabla comparativa entre los 3 portales\n'+
+    '- Promedio general del mercado (precio y USD/m²)\n'+
+    '- Observaciones sobre tendencia y tiempo en mercado si hay datos\n'+
+    '- Una conclusión breve para un agente RE/MAX\n'+
+    '\nFormato: claro, con datos concretos. Usá **negrita** para valores clave.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6', max_tokens:3000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){
+    if(!r.ok) return r.json().then(function(e){throw new Error(e.error&&e.error.message||'Error '+r.status);});
+    return r.json();
+  }).then(function(data){
+    var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text')txt+=b.text;});
+    if(!txt){ txt='No se obtuvieron datos. Intentá de nuevo.'; }
+    var html = txt
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:14px;margin:1rem 0 4px">$1</p>')
+      .replace(/\n- /g,'<br>• ')
+      .replace(/\n/g,'<br>');
+    _acm.busquedaResultado = html;
+    res.innerHTML='<div class="card"><div style="font-size:13px;line-height:1.7">'+html+'</div>'+
+      '<div style="margin-top:.8rem;font-size:11px;color:#aaa">Zonaprop · Argenprop · MercadoLibre · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    btn.textContent='🔍 Analizar mercado'; btn.disabled=false;
+  }).catch(function(e){
+    res.innerHTML='<div style="color:#c0392b;padding:1rem">Error: '+esc(e.message)+'<br>'+
+      '<button class="btn btn-sm" style="margin-top:8px" onclick="localStorage.removeItem(\'anthropic_api_key\');alert(\'API key borrada. Volvé a ingresarla.\')">Borrar API key</button></div>';
+    btn.textContent='🔍 Analizar mercado'; btn.disabled=false;
+  });
+}
+
+// ====== 6. RESULTADOS ======
 function acmHtmlResultados(){
-  var r=_acm.resultados;
-  var c=_acm.cliente;
-  var saludo=acmSaludo();
-  return '<div class="card" style="max-width:680px">'
-    +'<p style="font-weight:600;margin-bottom:1rem">Resultados y valuación — valores editables</p>'
-    +'<div style="background:#f0f7ff;border-radius:8px;padding:12px 16px;margin-bottom:1.2rem;font-size:13px">'
-    +'<strong>Saludo del informe:</strong> '+esc(saludo)+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.2rem">'
-    +'<div class="form-group"><label>Precio tope de publicación en mercado (USD)</label>'
-    +'<input id="acm-res-tope" type="number" value="'+(r.tope||'')+'" placeholder="ej: 185000"/></div>'
-    +'<div class="form-group"><label>Precio más bajo vendido en mercado (USD)</label>'
-    +'<input id="acm-res-min" type="number" value="'+(r.minimo||'')+'" placeholder="ej: 143500"/></div>'
-    +'<div class="form-group"><label>Promedio vendido en mercado general (USD)</label>'
-    +'<input id="acm-res-prom" type="number" value="'+(r.promedio||'')+'" placeholder="ej: 170000"/></div>'
-    +'<div class="form-group"><label>Valor de mercado sugerido para los primeros 30 días (USD)</label>'
-    +'<input id="acm-res-sug" type="number" value="'+(r.sugerido||'')+'" placeholder="ej: 180000"/></div>'
-    +'</div>'
-    +'<div class="form-group"><label>Rango de negociación estimado (% por debajo del precio de publicación)</label>'
-    +'<div style="display:flex;gap:8px;align-items:center">'
-    +'<span style="color:#888;font-size:13px">Entre</span>'
-    +'<input id="acm-res-pctmin" type="number" step="0.5" value="'+(r.pctMin||5)+'" style="width:70px"/>'
-    +'<span style="color:#888;font-size:13px">% y</span>'
-    +'<input id="acm-res-pctmax" type="number" step="0.5" value="'+(r.pctMax||8)+'" style="width:70px"/>'
-    +'<span style="color:#888;font-size:13px">% inferior al precio de publicación</span>'
-    +'</div></div>'
-    +'<div style="display:flex;gap:10px;margin-top:1.2rem">'
-    +'<button class="btn btn-primary" onclick="acmGuardarResultados()">Guardar valores</button>'
-    +'<button class="btn" onclick="acmVerPreview()" style="background:#185FA5;color:#fff">👁 Vista previa del informe</button>'
-    +'</div>'
-    +'</div>'
-    +'<div id="acm-preview" style="margin-top:1.5rem"></div>';
+  var r = _acm.resultados;
+  var c = _acm.cliente;
+  var m2cub=Number(c.m2cub)||0, m2semi=Number(c.m2semi)||0;
+  var m2adj = m2cub + m2semi*0.5;
+
+  // Auto-calcular valores desde comparables si están vacíos
+  if(!r.promVendidos){
+    var vendidos = (_acm.remax||[]).filter(function(p){return p.estado==='Cerrada'&&p.precioVenta>0;});
+    if(vendidos.length) r.promVendidos = Math.round(vendidos.reduce(function(a,p){return a+Number(p.precioVenta);},0)/vendidos.length);
+    var usdVend = vendidos.filter(function(p){return p._usdM2>0;});
+    if(usdVend.length){
+      var m2s=vendidos.map(function(p){var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;return adj>0?Math.round((Number(p.precioVenta)||0)/adj):0;}).filter(Boolean);
+      if(m2s.length) r.m2Vendidos=Math.round(m2s.reduce(function(a,b){return a+b;},0)/m2s.length);
+    }
+  }
+  if(!r.promPublicados){
+    var pub = (_acm.zonaprop||[]);
+    if(pub.length){
+      r.promPublicados = Math.round(pub.reduce(function(a,p){return a+Number(p.precio||0);},0)/pub.length);
+      var m2pArr=pub.map(function(p){var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;return adj>0?Math.round(Number(p.precio||0)/adj):0;}).filter(Boolean);
+      if(m2pArr.length) r.m2Publicados=Math.round(m2pArr.reduce(function(a,b){return a+b;},0)/m2pArr.length);
+    }
+  }
+
+  return '<div class="card" style="max-width:700px">'+
+    '<p style="font-weight:700;font-size:15px;margin-bottom:1rem">Resultados y valuación</p>'+
+    '<div style="background:#f0f7ff;border-radius:8px;padding:10px 14px;margin-bottom:1.2rem;font-size:13px">'+
+      '<strong>'+esc(acmSaludo())+'</strong> · '+esc(c.direccion||'—')+
+      (m2adj>0?' · <strong>M² ajustados: '+m2adj.toFixed(1)+'</strong>':'')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.2rem">'+
+      '<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e5e7eb">'+
+        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:8px">Vendidos (precio real)</div>'+
+        '<div class="form-group" style="margin-bottom:8px"><label>Precio promedio vendido (USD)</label>'+
+          '<input id="res-pvend" type="number" value="'+(r.promVendidos||'')+'" placeholder="ej: 175000"/></div>'+
+        '<div class="form-group"><label>Precio por m² vendido (USD)</label>'+
+          '<input id="res-m2vend" type="number" value="'+(r.m2Vendidos||'')+'" placeholder="ej: 2800"/></div>'+
+      '</div>'+
+      '<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e5e7eb">'+
+        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:8px">Publicados (precio de mercado)</div>'+
+        '<div class="form-group" style="margin-bottom:8px"><label>Precio promedio publicado (USD)</label>'+
+          '<input id="res-ppub" type="number" value="'+(r.promPublicados||'')+'" placeholder="ej: 190000"/></div>'+
+        '<div class="form-group"><label>Precio por m² publicado (USD)</label>'+
+          '<input id="res-m2pub" type="number" value="'+(r.m2Publicados||'')+'" placeholder="ej: 3000"/></div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="background:#EBF5FF;border-radius:8px;padding:14px;border:2px solid #185FA5;margin-bottom:1.2rem">'+
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#185FA5;margin-bottom:8px">Precio sugerido de publicación</div>'+
+      '<div class="form-group"><label>Valor sugerido para los primeros 30 días (USD)</label>'+
+        '<input id="res-sug" type="number" value="'+(r.sugerido||'')+'" placeholder="ej: 185000" style="font-size:16px;font-weight:700"/></div>'+
+      (m2adj>0&&r.sugerido?'<div style="font-size:12px;color:#888">= USD '+fmtN(Math.round(Number(r.sugerido)/m2adj))+'/m² ajustado</div>':'')+
+    '</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn btn-primary" onclick="acmGuardarResultados()">Guardar valores</button>'+
+      '<button class="btn" style="background:#185FA5;color:#fff" onclick="acmGenerarPDF()">📄 Generar informe PDF</button>'+
+    '</div>'+
+    '<div id="acm-preview" style="margin-top:1.5rem"></div>'+
+  '</div>';
 }
 
 function acmGuardarResultados(){
-  _acm.resultados={
-    tope:v('acm-res-tope'),
-    minimo:v('acm-res-min'),
-    promedio:v('acm-res-prom'),
-    sugerido:v('acm-res-sug'),
-    pctMin:v('acm-res-pctmin')||5,
-    pctMax:v('acm-res-pctmax')||8
+  _acm.resultados = {
+    promVendidos:v('res-pvend'), m2Vendidos:v('res-m2vend'),
+    promPublicados:v('res-ppub'), m2Publicados:v('res-m2pub'),
+    sugerido:v('res-sug')
   };
-  var el=document.getElementById('acm-preview');
-  if(el)el.innerHTML='<div style="color:#00C853;font-size:13px">✓ Valores guardados.</div>';
+  document.getElementById('acm-preview').innerHTML='<div style="color:#00C853;font-size:13px">✓ Valores guardados.</div>';
 }
 
-function acmVerPreview(){
+function acmGenerarPDF(){
   acmGuardarResultados();
-  var r=_acm.resultados;
-  var c=_acm.cliente;
-  var saludo=acmSaludo();
-  var m2cub=Number(c.m2cub)||0;
-  var m2semi=Number(c.m2semi)||0;
-  var m2adj=m2cub+(m2semi*0.5);
-  var usdM2sug=m2adj>0&&r.sugerido?(Math.round(Number(r.sugerido)/m2adj)).toLocaleString('es-AR'):'—';
-  var esPluralGenero=c.nombres.length>1;
-  var tuSu=esPluralGenero?'su':'su';
-  var loLa=esPluralGenero?'los':'el';
+  var r=_acm.resultados, c=_acm.cliente;
+  var m2adj=(Number(c.m2cub)||0)+(Number(c.m2semi)||0)*0.5;
+  var usdM2sug=m2adj>0&&r.sugerido?Math.round(Number(r.sugerido)/m2adj):0;
+  var esPlural=c.nombres.length>1;
 
-  var html='<div id="acm-doc" style="background:#fff;padding:2rem;border:1px solid #ddd;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;line-height:1.7;max-width:680px">'
-    +'<p><strong>'+esc(saludo)+':</strong></p>'
-    +'<p>Me gustaría ponerlos al día sobre el estado de las propiedades vendidas en la zona y de las propiedades en venta, esto nos ayudará a establecer el mejor precio de mercado para '+tuSu+' propiedad y que la misma sea competitiva frente a las demás propiedades.</p>'
-    +'<h3 style="text-transform:uppercase;border-bottom:2px solid #c00;padding-bottom:6px;margin-top:1.5rem">Análisis Comparativo de Mercado</h3>'
-    +'<p><strong>Propiedad:</strong> '+esc(c.tipo||'Propiedad')+' en '+esc(c.propiedad||'—')+'</p>'
-    +'<h4>Características de '+tuSu+' propiedad</h4>'
-    +'<p>'+esc(c.descripcion||'—')+'</p>'
-    +(c.favor?'<p><strong>Puntos a favor:</strong><br>'+esc(c.favor)+'</p>':'')
-    +(c.contra?'<p><strong>Puntos en contra:</strong><br>'+esc(c.contra)+'</p>':'')
+  // Tarjetas de comparables Zonaprop
+  var cardsZP='';
+  if(_acm.zonaprop.length){
+    _acm.zonaprop.forEach(function(p){
+      var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;
+      var uM2=adj>0?Math.round(Number(p.precio||0)/adj):0;
+      var cpd=p.dias>0?((Number(p.clicks)||0)/Number(p.dias)).toFixed(1):null;
+      var enP=p.dias>0&&(Number(p.clicks)||0)/Number(p.dias)>=5;
+      cardsZP+='<div style="display:inline-block;width:28%;margin:0 2% 12px 0;vertical-align:top;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-size:11px">'+
+        (p.foto?'<img src="'+p.foto+'" style="width:100%;height:90px;object-fit:cover"/>':'<div style="width:100%;height:90px;background:#f3f4f6"></div>')+
+        '<div style="padding:8px">'+
+          '<div style="font-weight:600">'+esc(p.direccion||'—')+'</div>'+
+          '<div>USD '+fmtN(p.precio)+(uM2?' · USD '+fmtN(uM2)+'/m²':'')+' </div>'+
+          (p.m2cub?'<div style="color:#666">'+p.m2cub+' m² cub'+(p.m2semi?' / '+p.m2semi+' m² semi':'')+'</div>':'')+
+          (cpd?'<div style="color:'+(enP?'#065f46':'#92400e')+'">'+(enP?'✓ En precio':'⚠ Revisar')+' · '+cpd+' clicks/día</div>':'')+
+        '</div>'+
+      '</div>';
+    });
+  }
 
-    +((_acm.remax.length>0)?
-      '<h4 style="margin-top:1.5rem">Comparables vendidos y en venta en zona, de similares características (RE/MAX)</h4>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
-      +'<tr style="background:#f3f4f6"><th style="padding:5px 8px;text-align:left">Dirección</th><th>Estado</th><th>Precio pub.</th><th>Precio venta</th><th>USD/m² ajust.</th></tr>'
-      +_acm.remax.map(function(r){
-        var m2adj=(Number(r.m2cub)||0)+((Number(r.m2semi)||0)*0.5);
-        var usdM2=m2adj>0?Math.round((Number(r.precio)||0)/m2adj):0;
-        return'<tr style="border-bottom:1px solid #eee">'
-          +'<td style="padding:5px 8px">'+esc(r.direccion||'-')+'</td>'
-          +'<td style="text-align:center">'+esc(r.estado||'-')+'</td>'
-          +'<td style="text-align:right">USD '+fmtN(r.precio||0)+'</td>'
-          +'<td style="text-align:right">'+(r.precioVenta>0?'USD '+fmtN(r.precioVenta):'-')+'</td>'
-          +'<td style="text-align:right">'+(usdM2>0?'USD '+fmtN(usdM2):'-')+'</td>'
-          +'</tr>';
-      }).join('')
-      +'</table>':''
-    )
+  // Tarjetas RE/MAX
+  var cardsRM='';
+  var rmOrdenado=(_acm.remax||[]).slice().sort(function(a,b){return a.estado==='Cerrada'?-1:b.estado==='Cerrada'?1:0;});
+  rmOrdenado.forEach(function(p){
+    var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;
+    var uM2=adj>0?Math.round(Number(p.precio||0)/adj):0;
+    cardsRM+='<div style="display:inline-block;width:28%;margin:0 2% 12px 0;vertical-align:top;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-size:11px">'+
+      (p.foto?'<img src="'+p.foto+'" style="width:100%;height:90px;object-fit:cover"/>':'<div style="width:100%;height:90px;background:#f3f4f6"></div>')+
+      '<div style="padding:8px">'+
+        '<div style="font-weight:600">'+esc(p.direccion||'—')+'</div>'+
+        '<span style="font-size:10px;background:'+(p.estado==='Cerrada'?'#d1fae5':'#dbeafe')+';padding:2px 6px;border-radius:8px">'+esc(p.estado||'')+'</span>'+
+        '<div>Pub: USD '+fmtN(p.precio)+(uM2?' · USD '+fmtN(uM2)+'/m²':'')+' </div>'+
+        (p.precioVenta>0?'<div style="font-weight:700;color:#185FA5">Venta: USD '+fmtN(p.precioVenta)+'</div>':'')+
+      '</div>'+
+    '</div>';
+  });
 
-    +'<h4 style="margin-top:1.5rem">Composición de la cotización</h4>'
-    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
-    +(r.tope?'<tr><td style="padding:5px 0">Precio tope de publicación en mercado</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.tope)+'</td></tr>':'')
-    +(r.minimo?'<tr><td>Valor más bajo vendido en el mercado de similares características</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.minimo)+'</td></tr>':'')
-    +(r.promedio?'<tr><td>Promedio vendido en el mercado general</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.promedio)+'</td></tr>':'')
-    +'</table>'
-    +(r.sugerido?'<div style="background:#f0f7ff;border-left:4px solid #185FA5;padding:12px 16px;margin:1rem 0;border-radius:0 8px 8px 0">'
-      +'<strong>Valor de mercado sugerido para los primeros 30 días de publicación</strong><br>'
-      +'<span style="font-size:18px;font-weight:700">USD '+fmtN(r.sugerido)+'</span>'
-      +(m2adj>0?' <span style="color:#888;font-size:12px">(USD '+usdM2sug+' x m² ajustado)</span>':'')
-      +'</div>':'')
+  var doc='<div id="acm-print" style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;max-width:800px;margin:0 auto;padding:20px">'+
 
-    +'<h4 style="margin-top:1.5rem">Valor de mercado</h4>'
-    +'<p>Nuestra recomendación es salir a ofrecerlo en el valor ut-supra mencionado y analizar la cantidad de consultas que se producen durante el primer mes, que es el más importante de la oferta. A medida que el tiempo pase, las posibilidades de tener que bajar el valor de publicación va en aumento.</p>'
-    +'<p>Es probable que, en las condiciones de mercado actuales, estemos recibiendo ofertas entre un <strong>'+r.pctMin+'% y un '+r.pctMax+'%</strong> inferior al precio de publicación, lo cual nos da inicio a la negociación entre las partes.</p>'
-    +'<p>No hay que olvidarse que un cliente en el proceso de compra se vuelve un especialista en precios de mercado. Por lo tanto, lo que está fuera de precio, ni lo consulta. Por ese motivo, no es conveniente abultar el precio, ya que desalienta a los posibles interesados.</p>'
+    // Header
+    '<div style="border-bottom:3px solid #c00;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">'+
+      '<div>'+
+        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:1px">Análisis Comparativo de Mercado</div>'+
+        '<div style="font-size:20px;font-weight:700;margin-top:4px">'+esc(c.zona||c.direccion||'—')+'</div>'+
+      '</div>'+
+      '<div style="text-align:right;font-size:11px;color:#888">'+new Date().toLocaleDateString('es-AR')+'<br>RE/MAX Data Gold</div>'+
+    '</div>'+
 
-    +'<h4 style="margin-top:1.5rem">Pasos a seguir</h4>'
-    +'<ul style="padding-left:1.2rem">'
-    +'<li>Preparar la propiedad con nuestro equipo para tomar fotos profesionales y tour virtual.</li>'
-    +'<li>Publicar en los 15 portales más importantes en sección Premium, Super Destacados, Gold.</li>'
-    +'<li>Compartir la venta con inmobiliarias interesadas en acercar clientes.</li>'
-    +'<li>Publicitar dentro de la red RE/MAX para agentes con búsquedas similares.</li>'
-    +'<li>Hacer llegar quincenalmente un informe respecto a la publicación.</li>'
-    +'<li>Llevar a cabo todos los trámites necesarios una vez ingresada una reserva.</li>'
-    +'</ul>'
+    // Saludo
+    '<p><strong>'+esc(acmSaludo())+':</strong></p>'+
+    '<p>Me gustaría ponerlo'+(esPlural?'s':'')+' al día sobre el estado del mercado inmobiliario en '+esc(c.zona||'la zona')+', lo que nos ayudará a establecer el mejor precio de publicación para '+( esPlural?'su':'su')+' propiedad y posicionarla de forma competitiva.</p>'+
 
-    +'<hr style="margin:1.5rem 0"/>'
-    +'<p style="font-size:12px"><strong>'+esc(currentUser.nombre)+'</strong> · RE/MAX Data Gold<br>'
-    +(currentUser.telefono?currentUser.telefono+' · ':'')+esc(currentUser.email||currentUser.mail||'')+'</p>'
-    +'</div>'
-    +'<div style="margin-top:1rem;display:flex;gap:10px">'
-    +'<button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>'
-    +'</div>';
+    // Datos de la propiedad
+    '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">'+esc(c.tipo||'Propiedad')+' en '+esc(c.direccion||'—')+'</h3>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;font-size:12px;margin-bottom:12px">'+
+      (c.estado?'<div><b>Estado:</b> '+esc(c.estado)+'</div>':'')+
+      (c.antiguedad?'<div><b>Antigüedad:</b> '+esc(c.antiguedad)+' años</div>':'')+
+      (c.ambientes?'<div><b>Ambientes:</b> '+esc(c.ambientes)+'</div>':'')+
+      (c.dormitorios?'<div><b>Dormitorios:</b> '+esc(c.dormitorios)+'</div>':'')+
+      (c.banos?'<div><b>Baños:</b> '+esc(c.banos)+'</div>':'')+
+      (c.toilette?'<div><b>Toilettes:</b> '+esc(c.toilette)+'</div>':'')+
+      (c.cochera?'<div><b>Cochera:</b> '+esc(c.cochera)+'</div>':'')+
+      (c.deseabilidad?'<div><b>Deseabilidad:</b> '+esc(c.deseabilidad)+'</div>':'')+
+      (c.m2cub?'<div><b>M² cubiertos:</b> '+esc(c.m2cub)+'</div>':'')+
+      (c.m2semi?'<div><b>M² semicubiertos:</b> '+esc(c.m2semi)+'</div>':'')+
+      (m2adj>0?'<div><b>M² ajustados:</b> '+m2adj.toFixed(1)+'</div>':'')+
+      (c.amenities?'<div style="grid-column:1/-1"><b>Amenities:</b> '+esc(c.amenities)+'</div>':'')+
+    '</div>'+
+    (c.descripcion?'<p style="font-size:12px">'+esc(c.descripcion)+'</p>':'')+
+    (c.favor?'<p style="font-size:12px"><b>✅ Puntos a favor:</b> '+esc(c.favor)+'</p>':'')+
+    (c.contra?'<p style="font-size:12px"><b>❌ Puntos en contra:</b> '+esc(c.contra)+'</p>':'')+
 
-  document.getElementById('acm-preview').innerHTML=html;
+    // Mapa
+    (_acm.mapaZonaprop?
+      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Mapa de propiedades en zona</h3>'+
+      '<img src="'+_acm.mapaZonaprop+'" style="max-width:100%;border-radius:6px;margin-bottom:1rem"/>':'')+ 
+
+    // Comparables Zonaprop
+    (cardsZP?
+      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Comparables Zonaprop</h3>'+
+      '<div style="margin-bottom:1rem">'+cardsZP+'</div>':'')+
+
+    // Comparables RE/MAX
+    (cardsRM?
+      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1rem">Comparables RE/MAX</h3>'+
+      '<div style="margin-bottom:1rem">'+cardsRM+'</div>':'')+
+
+    // Análisis de mercado
+    (_acm.busquedaResultado?
+      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Análisis de mercado</h3>'+
+      '<div style="font-size:12px;line-height:1.6">'+_acm.busquedaResultado+'</div>':'')+ 
+
+    // Cotización
+    '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Cotización</h3>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">'+
+      (r.promVendidos?'<tr><td style="padding:5px 0">Precio promedio vendido en zona</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.promVendidos)+(r.m2Vendidos?' (USD '+fmtN(r.m2Vendidos)+'/m²)':'')+' </td></tr>':'')+
+      (r.promPublicados?'<tr><td>Precio promedio publicado en mercado</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.promPublicados)+(r.m2Publicados?' (USD '+fmtN(r.m2Publicados)+'/m²)':'')+' </td></tr>':'')+
+    '</table>'+
+    (r.sugerido?
+      '<div style="background:#EBF5FF;border-left:4px solid #185FA5;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:1rem">'+
+        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#185FA5">Precio sugerido de publicación — primeros 30 días</div>'+
+        '<div style="font-size:22px;font-weight:700;margin-top:4px">USD '+fmtN(r.sugerido)+'</div>'+
+        (usdM2sug>0?'<div style="font-size:12px;color:#888">USD '+fmtN(usdM2sug)+'/m² ajustado</div>':'')+
+      '</div>':'')+
+
+    // Firma agente
+    '<hr style="margin:1.5rem 0;border:none;border-top:1px solid #ddd"/>'+
+    '<p style="font-size:12px"><b>'+esc(currentUser.nombre||'—')+'</b> · RE/MAX Data Gold<br>'+
+      esc(currentUser.telefono||'')+(currentUser.mail?' · '+esc(currentUser.mail):'')+'</p>'+
+
+  '</div>';
+
+  document.getElementById('acm-preview').innerHTML=doc+
+    '<div style="margin-top:1rem"><button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>';
+
+  // Estilos de impresión
+  if(!document.getElementById('acm-print-css')){
+    var s=document.createElement('style'); s.id='acm-print-css';
+    s.textContent='@media print{body *{visibility:hidden}#acm-print,#acm-print *{visibility:visible}#acm-print{position:fixed;top:0;left:0;width:100%;padding:20px}}';
+    document.head.appendChild(s);
+  }
 }
 
 
