@@ -967,11 +967,47 @@ function acmAplicarCochera(){
   document.getElementById('acmContenido').innerHTML = acmHtmlZonaprop();
 }
 
+// Extrae la primera página de un PDF como imagen base64 usando pdf.js
+function pdfToImage(base64, callback){
+  if(window.pdfjsLib){
+    _pdfRenderPage(base64, callback);
+  } else {
+    var sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload=function(){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      _pdfRenderPage(base64, callback);
+    };
+    sc.onerror=function(){ callback(null); };
+    document.head.appendChild(sc);
+  }
+}
+
+function _pdfRenderPage(base64, callback){
+  try{
+    var bin=atob(base64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    window.pdfjsLib.getDocument({data:arr}).promise.then(function(pdf){
+      pdf.getPage(1).then(function(page){
+        var scale=1.5;
+        var vp=page.getViewport({scale:scale});
+        var canvas=document.createElement('canvas');
+        canvas.width=vp.width; canvas.height=vp.height;
+        var ctx=canvas.getContext('2d');
+        page.render({canvasContext:ctx,viewport:vp}).promise.then(function(){
+          callback(canvas.toDataURL('image/jpeg',0.85));
+        }).catch(function(){ callback(null); });
+      }).catch(function(){ callback(null); });
+    }).catch(function(){ callback(null); });
+  }catch(e){ callback(null); }
+}
+
 function acmLeerPdfZonaprop(input){
   var files = Array.from(input.files).slice(0,3);
   if(!files.length) return;
   var estado = document.getElementById('acm-zp-estado');
-  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s)...</div>';
+  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s) y extrayendo fotos...</div>';
   var apiKey = getAnthropicKey();
   if(!apiKey){ estado.innerHTML='<div style="color:#c0392b">Necesitás la API key.</div>'; return; }
   _acm.zonaprop = [];
@@ -981,21 +1017,29 @@ function acmLeerPdfZonaprop(input){
       var reader = new FileReader();
       reader.onload = function(e){
         var base64 = e.target.result.split(',')[1];
-        fetch('https://api.anthropic.com/v1/messages',{
+        // Extraer datos con IA y foto con pdf.js en paralelo
+        var pDatos = fetch('https://api.anthropic.com/v1/messages',{
           method:'POST',
           headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
           body: JSON.stringify({
             model:'claude-sonnet-4-6', max_tokens:1500,
             messages:[{role:'user',content:[
               {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-              {type:'text',text:'Extraé los datos de esta publicación de Zonaprop. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","dias":0,"clicks":0,"foto":""}\nReglas:\n- precio: en USD, número entero\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros cuadrados semicubiertos. Si el PDF no indica "semicubiertos" explícitamente, calculalo como m2tot - m2cub. Si m2tot y m2cub son iguales, m2semi=0.\n- dias: días publicado (si dice "hace X días" calculá X)\n- clicks: total de visualizaciones o clicks mencionados\n- foto: string vacío (no se puede extraer URL del PDF)\n- cochera: "Sí" o "No"'}
+              {type:'text',text:'Extraé los datos de esta publicación de Zonaprop. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","dias":0,"clicks":0}\nReglas:\n- precio: en USD, número entero\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros cuadrados semicubiertos. Si no está explícito, calculalo como m2tot - m2cub. Si son iguales, m2semi=0.\n- dias: días publicado\n- clicks: total de visualizaciones\n- cochera: "Sí" o "No"'}
             ]}]
           })
-        }).then(function(r){return r.json();})
-        .then(function(data){
+        }).then(function(r){return r.json();});
+
+        var pFoto = new Promise(function(res){ pdfToImage(base64, res); });
+
+        Promise.all([pDatos, pFoto]).then(function(results){
+          var data=results[0], foto=results[1];
           var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text')txt+=b.text;});
-          try{ resolve(JSON.parse(txt.replace(/```json|```/g,'').trim())); }
-          catch(e){ resolve(null); }
+          try{
+            var obj=JSON.parse(txt.replace(/```json|```/g,'').trim());
+            if(foto) obj.foto=foto;
+            resolve(obj);
+          }catch(e){ resolve(foto?{foto:foto}:null); }
         }).catch(function(){ resolve(null); });
       };
       reader.readAsDataURL(file);
@@ -1003,11 +1047,12 @@ function acmLeerPdfZonaprop(input){
   })).then(function(results){
     _acm.zonaprop = results.filter(Boolean);
     var n = _acm.zonaprop.length;
-    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s).</div>'; }
-    else { estado.innerHTML='<div style="color:#c0392b">No se pudieron extraer datos. Revisá los PDFs.</div>'; }
+    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s) con foto.</div>'; }
+    else { estado.innerHTML='<div style="color:#c0392b">No se pudieron extraer datos.</div>'; }
     document.getElementById('acmContenido').innerHTML = acmHtmlZonaprop();
   });
 }
+
 
 // ====== 3. MAPA ZONAPROP ======
 function acmHtmlMapa(){
@@ -1093,7 +1138,7 @@ function acmLeerPdfRemax(input){
   var files = Array.from(input.files).slice(0,3);
   if(!files.length) return;
   var estado = document.getElementById('acm-rm-estado');
-  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s)...</div>';
+  estado.innerHTML = '<div style="color:#888">⏳ Analizando '+files.length+' PDF(s) y extrayendo fotos...</div>';
   var apiKey = getAnthropicKey();
   if(!apiKey){ estado.innerHTML='<div style="color:#c0392b">Necesitás la API key.</div>'; return; }
   _acm.remax = [];
@@ -1103,21 +1148,28 @@ function acmLeerPdfRemax(input){
       var reader = new FileReader();
       reader.onload = function(e){
         var base64 = e.target.result.split(',')[1];
-        fetch('https://api.anthropic.com/v1/messages',{
+        var pDatos = fetch('https://api.anthropic.com/v1/messages',{
           method:'POST',
           headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
           body: JSON.stringify({
             model:'claude-sonnet-4-6', max_tokens:1500,
             messages:[{role:'user',content:[
               {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-              {type:'text',text:'Extraé los datos de este comparable de RE/MAX. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"precioVenta":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","estado":"Activa","dias":0,"foto":""}\n- precio: precio de publicación en USD\n- precioVenta: precio de venta real si está cerrada (0 si no)\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros semicubiertos. Si no se indica explícitamente, calculalo como m2tot - m2cub. Si son iguales, m2semi=0.\n- estado: "Activa", "Reservada", "Cerrada" o "En negociación"\n- dias: días en el mercado\n- foto: string vacío'}
+              {type:'text',text:'Extraé los datos de este comparable de RE/MAX. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"precioVenta":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","estado":"Activa","dias":0}\n- precio: precio de publicación en USD\n- precioVenta: precio de venta real si está cerrada (0 si no)\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros semicubiertos. Si no se indica explícitamente, calculalo como m2tot - m2cub. Si son iguales, m2semi=0.\n- estado: "Activa", "Reservada", "Cerrada" o "En negociación"\n- dias: días en el mercado'}
             ]}]
           })
-        }).then(function(r){return r.json();})
-        .then(function(data){
+        }).then(function(r){return r.json();});
+
+        var pFoto = new Promise(function(res){ pdfToImage(base64, res); });
+
+        Promise.all([pDatos, pFoto]).then(function(results){
+          var data=results[0], foto=results[1];
           var txt=''; if(data.content) data.content.forEach(function(b){if(b.type==='text')txt+=b.text;});
-          try{ resolve(JSON.parse(txt.replace(/```json|```/g,'').trim())); }
-          catch(e){ resolve(null); }
+          try{
+            var obj=JSON.parse(txt.replace(/```json|```/g,'').trim());
+            if(foto) obj.foto=foto;
+            resolve(obj);
+          }catch(e){ resolve(foto?{foto:foto}:null); }
         }).catch(function(){ resolve(null); });
       };
       reader.readAsDataURL(file);
@@ -1125,7 +1177,7 @@ function acmLeerPdfRemax(input){
   })).then(function(results){
     _acm.remax = results.filter(Boolean);
     var n = _acm.remax.length;
-    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s).</div>'; }
+    if(n){ estado.innerHTML='<div style="color:#00C853">✓ '+n+' propiedad(es) extraída(s) con foto.</div>'; }
     else { estado.innerHTML='<div style="color:#c0392b">No se pudieron extraer datos.</div>'; }
     document.getElementById('acmContenido').innerHTML = acmHtmlRemax();
   });
@@ -1134,31 +1186,29 @@ function acmLeerPdfRemax(input){
 // ====== 5. BÚSQUEDA DE MERCADO ======
 function acmHtmlBusqueda(){
   var b = _acm.busqueda;
-  var c = _acm.cliente;
   function sel(id,val,opts){
     return '<select id="'+id+'">'+ opts.map(function(o){return'<option'+(o===val?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';
   }
   return '<div class="card" style="max-width:700px">'+
     '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Análisis de mercado (Zonaprop + Argenprop + MercadoLibre)</p>'+
-    '<div style="font-size:12px;background:#EBF5FF;border:1px solid #185FA5;border-radius:6px;padding:8px 12px;margin-bottom:1rem">'+
-      '📍 La IA busca propiedades <strong>en un radio de 500 metros</strong> de la dirección del cliente. '+
-      'Descarta automáticamente las propiedades que estén más de un <strong>25% por encima o debajo</strong> del precio promedio (outliers).</div>'+
-    '<div class="form-group"><label>Dirección de referencia (se toma del paso 1)</label>'+
-      '<input id="bq-dir-ref" value="'+esc(c.direccion||b.localidad||'')+'" placeholder="ej: Lugones 2124, Villa Urquiza, CABA" style="background:#f8fafc"/>'+
-      '<div style="font-size:11px;color:#888;margin-top:3px">La búsqueda se centra en los 500m alrededor de esta dirección.</div></div>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Completá los filtros y la IA busca en los tres portales para generar el análisis de mercado del barrio.</div>'+
     '<div class="row">'+
+      '<div class="form-group"><label>Localidad / Barrio</label>'+
+        '<input id="bq-localidad" value="'+esc(b.localidad||_acm.cliente.zona)+'" placeholder="ej: Villa Urquiza"/></div>'+
       '<div class="form-group"><label>Tipo de propiedad</label>'+
-        sel('bq-tipo',b.tipo||c.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
-      '<div class="form-group"><label>Ambientes</label>'+
-        '<input id="bq-amb" type="number" value="'+esc(b.ambientes||c.ambientes)+'" placeholder="3"/></div>'+
+        sel('bq-tipo',b.tipo||_acm.cliente.tipo,['Departamento','PH','Casa','Local','Oficina'])+'</div>'+
     '</div>'+
     '<div class="row">'+
+      '<div class="form-group"><label>Cantidad de ambientes</label>'+
+        '<input id="bq-amb" type="number" value="'+esc(b.ambientes||_acm.cliente.ambientes)+'" placeholder="3"/></div>'+
       '<div class="form-group"><label>Antigüedad (años)</label>'+
-        '<input id="bq-antig" value="'+esc(b.antiguedad)+'" placeholder="ej: 10-25"/></div>'+
+        '<input id="bq-antig" value="'+esc(b.antiguedad)+'" placeholder="ej: 10-30 o hasta 5"/></div>'+
+    '</div>'+
+    '<div class="row">'+
       '<div class="form-group"><label>M² mínimos</label>'+
-        '<input id="bq-m2min" type="number" value="'+esc(b.m2min)+'" placeholder="ej: 55"/></div>'+
+        '<input id="bq-m2min" type="number" value="'+esc(b.m2min)+'" placeholder="ej: 50"/></div>'+
       '<div class="form-group"><label>M² máximos</label>'+
-        '<input id="bq-m2max" type="number" value="'+esc(b.m2max)+'" placeholder="ej: 100"/></div>'+
+        '<input id="bq-m2max" type="number" value="'+esc(b.m2max)+'" placeholder="ej: 90"/></div>'+
     '</div>'+
     '<div class="row">'+
       '<div class="form-group"><label>Cochera</label>'+
@@ -1172,9 +1222,9 @@ function acmHtmlBusqueda(){
       '<div class="form-group"><label>Estado del inmueble</label>'+
         sel('bq-estadoInm',b.estadoInm,['Indistinto','A estrenar','Excelente','Muy bueno','Bueno','A reciclar'])+'</div>'+
     '</div>'+
-    '<button class="btn btn-primary btn-full" id="bq-btn" onclick="acmBuscarMercado()">🔍 Analizar mercado en radio de 500m</button>'+
+    '<button class="btn btn-primary btn-full" id="bq-btn" onclick="acmBuscarMercado()">🔍 Analizar mercado</button>'+
     '<div id="bq-resultado" style="margin-top:1.5rem">'+
-      (_acm.busquedaResultado ? '<div class="card"><div style="font-size:13px;line-height:1.8">'+_acm.busquedaResultado+'</div></div>' : '')+
+      (_acm.busquedaResultado ? '<div class="card"><div style="font-size:13px;line-height:1.7">'+_acm.busquedaResultado+'</div></div>' : '')+
     '</div>'+
   '</div>';
 }
@@ -1182,27 +1232,23 @@ function acmHtmlBusqueda(){
 function acmBuscarMercado(){
   var apiKey = getAnthropicKey(); if(!apiKey) return;
   _acm.busqueda = {
-    localidad:v('bq-dir-ref'), tipo:v('bq-tipo'), ambientes:v('bq-amb'),
+    localidad:v('bq-localidad'), tipo:v('bq-tipo'), ambientes:v('bq-amb'),
     antiguedad:v('bq-antig'), m2min:v('bq-m2min'), m2max:v('bq-m2max'),
     cochera:v('bq-cochera'), amenities:v('bq-amenities'),
     calidad:v('bq-calidad'), estadoInm:v('bq-estadoInm')
   };
   var b = _acm.busqueda;
-  var c = _acm.cliente;
   var btn = document.getElementById('bq-btn');
   var res = document.getElementById('bq-resultado');
   btn.textContent='Analizando...'; btn.disabled=true;
   res.innerHTML='<div class="card" style="color:#888;text-align:center;padding:2rem">⏳ Buscando en Zonaprop, Argenprop y MercadoLibre...<br><small>Esto puede tardar 30-60 segundos</small></div>';
 
-  // Construir filtros
   var filtros = [];
-  var direccionRef = c.direccion ? c.direccion : (b.localidad ? b.localidad+', CABA' : '');
-  if(direccionRef) filtros.push('Dirección de referencia: '+direccionRef+' — buscá ÚNICAMENTE propiedades en un radio de 500 metros de esta dirección');
-  else if(b.localidad) filtros.push('Zona: '+b.localidad+', CABA, Argentina');
+  if(b.localidad) filtros.push('Localidad/Barrio: '+b.localidad+' (CABA, Argentina)');
   if(b.tipo) filtros.push('Tipo: '+b.tipo);
-  if(b.ambientes) filtros.push('Ambientes: '+b.ambientes+' (aceptá ±1 si hay pocos resultados)');
-  if(b.antiguedad) filtros.push('Antigüedad: '+b.antiguedad+' años (aceptá ±10 años si hay pocos resultados)');
-  if(b.m2min&&b.m2max) filtros.push('Superficie: entre '+b.m2min+' y '+b.m2max+' m² (aceptá ±15% si hay pocos resultados)');
+  if(b.ambientes) filtros.push('Ambientes: '+b.ambientes);
+  if(b.antiguedad) filtros.push('Antigüedad: '+b.antiguedad+' años');
+  if(b.m2min&&b.m2max) filtros.push('Superficie: entre '+b.m2min+' y '+b.m2max+' m²');
   else if(b.m2min) filtros.push('Superficie: desde '+b.m2min+' m²');
   else if(b.m2max) filtros.push('Superficie: hasta '+b.m2max+' m²');
   if(b.cochera!=='Indistinto') filtros.push('Cochera: '+b.cochera);
@@ -1210,34 +1256,25 @@ function acmBuscarMercado(){
   if(b.calidad!=='Indistinto') filtros.push('Calidad constructiva: '+b.calidad);
   if(b.estadoInm!=='Indistinto') filtros.push('Estado: '+b.estadoInm);
 
-  var prompt = 'Sos un experto tasador inmobiliario en Buenos Aires. Tu tarea es encontrar propiedades comparables para una tasación.\n\n'+
-    'FILTROS DE BÚSQUEDA:\n'+filtros.map(function(f){return'- '+f;}).join('\n')+
-    '\n\nINSTRUCCIONES IMPORTANTES:\n'+
-    '1. Buscá en ZONAPROP (zonaprop.com.ar), ARGENPROP (argenprop.com) y MERCADO LIBRE INMUEBLES (inmuebles.mercadolibre.com.ar)\n'+
-    '2. RADIO DE 500 METROS: solo incluí propiedades que estén dentro de los 500 metros de la dirección de referencia. No uses propiedades de otras zonas aunque sean similares.\n'+
-    '3. Para cada propiedad encontrá: dirección exacta, precio USD, m² cubiertos, m² semicubiertos (si no figura, calculá m²semi = m²tot - m²cub), cochera sí/no\n'+
-    '4. Calculá el USD/m² ajustado = precio / (m²cub + m²semi×0.5) para cada una\n'+
-    '5. ELIMINACIÓN DE OUTLIERS: calculá el promedio del USD/m². Descartá las propiedades que estén más de un 25% por encima O por debajo de ese promedio. Mencioná cuáles descartaste y por qué.\n'+
-    '6. Con las propiedades que quedan, calculá los promedios finales\n'+
-    '7. Separalos en dos grupos: EN VENTA (activas/reservadas) y VENDIDAS/CERRADAS\n\n'+
-    'PRESENTACIÓN:\n'+
-    '**En venta (activas)**\n'+
-    'Tabla con: dirección | precio | m²cub | m²semi | m²adj | USD/m²\n'+
-    'Promedio: precio promedio | USD/m² promedio\n\n'+
-    '**Vendidas/Cerradas** (si hay datos)\n'+
-    'Tabla con: dirección | precio pub. | precio venta | m²adj | USD/m²\n'+
-    'Promedio: precio promedio vendido | USD/m² promedio\n\n'+
-    '**Propiedades descartadas** (outliers)\n'+
-    'Lista de las que se excluyeron y motivo\n\n'+
-    '**Conclusión para el agente RE/MAX**\n'+
-    'Rango razonable de publicación y precio sugerido basado en los datos.\n\n'+
-    'Usá **negrita** para los valores clave.';
+  var prompt = 'Sos un experto en mercado inmobiliario de Buenos Aires. Buscá propiedades en venta en ZONAPROP (zonaprop.com.ar), ARGENPROP (argenprop.com) y MERCADO LIBRE INMUEBLES (inmuebles.mercadolibre.com.ar) con estos filtros:\n'+
+    filtros.map(function(f){return'- '+f;}).join('\n')+
+    '\n\nPara cada portal, encontrá al menos 5 propiedades y calculá:\n'+
+    '1. Precio promedio de publicación (USD)\n'+
+    '2. Precio promedio por m² cubierto (aplicá: m² cubiertos + m² semicubiertos × 0.5)\n'+
+    '3. Rango de precios (mínimo y máximo)\n'+
+    '4. Cantidad de propiedades disponibles\n'+
+    '\nLuego presentá:\n'+
+    '- Tabla comparativa entre los 3 portales\n'+
+    '- Promedio general del mercado (precio y USD/m²)\n'+
+    '- Observaciones sobre tendencia y tiempo en mercado si hay datos\n'+
+    '- Una conclusión breve para un agente RE/MAX\n'+
+    '\nFormato: claro, con datos concretos. Usá **negrita** para valores clave.';
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body: JSON.stringify({
-      model:'claude-sonnet-4-6', max_tokens:4000,
+      model:'claude-sonnet-4-6', max_tokens:3000,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:prompt}]
     })
@@ -1251,11 +1288,10 @@ function acmBuscarMercado(){
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/#{1,3} (.+)/g,'<p style="font-weight:700;font-size:14px;margin:1rem 0 4px">$1</p>')
       .replace(/\n- /g,'<br>• ')
-      .replace(/\n\|/g,'<br>|')
       .replace(/\n/g,'<br>');
     _acm.busquedaResultado = html;
-    res.innerHTML='<div class="card"><div style="font-size:13px;line-height:1.8">'+html+'</div>'+
-      '<div style="margin-top:.8rem;font-size:11px;color:#aaa">Radio 500m · Zonaprop · Argenprop · MercadoLibre · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
+    res.innerHTML='<div class="card"><div style="font-size:13px;line-height:1.7">'+html+'</div>'+
+      '<div style="margin-top:.8rem;font-size:11px;color:#aaa">Zonaprop · Argenprop · MercadoLibre · '+new Date().toLocaleDateString('es-AR')+'</div></div>';
     btn.textContent='🔍 Analizar mercado'; btn.disabled=false;
   }).catch(function(e){
     res.innerHTML='<div style="color:#c0392b;padding:1rem">Error: '+esc(e.message)+'<br>'+
@@ -1337,134 +1373,276 @@ function acmGuardarResultados(){
 
 function acmGenerarPDF(){
   acmGuardarResultados();
-  var r=_acm.resultados, c=_acm.cliente;
-  var m2adj=(Number(c.m2cub)||0)+(Number(c.m2semi)||0)*0.5;
+  var r=_acm.resultados, cl=_acm.cliente;
+  var m2cub=Number(cl.m2cub)||0, m2semi=Number(cl.m2semi)||0;
+  var m2adj=m2cub+m2semi*0.5;
   var usdM2sug=m2adj>0&&r.sugerido?Math.round(Number(r.sugerido)/m2adj):0;
-  var esPlural=c.nombres.length>1;
+  var esPlural=cl.nombres.length>1;
+  var agente=currentUser.nombre||'Gonzalo Olivera';
+  var tel=currentUser.telefono||'+54 9 11 4429-7881';
+  var mail=currentUser.email||currentUser.mail||'golivera@remax.com.ar';
+  var fecha=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
 
-  // Tarjetas de comparables Zonaprop
-  var cardsZP='';
-  if(_acm.zonaprop.length){
-    _acm.zonaprop.forEach(function(p){
-      var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;
-      var uM2=adj>0?Math.round(Number(p.precio||0)/adj):0;
-      var cpd=p.dias>0?((Number(p.clicks)||0)/Number(p.dias)).toFixed(1):null;
-      var enP=p.dias>0&&(Number(p.clicks)||0)/Number(p.dias)>=5;
-      cardsZP+='<div style="display:inline-block;width:28%;margin:0 2% 12px 0;vertical-align:top;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-size:11px">'+
-        (p.foto?'<img src="'+p.foto+'" style="width:100%;height:90px;object-fit:cover"/>':'<div style="width:100%;height:90px;background:#f3f4f6"></div>')+
-        '<div style="padding:8px">'+
-          '<div style="font-weight:600">'+esc(p.direccion||'—')+'</div>'+
-          '<div>USD '+fmtN(p.precio)+(uM2?' · USD '+fmtN(uM2)+'/m²':'')+' </div>'+
-          (p.m2cub?'<div style="color:#666">'+p.m2cub+' m² cub'+(p.m2semi?' / '+p.m2semi+' m² semi':'')+'</div>':'')+
-          (cpd?'<div style="color:'+(enP?'#065f46':'#92400e')+'">'+(enP?'✓ En precio':'⚠ Revisar')+' · '+cpd+' clicks/día</div>':'')+
-        '</div>'+
-      '</div>';
-    });
-  }
+  // ---- LOGO Team Olivera (desde assets) ----
+  var logoUrl='https://raw.githubusercontent.com/teamolivera/crm/main/assets/logo.png';
 
-  // Tarjetas RE/MAX
-  var cardsRM='';
-  var rmOrdenado=(_acm.remax||[]).slice().sort(function(a,b){return a.estado==='Cerrada'?-1:b.estado==='Cerrada'?1:0;});
-  rmOrdenado.forEach(function(p){
+  // ---- Helper: card de comparable ----
+  function cardComp(p, esVendida){
+    var descCochera=(p.cochera==='Sí'||p.cochera==='Si')&&_acm.valorCochera>0?Number(_acm.valorCochera):0;
+    var precioRef=esVendida&&p.precioVenta>0?Number(p.precioVenta):Number(p.precio)||0;
+    var precioNeto=precioRef-descCochera;
     var adj=(Number(p.m2cub)||0)+(Number(p.m2semi)||0)*0.5;
-    var uM2=adj>0?Math.round(Number(p.precio||0)/adj):0;
-    cardsRM+='<div style="display:inline-block;width:28%;margin:0 2% 12px 0;vertical-align:top;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-size:11px">'+
-      (p.foto?'<img src="'+p.foto+'" style="width:100%;height:90px;object-fit:cover"/>':'<div style="width:100%;height:90px;background:#f3f4f6"></div>')+
-      '<div style="padding:8px">'+
-        '<div style="font-weight:600">'+esc(p.direccion||'—')+'</div>'+
-        '<span style="font-size:10px;background:'+(p.estado==='Cerrada'?'#d1fae5':'#dbeafe')+';padding:2px 6px;border-radius:8px">'+esc(p.estado||'')+'</span>'+
-        '<div>Pub: USD '+fmtN(p.precio)+(uM2?' · USD '+fmtN(uM2)+'/m²':'')+' </div>'+
-        (p.precioVenta>0?'<div style="font-weight:700;color:#185FA5">Venta: USD '+fmtN(p.precioVenta)+'</div>':'')+
+    var uM2=adj>0?Math.round(precioNeto/adj):0;
+    var clicksD=p.dias>0?((Number(p.clicks)||0)/Number(p.dias)).toFixed(1):null;
+    var enPrecio=p.dias>0&&(Number(p.clicks)||0)/Number(p.dias)>=5;
+    return '<div style="break-inside:avoid;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:11px;min-width:0">'+
+      (p.foto?'<img src="'+p.foto+'" style="width:100%;height:110px;object-fit:cover;display:block"/>':
+        '<div style="width:100%;height:110px;background:linear-gradient(135deg,#EBF5FF,#dbeafe);display:flex;align-items:center;justify-content:center;color:#185FA5;font-size:18px">🏠</div>')+
+      '<div style="padding:10px">'+
+        '<div style="font-weight:700;font-size:11px;margin-bottom:4px;color:#1a1a1a">'+esc(p.direccion||'—')+'</div>'+
+        (esVendida&&p.precioVenta>0?
+          '<div style="font-size:10px;color:#888">Pub: USD '+fmtN(p.precio)+'</div>'+
+          '<div style="font-weight:700;color:#185FA5">Venta: USD '+fmtN(p.precioVenta)+'</div>':
+          '<div style="font-weight:700;color:#1a1a1a">USD '+fmtN(p.precio)+'</div>')+
+        (descCochera>0?'<div style="font-size:10px;color:#92400e">− USD '+fmtN(descCochera)+' cochera</div>':'')+
+        (p.m2cub?'<div style="color:#888;font-size:10px;margin-top:3px">'+p.m2cub+'m²c'+(p.m2semi?'+'+p.m2semi+'m²s':'')+' → '+adj.toFixed(0)+'m² hom.</div>':'')+
+        (uM2>0?'<div style="font-size:12px;font-weight:700;color:#185FA5">USD '+fmtN(uM2)+'/m²</div>':'')+
+        (clicksD?'<div style="margin-top:5px"><span style="background:'+(enPrecio?'#d1fae5':'#fef3c7')+';color:'+(enPrecio?'#065f46':'#92400e')+';padding:2px 7px;border-radius:10px;font-size:10px">'+(enPrecio?'✓ En precio':'⚠ Revisar')+' · '+clicksD+'/día</span></div>':'')+
+        (p.dias&&!clicksD?'<div style="color:#888;font-size:10px">'+p.dias+' días en mercado</div>':'')+
+        (p.ambientes?'<div style="color:#888;font-size:10px">'+p.ambientes+' amb'+(p.cochera?(' · '+(p.cochera==='Sí'||p.cochera==='Si'?'🚗 cochera':'sin cochera')):'')+' </div>':'')+
       '</div>'+
     '</div>';
-  });
+  }
 
-  var doc='<div id="acm-print" style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;color:#1a1a1a;max-width:800px;margin:0 auto;padding:20px">'+
+  // ---- Gráfico de barras comparativo ----
+  function graficoBarras(){
+    var items=[];
+    (_acm.zonaprop||[]).forEach(function(p){ if(p.precio) items.push({label:esc((p.direccion||'').split(',')[0]),val:Number(p.precio),color:'#185FA5'}); });
+    (_acm.remax||[]).forEach(function(p){
+      var v=p.precioVenta>0?p.precioVenta:p.precio;
+      if(v) items.push({label:esc((p.direccion||'').split(',')[0]),val:Number(v),color:p.estado==='Cerrada'?'#00C853':'#64b5f6'});
+    });
+    if(!items.length) return '';
+    var max=Math.max.apply(null,items.map(function(i){return i.val;}));
+    var sugerido=Number(r.sugerido)||0;
+    var svgH=items.length*36+60;
+    var barMaxW=340;
+    var svg='<svg width="460" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial,sans-serif">';
+    // Línea precio sugerido
+    if(sugerido>0){
+      var sx=Math.round((sugerido/max)*barMaxW)+100;
+      svg+='<line x1="'+sx+'" y1="10" x2="'+sx+'" y2="'+(svgH-40)+'" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/>';
+      svg+='<text x="'+sx+'" y="8" font-size="9" fill="#c0392b" text-anchor="middle">Sugerido</text>';
+    }
+    items.forEach(function(item,i){
+      var bw=Math.round((item.val/max)*barMaxW);
+      var y=20+i*36;
+      svg+='<text x="95" y="'+(y+13)+'" font-size="10" fill="#374151" text-anchor="end">'+item.label.substring(0,14)+'</text>';
+      svg+='<rect x="100" y="'+y+'" width="'+bw+'" height="22" rx="4" fill="'+item.color+'"/>';
+      svg+='<text x="'+(100+bw+5)+'" y="'+(y+15)+'" font-size="10" fill="#374151">USD '+fmtN(item.val)+'</text>';
+    });
+    // Leyenda
+    svg+='<rect x="100" y="'+(svgH-28)+'" width="12" height="12" rx="2" fill="#185FA5"/>';
+    svg+='<text x="116" y="'+(svgH-18)+'" font-size="9" fill="#666">Zonaprop</text>';
+    svg+='<rect x="175" y="'+(svgH-28)+'" width="12" height="12" rx="2" fill="#00C853"/>';
+    svg+='<text x="191" y="'+(svgH-18)+'" font-size="9" fill="#666">RE/MAX cerrada</text>';
+    svg+='<rect x="290" y="'+(svgH-28)+'" width="12" height="12" rx="2" fill="#64b5f6"/>';
+    svg+='<text x="306" y="'+(svgH-18)+'" font-size="9" fill="#666">RE/MAX activa</text>';
+    svg+='</svg>';
+    return svg;
+  }
 
-    // Header
-    '<div style="border-bottom:3px solid #c00;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">'+
-      '<div>'+
-        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:1px">Análisis Comparativo de Mercado</div>'+
-        '<div style="font-size:20px;font-weight:700;margin-top:4px">'+esc(c.zona||c.direccion||'—')+'</div>'+
+  var zpPub=_acm.zonaprop.filter(function(p){return !p.enPozo;});
+  var rmCerradas=(_acm.remax||[]).filter(function(p){return p.estado==='Cerrada';});
+  var rmActivas=(_acm.remax||[]).filter(function(p){return p.estado!=='Cerrada';});
+
+  var doc=
+  // ===== PORTADA / HEADER =====
+  '<div id="acm-print" style="font-family:Arial,sans-serif;color:#1a1a1a;max-width:800px;margin:0 auto;padding:0">'+
+
+  // Header con gradiente azul Team Olivera
+  '<div style="background:linear-gradient(135deg,#0d3b6e 0%,#185FA5 60%,#1a7fd4 100%);color:#fff;padding:28px 32px;border-radius:0 0 16px 16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">'+
+    '<div>'+
+      '<img src="'+logoUrl+'" style="height:42px;margin-bottom:8px;display:block" onerror="this.style.display=&apos;none&apos;"/>'+
+      '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:2px">Análisis Comparativo de Mercado</div>'+
+      '<div style="font-size:22px;font-weight:800;line-height:1.2">'+esc(cl.zona||cl.direccion||'—')+'</div>'+
+    '</div>'+
+    '<div style="text-align:right;font-size:12px;opacity:.9">'+
+      '<div style="font-weight:700;font-size:14px">'+esc(agente)+'</div>'+
+      '<div>RE/MAX Data Gold</div>'+
+      '<div>'+esc(tel)+'</div>'+
+      '<div>'+esc(mail)+'</div>'+
+      '<div style="margin-top:6px;opacity:.7">'+fecha+'</div>'+
+    '</div>'+
+  '</div>'+
+
+  // Saludo
+  '<div style="padding:0 32px;margin-bottom:20px">'+
+    '<p style="font-size:14px;margin:0 0 6px"><strong>'+esc(acmSaludo())+':</strong></p>'+
+    '<p style="font-size:13px;color:#374151;line-height:1.6;margin:0">Me gustaría poner'+
+      (esPlural?'los':'lo')+' al día sobre el estado del mercado en <strong>'+esc(cl.zona||'la zona')+'</strong>, '+
+      'lo que nos ayudará a establecer el mejor precio de publicación para '+
+      (esPlural?'su':'su')+' propiedad y posicionarla de forma competitiva.</p>'+
+  '</div>'+
+
+  // ===== DATOS DE LA PROPIEDAD =====
+  '<div style="padding:0 32px;margin-bottom:24px">'+
+    '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:12px">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Propiedad a tasar</div>'+
+      '<div style="font-size:16px;font-weight:800">'+esc((cl.tipo||'Propiedad')+' en '+cl.direccion)+'</div>'+
+    '</div>'+
+    // Grid de características
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">'+
+      (cl.estado?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Estado</div><div style="font-weight:700;font-size:13px">'+esc(cl.estado)+'</div></div>':'')+
+      (cl.antiguedad?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Antigüedad</div><div style="font-weight:700;font-size:13px">'+esc(cl.antiguedad)+' años</div></div>':'')+
+      (cl.ambientes?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Ambientes</div><div style="font-weight:700;font-size:13px">'+esc(cl.ambientes)+'</div></div>':'')+
+      (cl.dormitorios?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Dormitorios</div><div style="font-weight:700;font-size:13px">'+esc(cl.dormitorios)+'</div></div>':'')+
+      (cl.banos?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Baños</div><div style="font-weight:700;font-size:13px">'+esc(cl.banos)+'</div></div>':'')+
+      (cl.toilette?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Toilettes</div><div style="font-weight:700;font-size:13px">'+esc(cl.toilette)+'</div></div>':'')+
+      (cl.cochera?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Cochera</div><div style="font-weight:700;font-size:13px">'+esc(cl.cochera)+'</div></div>':'')+
+      (cl.deseabilidad?'<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#888;text-transform:uppercase">Deseabilidad</div><div style="font-weight:700;font-size:13px">'+esc(cl.deseabilidad)+'</div></div>':'')+
+    '</div>'+
+    // M² con destaque
+    (m2adj>0?
+      '<div style="background:linear-gradient(135deg,#EBF5FF,#dbeafe);border-radius:8px;padding:12px 16px;display:flex;gap:20px;margin-bottom:12px">'+
+        (m2cub?'<div><div style="font-size:10px;color:#185FA5;text-transform:uppercase;font-weight:700">M² cubiertos</div><div style="font-size:20px;font-weight:800;color:#0d3b6e">'+m2cub+'</div></div>':'')+
+        (m2semi?'<div><div style="font-size:10px;color:#185FA5;text-transform:uppercase;font-weight:700">M² semicub.</div><div style="font-size:20px;font-weight:800;color:#0d3b6e">'+m2semi+'</div></div>':'')+
+        '<div style="margin-left:auto;border-left:2px solid #185FA5;padding-left:16px"><div style="font-size:10px;color:#185FA5;text-transform:uppercase;font-weight:700">M² homogeneizados</div><div style="font-size:24px;font-weight:800;color:#185FA5">'+m2adj.toFixed(1)+'</div></div>'+
+      '</div>':'')+ 
+    // Amenities
+    (cl.amenities?'<div style="font-size:12px;color:#374151;margin-bottom:8px"><strong>Amenities:</strong> '+esc(cl.amenities)+'</div>':'')+
+    // Pros y contras
+    (cl.favor||cl.contra?
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        (cl.favor?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:#065f46;margin-bottom:4px">✅ A FAVOR</div><div style="font-size:12px;color:#374151">'+esc(cl.favor)+'</div></div>':'')+
+        (cl.contra?'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:#9a3412;margin-bottom:4px">❌ EN CONTRA</div><div style="font-size:12px;color:#374151">'+esc(cl.contra)+'</div></div>':'')+
+      '</div>':'')+ 
+  '</div>'+
+
+  // ===== MAPA =====
+  (_acm.mapaZonaprop?
+    '<div style="padding:0 32px;margin-bottom:24px">'+
+      '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Mapa de propiedades en zona</div>'+
       '</div>'+
-      '<div style="text-align:right;font-size:11px;color:#888">'+new Date().toLocaleDateString('es-AR')+'<br>RE/MAX Data Gold</div>'+
+      '<img src="'+_acm.mapaZonaprop+'" style="width:100%;border-radius:8px;border:1px solid #e5e7eb"/>'+
+    '</div>':'')+ 
+
+  // ===== COMPARABLES ZONAPROP =====
+  (zpPub.length?
+    '<div style="padding:0 32px;margin-bottom:24px">'+
+      '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Comparables Zonaprop — En venta</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat('+Math.min(zpPub.length,3)+',1fr);gap:12px">'+
+        zpPub.map(function(p){return cardComp(p,false);}).join('')+
+      '</div>'+
+    '</div>':'')+ 
+
+  // ===== COMPARABLES RE/MAX =====
+  ((_acm.remax||[]).length?
+    '<div style="padding:0 32px;margin-bottom:24px">'+
+      '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Comparables RE/MAX</div>'+
+      '</div>'+
+      (rmCerradas.length?'<div style="font-size:11px;font-weight:700;color:#065f46;margin-bottom:6px">✅ Vendidas (referencia principal)</div>'+
+        '<div style="display:grid;grid-template-columns:repeat('+Math.min(rmCerradas.length,3)+',1fr);gap:12px;margin-bottom:12px">'+
+        rmCerradas.map(function(p){return cardComp(p,true);}).join('')+'</div>':'')+
+      (rmActivas.length?'<div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:6px;margin-top:4px">📋 En venta / en negociación</div>'+
+        '<div style="display:grid;grid-template-columns:repeat('+Math.min(rmActivas.length,3)+',1fr);gap:12px">'+
+        rmActivas.map(function(p){return cardComp(p,false);}).join('')+'</div>':'')+
+    '</div>':'')+ 
+
+  // ===== GRÁFICO DE PRECIOS =====
+  '<div style="padding:0 32px;margin-bottom:24px">'+
+    '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Comparativo de precios</div>'+
     '</div>'+
+    graficoBarras()+
+  '</div>'+
 
-    // Saludo
-    '<p><strong>'+esc(acmSaludo())+':</strong></p>'+
-    '<p>Me gustaría ponerlo'+(esPlural?'s':'')+' al día sobre el estado del mercado inmobiliario en '+esc(c.zona||'la zona')+', lo que nos ayudará a establecer el mejor precio de publicación para '+( esPlural?'su':'su')+' propiedad y posicionarla de forma competitiva.</p>'+
+  // ===== ANÁLISIS DE MERCADO =====
+  (_acm.busquedaResultado?
+    '<div style="padding:0 32px;margin-bottom:24px">'+
+      '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Análisis de mercado — Radio 500m</div>'+
+      '</div>'+
+      '<div style="background:#f8fafc;border-radius:8px;padding:14px;font-size:12px;line-height:1.7;color:#374151">'+_acm.busquedaResultado+'</div>'+
+    '</div>':'')+ 
 
-    // Datos de la propiedad
-    '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">'+esc(c.tipo||'Propiedad')+' en '+esc(c.direccion||'—')+'</h3>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;font-size:12px;margin-bottom:12px">'+
-      (c.estado?'<div><b>Estado:</b> '+esc(c.estado)+'</div>':'')+
-      (c.antiguedad?'<div><b>Antigüedad:</b> '+esc(c.antiguedad)+' años</div>':'')+
-      (c.ambientes?'<div><b>Ambientes:</b> '+esc(c.ambientes)+'</div>':'')+
-      (c.dormitorios?'<div><b>Dormitorios:</b> '+esc(c.dormitorios)+'</div>':'')+
-      (c.banos?'<div><b>Baños:</b> '+esc(c.banos)+'</div>':'')+
-      (c.toilette?'<div><b>Toilettes:</b> '+esc(c.toilette)+'</div>':'')+
-      (c.cochera?'<div><b>Cochera:</b> '+esc(c.cochera)+'</div>':'')+
-      (c.deseabilidad?'<div><b>Deseabilidad:</b> '+esc(c.deseabilidad)+'</div>':'')+
-      (c.m2cub?'<div><b>M² cubiertos:</b> '+esc(c.m2cub)+'</div>':'')+
-      (c.m2semi?'<div><b>M² semicubiertos:</b> '+esc(c.m2semi)+'</div>':'')+
-      (m2adj>0?'<div><b>M² ajustados:</b> '+m2adj.toFixed(1)+'</div>':'')+
-      (c.amenities?'<div style="grid-column:1/-1"><b>Amenities:</b> '+esc(c.amenities)+'</div>':'')+
+  // ===== COTIZACIÓN =====
+  '<div style="padding:0 32px;margin-bottom:24px">'+
+    '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:14px">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Composición de la cotización</div>'+
     '</div>'+
-    (c.descripcion?'<p style="font-size:12px">'+esc(c.descripcion)+'</p>':'')+
-    (c.favor?'<p style="font-size:12px"><b>✅ Puntos a favor:</b> '+esc(c.favor)+'</p>':'')+
-    (c.contra?'<p style="font-size:12px"><b>❌ Puntos en contra:</b> '+esc(c.contra)+'</p>':'')+
-
-    // Mapa
-    (_acm.mapaZonaprop?
-      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Mapa de propiedades en zona</h3>'+
-      '<img src="'+_acm.mapaZonaprop+'" style="max-width:100%;border-radius:6px;margin-bottom:1rem"/>':'')+ 
-
-    // Comparables Zonaprop
-    (cardsZP?
-      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Comparables Zonaprop</h3>'+
-      '<div style="margin-bottom:1rem">'+cardsZP+'</div>':'')+
-
-    // Comparables RE/MAX
-    (cardsRM?
-      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1rem">Comparables RE/MAX</h3>'+
-      '<div style="margin-bottom:1rem">'+cardsRM+'</div>':'')+
-
-    // Análisis de mercado
-    (_acm.busquedaResultado?
-      '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Análisis de mercado</h3>'+
-      '<div style="font-size:12px;line-height:1.6">'+_acm.busquedaResultado+'</div>':'')+ 
-
-    // Cotización
-    '<h3 style="font-size:13px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:4px;margin-top:1.5rem">Cotización</h3>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">'+
-      (r.promVendidos?'<tr><td style="padding:5px 0">Precio promedio vendido en zona</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.promVendidos)+(r.m2Vendidos?' (USD '+fmtN(r.m2Vendidos)+'/m²)':'')+' </td></tr>':'')+
-      (r.promPublicados?'<tr><td>Precio promedio publicado en mercado</td><td style="text-align:right;font-weight:600">USD '+fmtN(r.promPublicados)+(r.m2Publicados?' (USD '+fmtN(r.m2Publicados)+'/m²)':'')+' </td></tr>':'')+
-    '</table>'+
-    (r.sugerido?
-      '<div style="background:#EBF5FF;border-left:4px solid #185FA5;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:1rem">'+
-        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#185FA5">Precio sugerido de publicación — primeros 30 días</div>'+
-        '<div style="font-size:22px;font-weight:700;margin-top:4px">USD '+fmtN(r.sugerido)+'</div>'+
-        (usdM2sug>0?'<div style="font-size:12px;color:#888">USD '+fmtN(usdM2sug)+'/m² ajustado</div>':'')+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+      (r.promVendidos?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;text-align:center">'+
+        '<div style="font-size:10px;text-transform:uppercase;font-weight:700;color:#065f46;margin-bottom:6px">Promedio vendidos</div>'+
+        '<div style="font-size:18px;font-weight:800;color:#065f46">USD '+fmtN(r.promVendidos)+'</div>'+
+        (r.m2Vendidos?'<div style="font-size:11px;color:#065f46">USD '+fmtN(r.m2Vendidos)+'/m²</div>':'')+
       '</div>':'')+
+      (r.promPublicados?'<div style="background:#EBF5FF;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center">'+
+        '<div style="font-size:10px;text-transform:uppercase;font-weight:700;color:#1e40af;margin-bottom:6px">Promedio publicados</div>'+
+        '<div style="font-size:18px;font-weight:800;color:#1e40af">USD '+fmtN(r.promPublicados)+'</div>'+
+        (r.m2Publicados?'<div style="font-size:11px;color:#1e40af">USD '+fmtN(r.m2Publicados)+'/m²</div>':'')+
+      '</div>':'')+
+      (r.sugerido?'<div style="background:linear-gradient(135deg,#0d3b6e,#185FA5);border-radius:10px;padding:14px;text-align:center;color:#fff">'+
+        '<div style="font-size:10px;text-transform:uppercase;font-weight:700;opacity:.8;margin-bottom:6px">Precio sugerido</div>'+
+        '<div style="font-size:20px;font-weight:800">USD '+fmtN(r.sugerido)+'</div>'+
+        (usdM2sug>0?'<div style="font-size:11px;opacity:.8">USD '+fmtN(usdM2sug)+'/m²</div>':'')+
+      '</div>':'')+
+    '</div>'+
+    // Texto de valor de mercado
+    '<p style="font-size:12px;color:#374151;line-height:1.7">Nuestra recomendación es salir a ofrecerlo en el valor indicado y analizar las consultas durante el primer mes. Es probable que estemos recibiendo ofertas entre un <strong>5% y un 8%</strong> inferior al precio de publicación, lo cual da inicio a la negociación.</p>'+
+    '<p style="font-size:12px;color:#374151;line-height:1.7;margin-top:6px">Un comprador en búsqueda activa se vuelve especialista en precios. Lo que está fuera de precio, no se consulta. <strong>El precio debe ser un elemento de atracción.</strong></p>'+
+  '</div>'+
 
-    // Firma agente
-    '<hr style="margin:1.5rem 0;border:none;border-top:1px solid #ddd"/>'+
-    '<p style="font-size:12px"><b>'+esc(currentUser.nombre||'—')+'</b> · RE/MAX Data Gold<br>'+
-      esc(currentUser.telefono||'')+(currentUser.mail?' · '+esc(currentUser.mail):'')+'</p>'+
+  // ===== PASOS A SEGUIR =====
+  '<div style="padding:0 32px;margin-bottom:24px">'+
+    '<div style="border-left:4px solid #185FA5;padding-left:12px;margin-bottom:10px">'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#185FA5;font-weight:700">Pasos a seguir</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:#374151">'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">01</span><span>Fotos profesionales y tour virtual de la propiedad</span></div>'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">02</span><span>Publicación en 15 portales (Premium, Súper Destacado, Gold)</span></div>'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">03</span><span>Compartir con inmobiliarias de la zona</span></div>'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">04</span><span>Publicitar dentro de la red RE/MAX</span></div>'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">05</span><span>Informe quincenal del estado de la publicación</span></div>'+
+      '<div style="display:flex;gap:8px;align-items:flex-start"><span style="color:#185FA5;font-weight:700;min-width:20px">06</span><span>Gestión completa del proceso hasta escritura</span></div>'+
+    '</div>'+
+  '</div>'+
 
+  // ===== FOOTER =====
+  '<div style="background:linear-gradient(135deg,#0d3b6e,#185FA5);color:#fff;padding:20px 32px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
+    '<div>'+
+      '<img src="'+logoUrl+'" style="height:32px;filter:brightness(0) invert(1);margin-bottom:4px;display:block" onerror="this.style.display=&apos;none&apos;"/>'+
+      '<div style="font-size:11px;opacity:.7">RE/MAX Data Gold · Fitz Roy 1925, Palermo Hollywood</div>'+
+      '<div style="font-size:10px;opacity:.6;margin-top:2px">Mauro Marvisi CUCICBA 1762 / CMCPSI 5574</div>'+
+    '</div>'+
+    '<div style="text-align:right;font-size:12px">'+
+      '<div style="font-weight:700;font-size:14px">'+esc(agente)+'</div>'+
+      '<div>'+esc(tel)+'</div>'+
+      '<div>'+esc(mail)+'</div>'+
+    '</div>'+
+  '</div>'+
+
+  '</div>'+
+  '<div style="margin-top:1.5rem;display:flex;gap:10px">'+
+    '<button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>'+
+    '<button class="btn" onclick="acmCerrarPreview()">✕ Cerrar</button>'+
   '</div>';
 
-  document.getElementById('acm-preview').innerHTML=doc+
-    '<div style="margin-top:1rem"><button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>';
+  document.getElementById('acm-preview').innerHTML=doc;
 
   // Estilos de impresión
   if(!document.getElementById('acm-print-css')){
     var s=document.createElement('style'); s.id='acm-print-css';
-    s.textContent='@media print{body *{visibility:hidden}#acm-print,#acm-print *{visibility:visible}#acm-print{position:fixed;top:0;left:0;width:100%;padding:20px}}';
+    s.textContent='@media print{body *{visibility:hidden}#acm-print,#acm-print *{visibility:visible}#acm-print{position:fixed;top:0;left:0;width:100%;padding:0;max-width:100%}}';
     document.head.appendChild(s);
   }
 }
 
+function acmCerrarPreview(){ var el=document.getElementById("acm-preview"); if(el)el.innerHTML=""; }
 
 function loadDashboard(filtroAgente){
   var agente=filtroAgente||currentUser.nombre;
