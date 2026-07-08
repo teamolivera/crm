@@ -741,15 +741,16 @@ var _acm = {
     m2cub:'', m2semi:'', m2desc:'',
     descripcion:'', favor:'', contra:''
   },
-  zonaprop: [],      // 1-3 comparables de Zonaprop (extraídos de PDF)
-  mapaZonaprop: null, // imagen del mapa
-  remax: [],         // 1-3 comparables RE/MAX (extraídos de PDF)
+  zonaprop: [],
+  mapaZonaprop: null,
+  remax: [],
   busqueda: {
     localidad:'', tipo:'', ambientes:'', antiguedad:'',
     m2min:'', m2max:'', cochera:'', amenities:'',
     calidad:'', estadoInm:''
   },
   busquedaResultado: '',
+  valorCochera: 0,
   resultados: { promVendidos:'', m2Vendidos:'', promPublicados:'', m2Publicados:'', sugerido:'' }
 };
 var _acmSubTab = 'cliente';
@@ -891,7 +892,7 @@ function acmHtmlZonaprop(){
   var rows = _acm.zonaprop;
   var html = '<div class="card" style="max-width:720px">'+
     '<p style="font-weight:700;font-size:15px;margin-bottom:4px">Comparables Zonaprop</p>'+
-    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Subí entre 1 y 3 PDFs de propiedades seleccionadas en Zonaprop. La IA extrae precio, m², días, clicks y fotos.</div>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:1rem">Subí entre 1 y 3 PDFs de propiedades seleccionadas en Zonaprop. La IA extrae precio, m², días, clicks y cochera.</div>'+
     '<div style="font-size:12px;background:#fffbe6;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;margin-bottom:1rem">'+
       '📊 <strong>Regla de clicks:</strong> en CABA, ≥5 clicks/día = propiedad en precio (indicador verde).</div>'+
     '<div class="form-group">'+
@@ -901,10 +902,29 @@ function acmHtmlZonaprop(){
     '<div id="acm-zp-estado" style="margin-bottom:1rem"></div>';
 
   if(rows.length){
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:1rem">';
-    rows.forEach(function(r,i){
-      var m2adj = (Number(r.m2cub)||0) + (Number(r.m2semi)||0)*0.5;
-      var usdM2 = m2adj>0 ? Math.round((Number(r.precio)||0)/m2adj) : 0;
+    var algunaTieneCochera = rows.some(function(r){ return r.cochera==='Sí'||r.cochera==='Si'||r.cochera==='sí'; });
+
+    if(algunaTieneCochera){
+      html += '<div style="background:#fff3cd;border:1px solid #f59e0b;border-radius:8px;padding:14px;margin-bottom:1rem">'+
+        '<p style="font-weight:700;margin-bottom:6px;color:#92400e">🚗 Se detectaron propiedades con cochera</p>'+
+        '<p style="font-size:12px;color:#92400e;margin-bottom:10px">Ingresá el valor estimado de la cochera en esta zona para descontarlo del precio antes de calcular el USD/m².</p>'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+          '<span style="font-size:13px;font-weight:600">Valor cochera en zona: USD</span>'+
+          '<input id="acm-valor-cochera" type="number" value="'+(_acm.valorCochera||'')+'" placeholder="ej: 20000" style="width:120px"/>'+
+          '<button class="btn btn-primary btn-sm" onclick="acmAplicarCochera()">Aplicar</button>'+
+        '</div>'+
+        (_acm.valorCochera>0?'<div style="font-size:12px;color:#065f46;margin-top:8px">✓ Descuento aplicado: USD '+fmtN(_acm.valorCochera)+' por cochera</div>':'')+
+      '</div>';
+    }
+
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:1rem">';
+    rows.forEach(function(r){
+      var tieneCochera = r.cochera==='Sí'||r.cochera==='Si'||r.cochera==='sí';
+      var descCochera = tieneCochera&&_acm.valorCochera>0 ? Number(_acm.valorCochera) : 0;
+      var precioNeto = (Number(r.precio)||0) - descCochera;
+      var m2cub=Number(r.m2cub)||0, m2semi=Number(r.m2semi)||0;
+      var m2adj = m2cub + m2semi*0.5;
+      var usdM2 = m2adj>0 ? Math.round(precioNeto/m2adj) : 0;
       var clicksXdia = r.dias>0 ? ((Number(r.clicks)||0)/Number(r.dias)).toFixed(1) : '—';
       var enPrecio = r.dias>0 && (Number(r.clicks)||0)/Number(r.dias) >= 5;
       html += '<div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:12px">'+
@@ -912,21 +932,25 @@ function acmHtmlZonaprop(){
           '<div style="width:100%;height:120px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px">Sin foto</div>')+
         '<div style="padding:10px">'+
           '<div style="font-weight:600;margin-bottom:4px">'+esc(r.direccion||'—')+'</div>'+
-          '<div>USD '+fmtN(r.precio)+'</div>'+
-          '<div style="color:#888">'+
-            (r.m2cub?r.m2cub+' m² cub':'')+(r.m2semi?' · '+r.m2semi+' m² semi':'')+
+          '<div style="color:#888;font-size:11px">Precio pub: USD '+fmtN(r.precio)+'</div>'+
+          (descCochera>0?'<div style="font-size:11px;color:#92400e">− USD '+fmtN(descCochera)+' (cochera)</div>':'') +
+          (descCochera>0?'<div style="font-weight:700">Neto: USD '+fmtN(precioNeto)+'</div>':'<div style="font-weight:700">USD '+fmtN(r.precio)+'</div>')+
+          '<div style="color:#888;margin-top:4px">'+
+            (m2cub?m2cub+' m² cub':'')+(m2semi?' + '+m2semi+' m² semi (×0.5)':'')+
           '</div>'+
-          (usdM2>0?'<div style="color:#185FA5;font-weight:600">USD '+fmtN(usdM2)+'/m²</div>':'')+
+          (m2adj>0?'<div style="color:#888">= '+m2adj.toFixed(1)+' m² hom.</div>':'')+
+          (usdM2>0?'<div style="color:#185FA5;font-weight:700;font-size:13px">USD '+fmtN(usdM2)+'/m²</div>':'')+
+          (tieneCochera?'<div style="font-size:11px;color:#185FA5">🚗 Con cochera</div>':'')+
           '<div style="margin-top:6px">'+
             '<span style="background:'+(enPrecio?'#d1fae5':'#fef3c7')+';color:'+(enPrecio?'#065f46':'#92400e')+';padding:2px 7px;border-radius:10px;font-size:11px">'+
               (enPrecio?'✓ En precio':'⚠ Revisar precio')+
             '</span>'+
           '</div>'+
-          '<div style="color:#888;margin-top:4px">'+
-            (r.dias?r.dias+' días · ':'')+
-            (r.clicks?r.clicks+' clicks · '+clicksXdia+' clicks/día':'')+
+          '<div style="color:#888;margin-top:4px;font-size:11px">'+
+            (r.dias?r.dias+' días':'')+
+            (r.clicks?' · '+r.clicks+' views · '+clicksXdia+'/día':'')+
           '</div>'+
-          (r.ambientes?'<div>'+r.ambientes+' amb · '+(r.cochera||'sin cochera')+'</div>':'')+
+          (r.ambientes?'<div style="font-size:11px">'+r.ambientes+' ambientes</div>':'')+
         '</div>'+
       '</div>';
     });
@@ -935,6 +959,12 @@ function acmHtmlZonaprop(){
   }
   html += '</div>';
   return html;
+}
+
+function acmAplicarCochera(){
+  var val = Number(document.getElementById('acm-valor-cochera').value)||0;
+  _acm.valorCochera = val;
+  document.getElementById('acmContenido').innerHTML = acmHtmlZonaprop();
 }
 
 function acmLeerPdfZonaprop(input){
@@ -958,7 +988,7 @@ function acmLeerPdfZonaprop(input){
             model:'claude-sonnet-4-6', max_tokens:1500,
             messages:[{role:'user',content:[
               {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-              {type:'text',text:'Extraé los datos de esta publicación de Zonaprop. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","dias":0,"clicks":0,"foto":""}\nReglas:\n- precio: en USD, número entero\n- m2cub: metros cubiertos\n- m2semi: metros semicubiertos (0 si no hay)\n- m2tot: metros totales\n- dias: días en el mercado\n- clicks: total de clicks o visitas mencionadas\n- foto: si hay URL de imagen en el PDF ponela, sino string vacío\n- cochera: "Sí" o "No"'}
+              {type:'text',text:'Extraé los datos de esta publicación de Zonaprop. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","dias":0,"clicks":0,"foto":""}\nReglas:\n- precio: en USD, número entero\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros cuadrados semicubiertos. Si el PDF no indica "semicubiertos" explícitamente, calculalo como m2tot - m2cub. Si m2tot y m2cub son iguales, m2semi=0.\n- dias: días publicado (si dice "hace X días" calculá X)\n- clicks: total de visualizaciones o clicks mencionados\n- foto: string vacío (no se puede extraer URL del PDF)\n- cochera: "Sí" o "No"'}
             ]}]
           })
         }).then(function(r){return r.json();})
@@ -1080,7 +1110,7 @@ function acmLeerPdfRemax(input){
             model:'claude-sonnet-4-6', max_tokens:1500,
             messages:[{role:'user',content:[
               {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-              {type:'text',text:'Extraé los datos de este comparable de RE/MAX. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"precioVenta":0,"m2cub":0,"m2semi":0,"ambientes":0,"cochera":"No","estado":"Activa","dias":0,"foto":""}\n- precio: precio de publicación en USD\n- precioVenta: precio de venta real si está cerrada (0 si no)\n- m2cub: metros cubiertos\n- m2semi: metros semicubiertos (0 si no hay)\n- estado: "Activa", "Reservada", "Cerrada" o "En negociación"\n- dias: días en el mercado\n- foto: URL de imagen si aparece, sino string vacío'}
+              {type:'text',text:'Extraé los datos de este comparable de RE/MAX. Devolvé SOLO un objeto JSON (sin markdown):\n{"direccion":"...","precio":0,"precioVenta":0,"m2cub":0,"m2semi":0,"m2tot":0,"ambientes":0,"cochera":"No","estado":"Activa","dias":0,"foto":""}\n- precio: precio de publicación en USD\n- precioVenta: precio de venta real si está cerrada (0 si no)\n- m2tot: metros cuadrados totales\n- m2cub: metros cuadrados cubiertos\n- m2semi: metros semicubiertos. Si no se indica explícitamente, calculalo como m2tot - m2cub. Si son iguales, m2semi=0.\n- estado: "Activa", "Reservada", "Cerrada" o "En negociación"\n- dias: días en el mercado\n- foto: string vacío'}
             ]}]
           })
         }).then(function(r){return r.json();})
