@@ -3459,24 +3459,5 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
-<!-- Modal mapa ACM -->
-<div id="mapaModal" class="modal-overlay" style="z-index:200">
-  <div class="modal-box" style="max-width:750px;width:95%">
-    <div class="modal-header"><span class="modal-title">Seleccionar área en el mapa</span><button class="close-btn" onclick="cerrarMapaZona()">×</button></div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-      <button id="mapaModoZona" class="btn btn-sm btn-primary" onclick="setMapaModo('zona')" style="background:#185FA5;color:#fff">📍 Zona / Barrio</button>
-      <button id="mapaModoGrid" class="btn btn-sm" onclick="setMapaModo('grid')">⬜ Marcar área</button>
-      <button id="mapaCerrarPoligono" class="btn btn-sm" onclick="cerrarPoligonoMapa()" style="display:none;margin-left:auto">✓ Cerrar área</button>
-    </div>
-    <div id="mapaInstruccion" style="font-size:12px;color:#888;margin-bottom:8px">Hacé clic en el mapa para marcar el barrio/zona.</div>
-    <div id="mapaContainer" style="height:400px;border-radius:8px;overflow:hidden;background:#eee"></div>
-    <div id="mapaZonaDetectada" style="margin-top:10px;font-size:13px;color:#185FA5;font-weight:600;min-height:20px"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-      <button class="btn" onclick="limpiarMapa();document.getElementById('mapaZonaDetectada').textContent='';document.getElementById('mapaConfirmarBtn').disabled=true;">🗑 Limpiar</button>
-      <button class="btn" onclick="cerrarMapaZona()">Cancelar</button>
-      <button class="btn btn-primary" id="mapaConfirmarBtn" onclick="confirmarZonaMapa()" disabled>Confirmar</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
